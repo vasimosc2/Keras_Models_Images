@@ -5,12 +5,12 @@ from models.simple_cnn import create_simple_cnn
 from models.cnn_with_gap import create_cnn_with_gap
 from models.cnn_with_batchnorm import create_cnn_with_batchnorm
 from models.cnn_with_dropout import create_cnn_with_dropout
+from models.resnet_like import create_resnet_like_cnn  # Import new ResNet-like model
 import tensorflow as tf
 import numpy as np
 import pandas as pd
 from sklearn.metrics import precision_score, recall_score, accuracy_score
 from tensorflow.keras import backend as K
-
 from tensorflow.keras.models import load_model
 
 tf.config.set_visible_devices([], 'GPU')  # Disable GPU
@@ -21,10 +21,6 @@ x_train, x_test = x_train / 255.0, x_test / 255.0
 y_train = tf.keras.utils.to_categorical(y_train, 10)
 y_test = tf.keras.utils.to_categorical(y_test, 10)
 
-
-
-# Add other model functions like create_deeper_cnn, create_cnn_with_dropout, etc. here
-
 # Function to train and evaluate models
 def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name):
     model.compile(optimizer='adam',
@@ -34,7 +30,8 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
     model.fit(x_train, y_train, epochs=10, batch_size=16, verbose=2)
 
     # Save model after training
-    model.save(f'saved_models/{model_name}.keras')
+    model_path = f'saved_models/{model_name}.keras'
+    model.save(model_path)
     print(f"Model {model_name} saved!")
 
     # Evaluate model on test data
@@ -51,53 +48,58 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
     print(f"Precision: {precision}")
     print(f"Recall: {recall}")
 
-    return test_acc, precision, recall
+    # Compute model file size
+    model_file_size = os.path.getsize(model_path)
+    model_size_in_mb = model_file_size / (1024 ** 2)
 
-# Ensure the 'saved_models' directory exists
-if not os.path.exists('saved_models'):
-    os.makedirs('saved_models')
+    flops = count_flops(model, batch_size=1) / 10**3
 
-# Train models
-models_to_train = [
-    create_simple_cnn(),
-    create_deeper_cnn(),
-    create_cnn_with_dropout(),
-    create_cnn_with_batchnorm(),
-    create_cnn_with_gap()
-]
+    return test_acc, precision, recall, model_size_in_mb, flops
+
+# Ensure directories exist
+os.makedirs('saved_models', exist_ok=True)
+os.makedirs('results', exist_ok=True)
+
+# List of models to train
+models_to_train = {
+    "Simple_CNN": create_simple_cnn(),
+    "Deeper_CNN": create_deeper_cnn(),
+    "CNN_With_Dropout": create_cnn_with_dropout(),
+    "CNN_With_BatchNorm": create_cnn_with_batchnorm(),
+    "CNN_With_GAP": create_cnn_with_gap(),
+    "ResNet_Like_CNN": create_resnet_like_cnn()  # New model added
+}
 
 results = []
 
-for i, model in enumerate(models_to_train):
-    model_name = f"model_{i + 1}"
-    print(f"\nTraining Model {i + 1}...")
-    acc, precision, recall = train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name)
+for model_name, model in models_to_train.items():
+    print(f"\nTraining {model_name}...")
+    acc, precision, recall, model_size, flops = train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name)
+
     results.append({
         "Model": model_name,
         "Accuracy": acc,
         "Precision": precision,
-        "Recall": recall
+        "Recall": recall,
+        "Size_MB": model_size,
+        "Flops_K": flops
     })
 
     # Clear the session to free up memory after each model
     K.clear_session()
 
-# Save evaluation results to a CSV file
-if not os.path.exists('results'):
-    os.makedirs('results')
-
+# Save results to CSV
 df_results = pd.DataFrame(results)
 df_results.to_csv('results/evaluation_results.csv', index=False)
 print("Evaluation results saved to 'results/evaluation_results.csv'")
 
-
-model = load_model('saved_models/model_1.keras')
+# Load one model and compute FLOPs
+model = load_model('saved_models/Simple_CNN.keras')
 model.summary()
 
 flops = count_flops(model, batch_size=1)
 print(f"FLOPS: {flops / 10 ** 9:.03f} G")
 
-
-model_file_size = os.path.getsize('saved_models/model_1.keras')
+model_file_size = os.path.getsize('saved_models/Simple_CNN.keras')
 model_size_in_mb = model_file_size / (1024 ** 2)
 print(f'Model size on disk: {model_size_in_mb:.2f} MB')
