@@ -1,6 +1,10 @@
 import os
 from Counting.count_Flops import count_flops
+from models.deeper_cnn import create_deeper_cnn
 from models.simple_cnn import create_simple_cnn
+from models.cnn_with_gap import create_cnn_with_gap
+from models.cnn_with_batchnorm import create_cnn_with_batchnorm
+from models.cnn_with_dropout import create_cnn_with_dropout
 import tensorflow as tf
 import numpy as np
 import pandas as pd
@@ -56,7 +60,10 @@ if not os.path.exists('saved_models'):
 # Train models
 models_to_train = [
     create_simple_cnn(),
-    # Add other models like create_deeper_cnn(), create_cnn_with_dropout(), etc.
+    create_deeper_cnn(),
+    create_cnn_with_dropout(),
+    create_cnn_with_batchnorm(),
+    create_cnn_with_gap()
 ]
 
 results = []

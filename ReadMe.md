@@ -17,6 +17,7 @@ or
 python -m venv venv
 
 ```bash
+source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
