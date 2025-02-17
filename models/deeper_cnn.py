@@ -16,4 +16,4 @@ def create_deeper_cnn():
         layers.Dropout(0.5),
         layers.Dense(10, activation='softmax')
     ])
-    return mode
+    return model
