@@ -54,6 +54,8 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
 
     flops = count_flops(model, batch_size=1) / 10**3
 
+    print(f"The FLOPS are : {flops}")
+
     return test_acc, precision, recall, model_size_in_mb, flops
 
 # Ensure directories exist
@@ -90,8 +92,8 @@ for model_name, model in models_to_train.items():
 
 # Save results to CSV
 df_results = pd.DataFrame(results)
-df_results.to_csv('results/evaluation_results.csv', index=False)
-print("Evaluation results saved to 'results/evaluation_results.csv'")
+df_results.to_csv('results/evaluation_results2.csv', index=False)
+print("Evaluation results saved to 'results/evaluation_results2.csv'")
 
 # Load one model and compute FLOPs
 model = load_model('saved_models/Simple_CNN.keras')

@@ -1,21 +1,30 @@
 import tensorflow as tf
 
 def count_flops(model, batch_size=1):
-    run_meta = tf.compat.v1.RunMetadata()
-    opts = tf.compat.v1.profiler.ProfileOptionBuilder.float_operation()
+    """
+    Count FLOPs of a TensorFlow 2.x model.
+    
+    Parameters:
+        model (tf.keras.Model): The model whose FLOPs need to be counted.
+        batch_size (int): The batch size for FLOP computation.
 
-    # Wrap the model call with tf.function to ensure graph mode execution
-    @tf.function
-    def run_inference(x):
-        return model(x)
+    Returns:
+        int: The total number of FLOPs in the model.
+    """
+    # Create a concrete function from the model call
+    input_shape = (batch_size, 32, 32, 3)  # Adjust according to your model's input shape
+    dummy_input = tf.ones(input_shape)
 
-    # Create a dummy input for profiling (ensure the shape matches the input of your model)
-    dummy_input = tf.ones((batch_size, 32, 32, 3))  # Replace with your actual input shape
+    # Convert model to a TensorFlow function graph
+    concrete_function = tf.function(model).get_concrete_function(dummy_input)
+    frozen_func = concrete_function.graph
 
-    # Run the dummy input through the model to initialize graph execution
-    run_inference(dummy_input)
+    # Count the number of float operations
+    flops = 0
+    for op in frozen_func.get_operations():
+        for output in op.outputs:
+            shape = output.shape
+            if shape.is_fully_defined():
+                flops += tf.reduce_prod(shape).numpy()
 
-    with tf.compat.v1.Session() as session:
-        flops = tf.compat.v1.profiler.profile(graph=session.graph,
-                                              run_meta=run_meta, cmd='op', options=opts)
-        return flops.total_float_ops
+    return flops
