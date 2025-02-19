@@ -1,5 +1,9 @@
 from tensorflow.keras import layers, models
+"""
+Similar to the simple cnn, but it has more layers and more filters in each layer
 
+
+"""
 def create_deeper_cnn():
     model = models.Sequential([
         layers.Conv2D(64, (3, 3), activation='relu', padding='same', input_shape=(32, 32, 3)),

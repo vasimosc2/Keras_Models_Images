@@ -12,7 +12,7 @@ def count_flops(model, batch_size=1):
         int: The total number of FLOPs in the model.
     """
     # Create a concrete function from the model call
-    input_shape = (batch_size, 32, 32, 3)  # Adjust according to your model's input shape
+    input_shape = (batch_size, 32, 32, 3)  
     dummy_input = tf.ones(input_shape)
 
     # Convert model to a TensorFlow function graph

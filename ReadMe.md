@@ -1,12 +1,20 @@
 # CIFAR-10 Model Training
 
-This project trains 5 different deep learning models on the CIFAR-10 dataset and evaluates them based on accuracy, precision, and recall. The models include:
+This project trains 6 different deep learning models on the CIFAR-10 dataset and evaluates them based on accuracy, precision, and recall. The models include:
 
 - Simple CNN
 - Deeper CNN
+- ResNet CNN
 - CNN with Dropout
 - CNN with Batch Normalization
 - CNN with Global Average Pooling
+
+We train and evaluate each of the models saving their:
+- Accuary
+- Precission
+- Recal
+- Model Size
+- Number of FLOPs (floating-point operations in the model)
 
 ## Setup
 
