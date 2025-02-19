@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.pyo
+venv/
+Counting/__pycache__/
+models/__pycache__/
