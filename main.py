@@ -56,6 +56,7 @@ for model_name, model in models_to_train.items():
         "Total_Memory_KB": total_ram_mem
     })
 
+    print(type(model))
     # Quantize the model
     quantized_model = tfmot.quantization.keras.quantize_model(model)
 
