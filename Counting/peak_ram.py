@@ -1,5 +1,5 @@
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf # type: ignore
 from typing import Tuple
 
 def estimate_max_memory_usage(model: tf.keras.Model, dtype_size: int = 4) -> Tuple[float, float, float]:

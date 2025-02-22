@@ -1,4 +1,4 @@
-from tensorflow.keras import layers, models
+from tensorflow.keras import layers, models # type: ignore
 
 def create_cnn_with_dropout():
     model = models.Sequential([

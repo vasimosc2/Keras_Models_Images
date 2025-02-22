@@ -1,4 +1,4 @@
-import tensorflow as tf
+import tensorflow as tf # type: ignore
 
 def count_flops(model, batch_size=1):
     """

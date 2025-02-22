@@ -7,21 +7,21 @@ from models.cnn_with_gap import create_cnn_with_gap
 from models.cnn_with_batchnorm import create_cnn_with_batchnorm
 from models.cnn_with_dropout import create_cnn_with_dropout
 from models.resnet_like import create_resnet_like_cnn  # Import new ResNet-like model
-import tensorflow as tf
+import tensorflow as tf # type: ignore
 import numpy as np
 import pandas as pd
-from sklearn.metrics import precision_score, recall_score, accuracy_score
-from tensorflow.keras import backend as K
-from tensorflow.keras.models import load_model
+from sklearn.metrics import precision_score, recall_score, accuracy_score # type: ignore
+from tensorflow.keras import backend as K # type: ignore
+from tensorflow.keras.models import load_model # type: ignore
 
-gpus = tf.config.list_physical_devices('GPU')
-if gpus:
-    try:
-        for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
-        tf.config.set_visible_devices(gpus[0], 'GPU')  # Change index for other GPUs if needed
-    except RuntimeError as e:
-        print(e)
+# gpus = tf.config.list_physical_devices('GPU')
+# if gpus:
+#     try:
+#         for gpu in gpus:
+#             tf.config.experimental.set_memory_growth(gpu, True)
+#         tf.config.set_visible_devices(gpus[0], 'GPU')  # Change index for other GPUs if needed
+#     except RuntimeError as e:
+#         print(e)
 
 # Load the CIFAR-10 dataset
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()

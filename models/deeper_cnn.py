@@ -1,4 +1,4 @@
-from tensorflow.keras import layers, models
+from tensorflow.keras import layers, models # type: ignore
 """
 Similar to the simple cnn, but it has more layers and more filters in each layer
 
