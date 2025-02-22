@@ -1,75 +1,24 @@
 import os
-from Counting.count_Flops import count_flops
-from Counting.peak_ram import estimate_max_memory_usage
+import psutil  # type: ignore # For measuring memory usage
+from Training.train_and_evaluate import train_and_evaluate_model
 from models.deeper_cnn import create_deeper_cnn
 from models.simple_cnn import create_simple_cnn
 from models.cnn_with_gap import create_cnn_with_gap
 from models.cnn_with_batchnorm import create_cnn_with_batchnorm
 from models.cnn_with_dropout import create_cnn_with_dropout
-from models.resnet_like import create_resnet_like_cnn  # Import new ResNet-like model
-import tensorflow as tf # type: ignore
-import numpy as np
+from models.resnet_like import create_resnet_like_cnn
+import tensorflow as tf  # type: ignore
 import pandas as pd
-from sklearn.metrics import precision_score, recall_score, accuracy_score # type: ignore
-from tensorflow.keras import backend as K # type: ignore
-from tensorflow.keras.models import load_model # type: ignore
+from tensorflow.keras import backend as K  # type: ignore
+import tensorflow_model_optimization as tfmot  # type: ignore # Import TFMOT
+from sklearn.metrics import precision_score, recall_score  # type: ignore # Import precision and recall score functions
 
-# gpus = tf.config.list_physical_devices('GPU')
-# if gpus:
-#     try:
-#         for gpu in gpus:
-#             tf.config.experimental.set_memory_growth(gpu, True)
-#         tf.config.set_visible_devices(gpus[0], 'GPU')  # Change index for other GPUs if needed
-#     except RuntimeError as e:
-#         print(e)
 
 # Load the CIFAR-10 dataset
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
 x_train, x_test = x_train / 255.0, x_test / 255.0
 y_train = tf.keras.utils.to_categorical(y_train, 10)
 y_test = tf.keras.utils.to_categorical(y_test, 10)
-
-# Function to train and evaluate models
-def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name):
-    model.compile(optimizer='adam',
-                  loss='categorical_crossentropy',
-                  metrics=['accuracy'])
-
-    model.fit(x_train, y_train, epochs=10, batch_size=16, verbose=2)
-
-    # Save model after training
-    model_path = f'saved_models/{model_name}.keras'
-    model.save(model_path)
-    print(f"Model {model_name} saved!")
-
-    # Evaluate model on test data
-    test_loss, test_acc = model.evaluate(x_test, y_test, verbose=2)
-    print(f"Test Accuracy: {test_acc}")
-
-    y_pred = model.predict(x_test)
-    y_pred_classes = np.argmax(y_pred, axis=1)
-    y_true_classes = np.argmax(y_test, axis=1)
-
-    precision = precision_score(y_true_classes, y_pred_classes, average='macro')
-    recall = recall_score(y_true_classes, y_pred_classes, average='macro')
-
-    print(f"Precision: {precision}")
-    print(f"Recall: {recall}")
-
-    # Compute model file size
-    model_file_size = os.path.getsize(model_path)
-    model_size_in_mb = model_file_size / (1024 ** 2)
-
-    flops = count_flops(model, batch_size=1) / 10**3
-
-    print(f"The FLOPS are : {flops}")
-
-    max_ram_usage, param_memory, total_memory = estimate_max_memory_usage(model)
-    print(f"Max RAM Usage: {max_ram_usage:.2f} KB")
-    print(f"Parameter Memory: {param_memory:.2f} KB")
-    print(f"Total Memory Usage: {total_memory:.2f} KB")
-
-    return test_acc, precision, recall, model_size_in_mb, flops, max_ram_usage, param_memory, total_memory
 
 # Ensure directories exist
 os.makedirs('saved_models', exist_ok=True)
@@ -89,10 +38,14 @@ results = []
 
 for model_name, model in models_to_train.items():
     print(f"\nTraining {model_name}...")
-    acc, precision, recall, model_size, flops , max_ram, param_mem, total_Ram_mem= train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name)
+    
+    # Train and evaluate the original model
+    acc, precision, recall, model_size, flops, max_ram, param_mem, total_ram_mem = train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name)
 
+    # Store original model results
     results.append({
         "Model": model_name,
+        "Type": "Original",
         "Accuracy": acc,
         "Precision": precision,
         "Recall": recall,
@@ -100,7 +53,55 @@ for model_name, model in models_to_train.items():
         "Flops_K": flops,
         "Max_RAM_KB": max_ram,
         "Param_Memory_KB": param_mem,
-        "Total_Memory_KB": total_Ram_mem
+        "Total_Memory_KB": total_ram_mem
+    })
+
+    # Quantize the model
+    quantized_model = tfmot.quantization.keras.quantize_model(model)
+
+    # Compile the quantized model
+    quantized_model.compile(optimizer='adam',
+                             loss='categorical_crossentropy',
+                             metrics=['accuracy'])
+
+    # Save the quantized model
+    quantized_model_path = f'saved_models/quantized_{model_name}.keras'
+    quantized_model.save(quantized_model_path)
+
+    # Evaluate the quantized model
+    quantized_test_loss, quantized_test_acc = quantized_model.evaluate(x_test, y_test, verbose=2)
+
+    # Measure size of the quantized model
+    quantized_model_file_size = os.path.getsize(quantized_model_path)
+    quantized_model_size_in_mb = quantized_model_file_size / (1024 ** 2)
+
+    # Get predictions from the quantized model to calculate precision and recall
+    y_pred = quantized_model.predict(x_test)
+    y_pred_classes = tf.argmax(y_pred, axis=1)
+    y_true_classes = tf.argmax(y_test, axis=1)
+
+    # Calculate precision and recall for the quantized model
+    quantized_precision = precision_score(y_true_classes, y_pred_classes, average='weighted')
+    quantized_recall = recall_score(y_true_classes, y_pred_classes, average='weighted')
+
+    # Measure RAM usage before and after quantization
+    process = psutil.Process(os.getpid())
+    quantized_max_ram = process.memory_info().rss / 1024  # Resident Set Size in KB
+    quantized_param_mem = sum([K.count_params(w) for w in quantized_model.trainable_weights]) / 1024  # KB
+    quantized_total_ram_mem = quantized_max_ram + quantized_param_mem  # Update as needed
+
+    # Store quantized model results
+    results.append({
+        "Model": model_name,
+        "Type": "Quantized",
+        "Accuracy": quantized_test_acc,
+        "Precision": quantized_precision,
+        "Recall": quantized_recall,
+        "Size_MB": quantized_model_size_in_mb,
+        "Flops_K": flops,                  # Use original FLOPS for comparison
+        "Max_RAM_KB": quantized_max_ram,   # Use measured RAM for quantized model
+        "Param_Memory_KB": quantized_param_mem,  # Use measured parameter memory for quantized model
+        "Total_Memory_KB": quantized_total_ram_mem  # Use measured total memory for quantized model
     })
 
     # Clear the session to free up memory after each model
@@ -108,16 +109,5 @@ for model_name, model in models_to_train.items():
 
 # Save results to CSV
 df_results = pd.DataFrame(results)
-df_results.to_csv('results/evaluation_results2.csv', index=False)
-print("Evaluation results saved to 'results/evaluation_results2.csv'")
-
-# Load one model and compute FLOPs
-# model = load_model('saved_models/Simple_CNN.keras')
-# model.summary()
-
-# flops = count_flops(model, batch_size=1)
-# print(f"FLOPS: {flops / 10 ** 9:.03f} G")
-
-# model_file_size = os.path.getsize('saved_models/Simple_CNN.keras')
-# model_size_in_mb = model_file_size / (1024 ** 2)
-# print(f'Model size on disk: {model_size_in_mb:.2f} MB')
+df_results.to_csv('results/evaluation_results_with_quantization.csv', index=False)
+print("Evaluation results saved to 'results/evaluation_results_with_quantization.csv'")
