@@ -1,5 +1,6 @@
 import os
 from Counting.count_Flops import count_flops
+from Counting.peak_ram import estimate_max_memory_usage
 from models.deeper_cnn import create_deeper_cnn
 from models.simple_cnn import create_simple_cnn
 from models.cnn_with_gap import create_cnn_with_gap
@@ -13,7 +14,7 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score
 from tensorflow.keras import backend as K
 from tensorflow.keras.models import load_model
 
-tf.config.set_visible_devices([], 'GPU')  # Disable GPU
+#tf.config.set_visible_devices([], 'GPU')  # Disable GPU
 
 # Load the CIFAR-10 dataset
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
@@ -56,7 +57,12 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
 
     print(f"The FLOPS are : {flops}")
 
-    return test_acc, precision, recall, model_size_in_mb, flops
+    max_ram_usage, param_memory, total_memory = estimate_max_memory_usage(model)
+    print(f"Max RAM Usage: {max_ram_usage:.2f} KB")
+    print(f"Parameter Memory: {param_memory:.2f} KB")
+    print(f"Total Memory Usage: {total_memory:.2f} KB")
+
+    return test_acc, precision, recall, model_size_in_mb, flops, max_ram_usage, param_memory, total_memory
 
 # Ensure directories exist
 os.makedirs('saved_models', exist_ok=True)
@@ -69,14 +75,14 @@ models_to_train = {
     "CNN_With_Dropout": create_cnn_with_dropout(),
     "CNN_With_BatchNorm": create_cnn_with_batchnorm(),
     "CNN_With_GAP": create_cnn_with_gap(),
-    "ResNet_Like_CNN": create_resnet_like_cnn()  # New model added
+    "ResNet_Like_CNN": create_resnet_like_cnn()
 }
 
 results = []
 
 for model_name, model in models_to_train.items():
     print(f"\nTraining {model_name}...")
-    acc, precision, recall, model_size, flops = train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name)
+    acc, precision, recall, model_size, flops , max_ram, param_mem, total_Ram_mem= train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name)
 
     results.append({
         "Model": model_name,
@@ -84,7 +90,10 @@ for model_name, model in models_to_train.items():
         "Precision": precision,
         "Recall": recall,
         "Size_MB": model_size,
-        "Flops_K": flops
+        "Flops_K": flops,
+        "Max_RAM_KB": max_ram,
+        "Param_Memory_KB": param_mem,
+        "Total_Memory_KB": total_Ram_mem
     })
 
     # Clear the session to free up memory after each model
@@ -96,12 +105,12 @@ df_results.to_csv('results/evaluation_results2.csv', index=False)
 print("Evaluation results saved to 'results/evaluation_results2.csv'")
 
 # Load one model and compute FLOPs
-model = load_model('saved_models/Simple_CNN.keras')
-model.summary()
+# model = load_model('saved_models/Simple_CNN.keras')
+# model.summary()
 
-flops = count_flops(model, batch_size=1)
-print(f"FLOPS: {flops / 10 ** 9:.03f} G")
+# flops = count_flops(model, batch_size=1)
+# print(f"FLOPS: {flops / 10 ** 9:.03f} G")
 
-model_file_size = os.path.getsize('saved_models/Simple_CNN.keras')
-model_size_in_mb = model_file_size / (1024 ** 2)
-print(f'Model size on disk: {model_size_in_mb:.2f} MB')
+# model_file_size = os.path.getsize('saved_models/Simple_CNN.keras')
+# model_size_in_mb = model_file_size / (1024 ** 2)
+# print(f'Model size on disk: {model_size_in_mb:.2f} MB')
