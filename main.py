@@ -11,8 +11,12 @@ from models.takunet import create_takunet_model
 import tensorflow as tf  # type: ignore
 import pandas as pd
 from tensorflow.keras import backend as K  # type: ignore
-import tensorflow_model_optimization as tfmot  # type: ignore # Import TFMOT
-from sklearn.metrics import precision_score, recall_score  # type: ignore # Import precision and recall score functions
+
+
+import os
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Disable GPU
 
 
 # Load the CIFAR-10 dataset
@@ -27,9 +31,12 @@ os.makedirs('results', exist_ok=True)
 
 # List of models to train
 models_to_train = {
+    "TakuNet 2 stages": create_takunet_model(2),
     "TakuNet 3 stages": create_takunet_model(3),
     "TakuNet 4 stages": create_takunet_model(4),
     "TakuNet 5 stages": create_takunet_model(5),
+    "TakuNet 6 stages": create_takunet_model(6),
+    "TakuNet 7 stages": create_takunet_model(7),
     "Simple_CNN": create_simple_cnn(),
     "Deeper_CNN": create_deeper_cnn(),
     "CNN_With_Dropout": create_cnn_with_dropout(),
