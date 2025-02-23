@@ -7,6 +7,7 @@ from models.cnn_with_gap import create_cnn_with_gap
 from models.cnn_with_batchnorm import create_cnn_with_batchnorm
 from models.cnn_with_dropout import create_cnn_with_dropout
 from models.resnet_like import create_resnet_like_cnn
+from models.takunet import create_takunet
 import tensorflow as tf  # type: ignore
 import pandas as pd
 from tensorflow.keras import backend as K  # type: ignore
@@ -26,6 +27,7 @@ os.makedirs('results', exist_ok=True)
 
 # List of models to train
 models_to_train = {
+    "TakuNet": create_takunet(),
     "Simple_CNN": create_simple_cnn(),
     "Deeper_CNN": create_deeper_cnn(),
     "CNN_With_Dropout": create_cnn_with_dropout(),
