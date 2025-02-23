@@ -1,4 +1,5 @@
 import numpy as np
+import time
 import os
 from sklearn.metrics import precision_score, recall_score, accuracy_score # type: ignore
 from Counting.count_Flops import count_flops
@@ -8,9 +9,12 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
     model.compile(optimizer='adam',
                   loss='categorical_crossentropy',
                   metrics=['accuracy'])
-
+    
+    # Start Training
+    start_time = time.time()
     model.fit(x_train, y_train, epochs=10, batch_size=16, verbose=2)
 
+    training_time = time.time() - start_time
     # Save model after training
     model_path = f'saved_models/{model_name}.keras'
     model.save(model_path)
@@ -43,4 +47,4 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
     print(f"Parameter Memory: {param_memory:.2f} KB")
     print(f"Total Memory Usage: {total_memory:.2f} KB")
 
-    return test_acc, precision, recall, model_size_in_mb, flops, max_ram_usage, param_memory, total_memory
+    return test_acc, precision, recall, model_size_in_mb, flops, max_ram_usage, param_memory, total_memory, training_time

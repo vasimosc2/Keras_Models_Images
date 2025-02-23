@@ -10,7 +10,7 @@ def taku_block(x, filters):
     x = layers.Add()([x, res])
     return x
 
-def create_takunet_model():
+def create_takunet_model(stages:int = 4):
     # Define model architecture
     inputs = tf.keras.Input(shape=(32, 32, 3))
 
@@ -21,7 +21,7 @@ def create_takunet_model():
     x = layers.BatchNormalization()(x)
 
     # Stages with Taku Blocks
-    for _ in range(4):  # 4 Stages
+    for _ in range(stages):  # 4 Stages
         x = taku_block(x, 64)
         x = layers.Conv2D(64, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)  # Downsampling
         x = layers.BatchNormalization()(x)

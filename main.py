@@ -27,7 +27,9 @@ os.makedirs('results', exist_ok=True)
 
 # List of models to train
 models_to_train = {
-    "TakuNet": create_takunet_model(),
+    "TakuNet 3 stages": create_takunet_model(3),
+    "TakuNet 4 stages": create_takunet_model(4),
+    "TakuNet 5 stages": create_takunet_model(5),
     "Simple_CNN": create_simple_cnn(),
     "Deeper_CNN": create_deeper_cnn(),
     "CNN_With_Dropout": create_cnn_with_dropout(),
@@ -42,7 +44,7 @@ for model_name, model in models_to_train.items():
     print(f"\nTraining {model_name}...")
     
     # Train and evaluate the original model
-    acc, precision, recall, model_size, flops, max_ram, param_mem, total_ram_mem = train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name)
+    acc, precision, recall, model_size, flops, max_ram, param_mem, total_ram_mem, training_time = train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name)
 
     # Store original model results
     results.append({
@@ -55,10 +57,10 @@ for model_name, model in models_to_train.items():
         "Flops_K": flops,
         "Max_RAM_KB": max_ram,
         "Param_Memory_KB": param_mem,
-        "Total_Memory_KB": total_ram_mem
+        "Total_Memory_KB": total_ram_mem,
+        "Training_Time": training_time
     })
 
-    print(type(model))
     # Quantize the model
     # quantized_model = tfmot.quantization.keras.quantize_model(model)
 
