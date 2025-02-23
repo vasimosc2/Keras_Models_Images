@@ -1,53 +1,40 @@
-# takunet.py
+import tensorflow as tf  # type: ignore
+from tensorflow.keras import layers, models  # type: ignore
 
-import tensorflow as tf # type: ignore
-from tensorflow import keras # type: ignore
-from tensorflow.keras import layers # type: ignore
+def taku_block(x, filters):
+    res = x
+    x = layers.Conv2D(filters, (3, 3), padding='same', activation='relu')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Conv2D(filters, (3, 3), padding='same', activation='relu')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Add()([x, res])
+    return x
 
-class TakuBlock(layers.Layer):
-    # Define the TakuBlock as per your implementation or requirements
-    def __init__(self, resolution, in_channels, hidden_channels, kernel_size=3, stride=1, padding='same'):
-        super().__init__()
-        self.conv = layers.Conv2D(hidden_channels, kernel_size, strides=stride, padding=padding)
-        self.bn = layers.BatchNormalization()
-        self.activation = layers.ReLU()
+def create_takunet_model():
+    # Define model architecture
+    inputs = tf.keras.Input(shape=(32, 32, 3))
 
-    def call(self, inputs):
-        x = self.conv(inputs)
-        x = self.bn(x)
-        x = self.activation(x)
-        return x
+    # Stem
+    x = layers.Conv2D(64, (3, 3), padding='same', activation='relu')(inputs)
+    x = layers.BatchNormalization()(x)
+    x = layers.Conv2D(64, (3, 3), padding='same', activation='relu')(x)
+    x = layers.BatchNormalization()(x)
 
-class DownSampler(layers.Layer):
-    # Define the DownSampler layer as per your implementation or requirements
-    def __init__(self, resolution, in_channels, hidden_channels, out_channels, kernel_size=2, stride=2):
-        super().__init__()
-        self.conv = layers.Conv2D(out_channels, kernel_size, strides=stride, padding='same')
+    # Stages with Taku Blocks
+    for _ in range(4):  # 4 Stages
+        x = taku_block(x, 64)
+        x = layers.Conv2D(64, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)  # Downsampling
+        x = layers.BatchNormalization()(x)
 
-    def call(self, inputs):
-        return self.conv(inputs)
+    # Refinement
+    x = layers.DepthwiseConv2D((3, 3), padding='same', activation='relu')(x)
+    x = layers.BatchNormalization()(x)
 
-def create_takunet(input_shape=(32, 32, 3), num_classes=10):
-    """
-    Create TakuNet model with given input shape and number of classes.
-    
-    Args:
-    - input_shape: Shape of the input images.
-    - num_classes: Number of output classes.
-    
-    Returns:
-    - model: Compiled TakuNet model.
-    """
-    inputs = layers.Input(shape=input_shape)
-    
-    # Define the TakuNet architecture
-    x = TakuBlock(resolution=input_shape[0], in_channels=input_shape[2], hidden_channels=32)(inputs)
-    x = DownSampler(resolution=input_shape[0], in_channels=32, hidden_channels=64, out_channels=64)(x)
-    x = TakuBlock(resolution=input_shape[0] // 2, in_channels=64, hidden_channels=128)(x)
-    
+    # Classification Head
     x = layers.GlobalAveragePooling2D()(x)
-    outputs = layers.Dense(num_classes, activation='softmax')(x)
-
-    model = keras.Model(inputs, outputs)
-
+    x = layers.Flatten()(x)
+    x = layers.Dense(10, activation='softmax')(x)
+    
+    # Create model
+    model = models.Model(inputs, x)
     return model
