@@ -1,7 +1,8 @@
+from typing import Union
 import tensorflow as tf  # type: ignore
 from tensorflow.keras import layers, models, regularizers  # type: ignore
 
-def taku_block(x, filters:int = 64, extra_layer:layers | None = None , l2_reg: float | None = None):
+def taku_block(x, filters:int = 64, extra_layer:Union[layers.Layer, None] = None , l2_reg: Union[float, None] = None):
     res = x
     reg = regularizers.l2(l2_reg) if l2_reg else None  # Apply L2 if given
     x = layers.Conv2D(filters, (3, 3), padding='same', activation='relu', kernel_regularizer=reg)(x)
@@ -13,7 +14,7 @@ def taku_block(x, filters:int = 64, extra_layer:layers | None = None , l2_reg: f
     x = layers.Add()([x, res])
     return x
 
-def create_takunet_model(stages:int = 4,extra_layer:layers|None = None, l2_reg: float | None = None):
+def create_takunet_model(stages:int = 4,extra_layer:Union[layers.Layer, None] = None, l2_reg: Union[float, None] = None):
     # Define model architecture
     inputs = tf.keras.Input(shape=(32, 32, 3))
 
