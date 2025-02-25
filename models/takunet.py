@@ -1,16 +1,19 @@
 import tensorflow as tf  # type: ignore
-from tensorflow.keras import layers, models  # type: ignore
+from tensorflow.keras import layers, models, regularizers  # type: ignore
 
-def taku_block(x, filters):
+def taku_block(x, filters:int = 64, extra_layer:layers | None = None , l2_reg: float | None = None):
     res = x
-    x = layers.Conv2D(filters, (3, 3), padding='same', activation='relu')(x)
+    reg = regularizers.l2(l2_reg) if l2_reg else None  # Apply L2 if given
+    x = layers.Conv2D(filters, (3, 3), padding='same', activation='relu', kernel_regularizer=reg)(x)
     x = layers.BatchNormalization()(x)
-    x = layers.Conv2D(filters, (3, 3), padding='same', activation='relu')(x)
+    if extra_layer is not None:
+        x = extra_layer(x)
+    x = layers.Conv2D(filters, (3, 3), padding='same', activation='relu', kernel_regularizer=reg)(x)
     x = layers.BatchNormalization()(x)
     x = layers.Add()([x, res])
     return x
 
-def create_takunet_model(stages:int = 4):
+def create_takunet_model(stages:int = 4,extra_layer:layers|None = None, l2_reg: float | None = None):
     # Define model architecture
     inputs = tf.keras.Input(shape=(32, 32, 3))
 
@@ -22,7 +25,7 @@ def create_takunet_model(stages:int = 4):
 
     # Stages with Taku Blocks
     for _ in range(stages):  # 4 Stages
-        x = taku_block(x, 64)
+        x = taku_block(x=x, filters=64, extra_layer=extra_layer, l2_reg=l2_reg)
         x = layers.Conv2D(64, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)  # Downsampling
         x = layers.BatchNormalization()(x)
 

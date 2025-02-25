@@ -12,17 +12,27 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
     
     # Start Training
     start_time = time.time()
-    model.fit(x_train, y_train, epochs=10, batch_size=16, verbose=2)
+
+    history = model.fit(x_train, y_train, epochs=10, batch_size=16, validation_data=(x_test, y_test), verbose=2)
+    final_train_acc = history.history['accuracy'][-1]
+    final_test_acc = history.history['val_accuracy'][-1]
 
     training_time = time.time() - start_time
     # Save model after training
     model_path = f'saved_models/{model_name}.keras'
     model.save(model_path)
     print(f"Model {model_name} saved!")
+    print(f"Test Accuracy: {final_test_acc}")
 
-    # Evaluate model on test data
-    test_loss, test_acc = model.evaluate(x_test, y_test, verbose=2)
-    print(f"Test Accuracy: {test_acc}")
+    if final_train_acc - final_test_acc > 0.05:
+        print(f"⚠️ Overfitting detected for model {model_name}! Adjusting model...")
+        
+
+    # Underfitting Detected (Test Acc < 70%)
+    elif final_test_acc < 0.70:
+        print(f"⚠️ Underfitting detected for model {model_name}! Increasing model complexity...")
+        
+
 
     y_pred = model.predict(x_test)
     y_pred_classes = np.argmax(y_pred, axis=1)
@@ -47,4 +57,4 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
     print(f"Parameter Memory: {param_memory:.2f} KB")
     print(f"Total Memory Usage: {total_memory:.2f} KB")
 
-    return test_acc, precision, recall, model_size_in_mb, flops, max_ram_usage, param_memory, total_memory, training_time
+    return final_test_acc, precision, recall, model_size_in_mb, flops, max_ram_usage, param_memory, total_memory, training_time
