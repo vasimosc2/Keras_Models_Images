@@ -23,8 +23,8 @@ def create_takunet_model(stages:int = 4, extra_layer_inside_taku:Union[layers.La
     x = layers.BatchNormalization()(x)
     x = layers.Conv2D(64, (3, 3), padding='same', activation='relu')(x)
     x = layers.BatchNormalization()(x)
-
-    x = extra_layer_outside_taku(x)
+    if extra_layer_inside_taku is not None:
+        x = extra_layer_outside_taku(x)
     for _ in range(stages):  # 4 Stages
         x = taku_block(x=x, filters=64, extra_layer_inside_taku=extra_layer_inside_taku, l2_reg=l2_reg)
         x = layers.Conv2D(64, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)  # Downsampling
