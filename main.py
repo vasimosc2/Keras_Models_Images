@@ -33,11 +33,11 @@ os.makedirs('results', exist_ok=True)
 
 # List of models to train
 models_to_train = {
-    "TakuNet 2 stages + Normal": create_takunet_model(stages=2,extra_layer=None,l2_reg=None),
-    "TakuNet 2 stages + DroupOut 0.3": create_takunet_model(stages=2,extra_layer=layers.Dropout(0.3),l2_reg=None),
-    "TakuNet 2 stages + DroupOut 0.5": create_takunet_model(stages=2, extra_layer=layers.Dropout(0.5),l2_reg=None),
-    "TakuNet 2 stages + L2 Regulation 0.01": create_takunet_model(stages=2, extra_layer=None,l2_reg=0.01),
-    "TakuNet 2 stages + DropOut + L2 Regulation 0.01": create_takunet_model(stages=2, extra_layer=layers.Dropout(0.3),l2_reg=0.01),
+    "TakuNet 2 stages + Normal + DropOut 0.1": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.1), extra_layer_outside_taku= None, l2_reg=None),
+    "TakuNet 2 stages + DropOut 0.3 + DropOut 0.1": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.3), extra_layer_outside_taku =layers.Dropout(0.1), l2_reg=None),
+    "TakuNet 2 stages + DropOut 0.2  + DropOut 0.1": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.2), extra_layer_outside_taku = layers.Dropout(0.1), l2_reg=None),
+    "TakuNet 2 stages + L2 Regulation 0.01": create_takunet_model(stages=2, extra_layer_inside_taku=None, extra_layer_outside_taku = layers.Dropout(0.3), l2_reg=0.01),
+    "TakuNet 2 stages + DropOut 0.3 + L2 Regulation 0.01": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.3), extra_layer_outside_taku= None, l2_reg=0.01),
     "Simple_CNN": create_simple_cnn(),
     "Deeper_CNN": create_deeper_cnn(),
     "CNN_With_Dropout": create_cnn_with_dropout(),
@@ -52,13 +52,13 @@ for model_name, model in models_to_train.items():
     print(f"\nTraining {model_name}...")
     
     # Train and evaluate the original model
-    acc, precision, recall, model_size, flops, max_ram, param_mem, total_ram_mem, training_time = train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name)
+    test_acc, training_acc, precision, recall, model_size, flops, max_ram, param_mem, total_ram_mem, training_time = train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name)
 
     # Store original model results
     results.append({
         "Model": model_name,
-        "Type": "Original",
-        "Accuracy": acc,
+        "Test Accuracy": test_acc,
+        "Training Accuracy": training_acc,
         "Precision": precision,
         "Recall": recall,
         "Size_MB": model_size,
@@ -73,4 +73,4 @@ for model_name, model in models_to_train.items():
 # Save results to CSV
 df_results = pd.DataFrame(results)
 df_results.to_csv('results/evaluation_Taku_Versions.csv', index=False)
-print("Evaluation results saved to 'results/evaluation_Taku_Versions.csv'")
+print("Evaluation results saved to 'results/evaluation_Taku_Versions_More.csv'")
