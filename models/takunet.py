@@ -37,7 +37,7 @@ def create_takunet_model(stages:int = 4, extra_layer_inside_taku:Union[layers.La
     # Classification Head
     x = layers.GlobalAveragePooling2D()(x)
     x = layers.Flatten()(x)
-    x = layers.Dense(10, activation='softmax')(x)
+    x = layers.Dense(100, activation='softmax')(x)
     
     # Create model
     model = models.Model(inputs, x)

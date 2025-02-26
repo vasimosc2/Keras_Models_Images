@@ -19,6 +19,6 @@ def create_deeper_cnn():
         layers.Flatten(),
         layers.Dense(512, activation='relu'),
         layers.Dropout(0.5),
-        layers.Dense(10, activation='softmax')
+        layers.Dense(100, activation='softmax')
     ])
     return model

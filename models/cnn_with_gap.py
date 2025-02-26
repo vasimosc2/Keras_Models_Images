@@ -9,6 +9,6 @@ def create_cnn_with_gap():
         layers.MaxPooling2D((2, 2)),
         layers.GlobalAveragePooling2D(),
         layers.Dense(64, activation='relu'),
-        layers.Dense(10, activation='softmax')
+        layers.Dense(100, activation='softmax')
     ])
     return model

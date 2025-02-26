@@ -10,6 +10,6 @@ def create_cnn_with_dropout():
         layers.Flatten(),
         layers.Dense(64, activation='relu'),
         layers.Dropout(0.5),
-        layers.Dense(10, activation='softmax')
+        layers.Dense(100, activation='softmax')
     ])
     return model

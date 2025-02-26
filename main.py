@@ -21,7 +21,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Disable GPU
 
 
 # Load the CIFAR-10 dataset
-(x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
+(x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar100.load_data()
 x_train, x_test = x_train / 255.0, x_test / 255.0
 y_train = tf.keras.utils.to_categorical(y_train, 10)
 y_test = tf.keras.utils.to_categorical(y_test, 10)
@@ -33,7 +33,8 @@ os.makedirs('results', exist_ok=True)
 
 # List of models to train
 models_to_train = {
-    "TakuNet 2 stages + Normal + DropOut 0.1": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.1), extra_layer_outside_taku= None, l2_reg=None),
+    "TakuNet 2 stages + Normal": create_takunet_model(stages=2, extra_layer_inside_taku=None, extra_layer_outside_taku= None, l2_reg=None),
+    "TakuNet 2 stages + DropOut 0.5": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.5), extra_layer_outside_taku= None, l2_reg=None),
     "TakuNet 2 stages + DropOut 0.3 + DropOut 0.1": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.3), extra_layer_outside_taku =layers.Dropout(0.1), l2_reg=None),
     "TakuNet 2 stages + DropOut 0.2  + DropOut 0.1": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.2), extra_layer_outside_taku = layers.Dropout(0.1), l2_reg=None),
     "TakuNet 2 stages + L2 Regulation 0.01": create_takunet_model(stages=2, extra_layer_inside_taku=None, extra_layer_outside_taku = layers.Dropout(0.3), l2_reg=0.01),
@@ -72,5 +73,5 @@ for model_name, model in models_to_train.items():
 
 # Save results to CSV
 df_results = pd.DataFrame(results)
-df_results.to_csv('results/evaluation_Taku_Versions.csv', index=False)
-print("Evaluation results saved to 'results/evaluation_Taku_Versions_More.csv'")
+df_results.to_csv('results/evaluation_Taku_Versions_CIRA100.csv', index=False)
+

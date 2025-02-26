@@ -11,6 +11,6 @@ def create_cnn_with_batchnorm():
         layers.MaxPooling2D((2, 2)),
         layers.Flatten(),
         layers.Dense(64, activation='relu'),
-        layers.Dense(10, activation='softmax')
+        layers.Dense(100, activation='softmax')
     ])
     return model
