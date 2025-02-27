@@ -37,7 +37,11 @@ models_to_train = {
     "TakuNet 3 stages": create_takunet_model(stages=3),
     "TakuNet 4 stages": create_takunet_model(stages=4),
     "TakuNet 5 stages": create_takunet_model(stages=5),
-    "TakuNet 6 stages": create_takunet_model(stages=2)
+    "TakuNet 6 stages": create_takunet_model(stages=6),
+    "TakuNet 7 stages": create_takunet_model(stages=7),
+    "TakuNet 8 stages": create_takunet_model(stages=8),
+    "TakuNet 9 stages": create_takunet_model(stages=9),
+    "TakuNet 10 stages": create_takunet_model(stages=10),
     # "TakuNet 2 stages + Normal": create_takunet_model(stages=2, extra_layer_inside_taku=None, extra_layer_outside_taku= None, l2_reg=None),
     # "TakuNet 2 stages + DropOut 0.5": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.5), extra_layer_outside_taku= None, l2_reg=None),
     # "TakuNet 2 stages + DropOut 0.3 + DropOut 0.1": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.3), extra_layer_outside_taku =layers.Dropout(0.1), l2_reg=None),
