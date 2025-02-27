@@ -33,18 +33,23 @@ os.makedirs('results', exist_ok=True)
 
 # List of models to train
 models_to_train = {
-    "TakuNet 2 stages + Normal": create_takunet_model(stages=2, extra_layer_inside_taku=None, extra_layer_outside_taku= None, l2_reg=None),
-    "TakuNet 2 stages + DropOut 0.5": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.5), extra_layer_outside_taku= None, l2_reg=None),
-    "TakuNet 2 stages + DropOut 0.3 + DropOut 0.1": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.3), extra_layer_outside_taku =layers.Dropout(0.1), l2_reg=None),
-    "TakuNet 2 stages + DropOut 0.2  + DropOut 0.1": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.2), extra_layer_outside_taku = layers.Dropout(0.1), l2_reg=None),
-    "TakuNet 2 stages + L2 Regulation 0.01": create_takunet_model(stages=2, extra_layer_inside_taku=None, extra_layer_outside_taku = layers.Dropout(0.3), l2_reg=0.01),
-    "TakuNet 2 stages + DropOut 0.3 + L2 Regulation 0.01": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.3), extra_layer_outside_taku= None, l2_reg=0.01),
-    "Simple_CNN": create_simple_cnn(),
-    "Deeper_CNN": create_deeper_cnn(),
-    "CNN_With_Dropout": create_cnn_with_dropout(),
-    "CNN_With_BatchNorm": create_cnn_with_batchnorm(),
-    "CNN_With_GAP": create_cnn_with_gap(),
-    "ResNet_Like_CNN": create_resnet_like_cnn()
+    "TakuNet 2 stages": create_takunet_model(stages=2),
+    "TakuNet 3 stages": create_takunet_model(stages=3),
+    "TakuNet 4 stages": create_takunet_model(stages=4),
+    "TakuNet 5 stages": create_takunet_model(stages=5),
+    "TakuNet 6 stages": create_takunet_model(stages=2)
+    # "TakuNet 2 stages + Normal": create_takunet_model(stages=2, extra_layer_inside_taku=None, extra_layer_outside_taku= None, l2_reg=None),
+    # "TakuNet 2 stages + DropOut 0.5": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.5), extra_layer_outside_taku= None, l2_reg=None),
+    # "TakuNet 2 stages + DropOut 0.3 + DropOut 0.1": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.3), extra_layer_outside_taku =layers.Dropout(0.1), l2_reg=None),
+    # "TakuNet 2 stages + DropOut 0.2  + DropOut 0.1": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.2), extra_layer_outside_taku = layers.Dropout(0.1), l2_reg=None),
+    # "TakuNet 2 stages + L2 Regulation 0.01": create_takunet_model(stages=2, extra_layer_inside_taku=None, extra_layer_outside_taku = layers.Dropout(0.3), l2_reg=0.01),
+    # "TakuNet 2 stages + DropOut 0.3 + L2 Regulation 0.01": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.3), extra_layer_outside_taku= None, l2_reg=0.01),
+    # "Simple_CNN": create_simple_cnn(),
+    # "Deeper_CNN": create_deeper_cnn(),
+    # "CNN_With_Dropout": create_cnn_with_dropout(),
+    # "CNN_With_BatchNorm": create_cnn_with_batchnorm(),
+    # "CNN_With_GAP": create_cnn_with_gap(),
+    # "ResNet_Like_CNN": create_resnet_like_cnn()
 }
 
 results = []
@@ -73,5 +78,5 @@ for model_name, model in models_to_train.items():
 
 # Save results to CSV
 df_results = pd.DataFrame(results)
-df_results.to_csv('results/evaluation_Taku_Versions_CIRA100.csv', index=False)
+df_results.to_csv('results/evaluation_Taku_Stages_CIRA100.csv', index=False)
 
