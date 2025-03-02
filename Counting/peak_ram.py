@@ -4,32 +4,23 @@ from typing import Tuple
 
 def estimate_max_memory_usage(model: tf.keras.Model, dtype_size: int = 4) -> Tuple[float, float, float]:
     """
-    Estimates the peak RAM usage of a model during inference.
-
-    Parameters:
-    - model (tf.keras.Model): The Keras model (loaded or defined).
-    - dtype_size (int): Size of data type in bytes (4 for FP32, 2 for FP16, 1 for INT8).
-
-    Returns:
-    - Tuple[float, float, float]: 
-      - max_ram_usage (float): Maximum RAM required (KB).
-      - param_memory (float): ROM required for storing weights (KB).
-      - total_memory (float): Combined memory usage (KB).
+    ROM (Read-Only Memory) → Memory used to store layer parameters (weights & biases).
+    RAM (Random-Access Memory) → Memory used to store activations (input & output tensors).
     """
     max_activation_memory: int = 0  # Peak RAM usage
     total_param_memory: int = 0      # ROM for storing weights
 
     for layer in model.layers:
-        # Compute memory for layer parameters (ROM)
-        layer_params: int = layer.count_params()
-        layer_param_memory: int = layer_params * dtype_size
-        total_param_memory += layer_param_memory
+        
+        layer_params: int = layer.count_params() #  Number of parameters in the layer (weights & biases).
+        layer_param_memory: int = layer_params * dtype_size #  Converts the number of parameters into bytes.
+        total_param_memory += layer_param_memory # Adds up all the layer_param_memory of each layer
 
         # Compute activation memory (RAM)
         if isinstance(layer.output, list):
-            output_memory: int = sum(np.prod(out.shape[1:]) * dtype_size for out in layer.output)
+            output_memory: int = sum(np.prod(out.shape[1:]) * dtype_size for out in layer.output) # I wont be inside there are layer.output is  <class 'keras.src.backend.common.keras_tensor.KerasTensor'>
         else:
-            output_memory: int = np.prod(layer.output.shape[1:]) * dtype_size
+            output_memory: int = np.prod(layer.output.shape[1:]) * dtype_size # If the output shape is 30 x 30 x 32 , the output memmory is  28800 * data_size
 
         if isinstance(layer.input, list):
             input_memory: int = sum(np.prod(inp.shape[1:]) * dtype_size for inp in layer.input)
@@ -38,7 +29,7 @@ def estimate_max_memory_usage(model: tf.keras.Model, dtype_size: int = 4) -> Tup
 
         # Track peak RAM usage
         layer_ram_usage: int = input_memory + output_memory
-        max_activation_memory = max(max_activation_memory, layer_ram_usage)
+        max_activation_memory = max(max_activation_memory, layer_ram_usage) # Here we keep the the maximum use of RAM of each layer
 
     # Convert bytes to KB
     max_ram_usage: float = max_activation_memory / 1024

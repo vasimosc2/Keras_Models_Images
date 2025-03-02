@@ -56,7 +56,7 @@ def create_resnet_like_cnn():
     x = layers.Flatten()(x)
     x = layers.Dense(512, activation='relu')(x)
     x = layers.Dropout(0.5)(x)
-    outputs = layers.Dense(10, activation='softmax')(x)
+    outputs = layers.Dense(100, activation='softmax')(x)
     
     model = models.Model(inputs, outputs)
     return model
