@@ -85,17 +85,14 @@ os.makedirs('results', exist_ok=True)
 
 
 # List of models to train
-models_to_train = {
-    "TakuNet Random 1": create_takunet_model(params=sample_from_search_space(config["model_search_space"])),
-    "TakuNet Random 2": create_takunet_model(params=sample_from_search_space(config["model_search_space"])),
-    "TakuNet Random 3": create_takunet_model(params=sample_from_search_space(config["model_search_space"])),
-    "TakuNet Random 4": create_takunet_model(params=sample_from_search_space(config["model_search_space"])),
-    "TakuNet Random 5": create_takunet_model(params=sample_from_search_space(config["model_search_space"])),
-    "TakuNet Random 6": create_takunet_model(params=sample_from_search_space(config["model_search_space"])),
-    "TakuNet Random 7": create_takunet_model(params=sample_from_search_space(config["model_search_space"])),
-    "TakuNet Random 8": create_takunet_model(params=sample_from_search_space(config["model_search_space"])),
-    "TakuNet Random 9": create_takunet_model(params=sample_from_search_space(config["model_search_space"])),
-}
+models_to_train = {}
+
+for i in range(1, 10):  # Loop to create 9 models
+    params = sample_from_search_space(config["model_search_space"])  # Get random hyperparameters
+    stage_count = params["stages"]  # Extract number of stages
+    model_name = f"TakuNet {i} (Stages: {stage_count})"  # Add stage count to name
+    models_to_train[model_name] = create_takunet_model(params=params)
+
 
 results = []
 
