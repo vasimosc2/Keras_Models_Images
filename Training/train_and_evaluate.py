@@ -14,7 +14,7 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
     # Start Training
     start_time = time.time()
 
-    history = model.fit(x_train, y_train, epochs=params["number_of_epochs"], batch_size=params["batch_size"], validation_data=(x_test, y_test), verbose=2)
+    history = model.fit(x_train, y_train, epochs=params["num_epochs"], batch_size=params["batch_size"], validation_data=(x_test, y_test), verbose=2)
     
     final_train_acc = history.history['accuracy'][-1]
     final_test_acc = history.history['val_accuracy'][-1]
