@@ -55,7 +55,7 @@ def sample_from_search_space(model_search_space:dict) -> dict:
 
 def sample_from_train_and_evaluate(train_and_evaluate:dict) -> dict:
     return{
-        "optimaizer":train_and_evaluate["model_config"]["optimaizer"],
+        "optimizer":train_and_evaluate["model_config"]["optimizer"],
         "loss":train_and_evaluate["model_config"]["loss"],
         "num_epochs": train_and_evaluate["evaluation_config"]["num_epochs"],
         "batch_size": train_and_evaluate["evaluation_config"]["batch_size"],
