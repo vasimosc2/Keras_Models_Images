@@ -54,7 +54,7 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
 
     print(f"The FLOPS are : {flops}")
 
-    max_ram_usage, param_memory, total_memory = estimate_max_memory_usage(model=model,dtype_size=params["data_dtype_multiplier"])
+    max_ram_usage, param_memory, total_memory = estimate_max_memory_usage(model=model, data_dtype_multiplier=params["data_dtype_multiplier"])
     print(f"Max RAM Usage: {max_ram_usage:.2f} KB")
     print(f"Parameter Memory: {param_memory:.2f} KB")
     print(f"Total Memory Usage: {total_memory:.2f} KB")
