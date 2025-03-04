@@ -123,5 +123,5 @@ for model_name, model in models_to_train.items():
 
 # Save results to CSV
 df_results = pd.DataFrame(results)
-df_results.to_csv('results/new_evaluation_Taku_Stages_CIRA100.csv', index=False)
+df_results.to_csv('results/Configurations_Taku_Stages_CIRA100.csv', index=False)
 
