@@ -7,7 +7,7 @@ from Counting.peak_ram import estimate_max_memory_usage
 
 def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name:str, params:dict):
 
-    model.compile(optimizer=params["optimaizer"],
+    model.compile(optimizer=params["optimizer"],
                   loss=params["loss"],
                   metrics=['accuracy'])
     
