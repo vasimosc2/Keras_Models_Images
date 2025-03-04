@@ -6,7 +6,6 @@ from tensorflow.keras import layers, models, regularizers  # type: ignore
 
 def create_takunet_model(
     params:dict,
-    extra_layer_inside_taku: Union[layers.Layer, None] = None,
     extra_layer_outside_taku: Union[layers.Layer, None] = None,
     l2_reg: Union[float, None] = None
 ):
@@ -15,7 +14,7 @@ def create_takunet_model(
 
     # Stem Block
     x = stem_block(inputs,params=params)
-    
+
     if extra_layer_outside_taku is not None:
         x = extra_layer_outside_taku(x)
 
