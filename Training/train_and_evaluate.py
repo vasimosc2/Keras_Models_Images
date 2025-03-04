@@ -5,15 +5,17 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score # type
 from Counting.count_Flops import count_flops
 from Counting.peak_ram import estimate_max_memory_usage
 
-def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name):
-    model.compile(optimizer='adam',
-                  loss='categorical_crossentropy',
+def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name:str, params:dict):
+
+    model.compile(optimizer=params["optimaizer"],
+                  loss=params["loss"],
                   metrics=['accuracy'])
     
     # Start Training
     start_time = time.time()
 
-    history = model.fit(x_train, y_train, epochs=10, batch_size=16, validation_data=(x_test, y_test), verbose=2)
+    history = model.fit(x_train, y_train, epochs=params["number_of_epochs"], batch_size=params["batch_size"], validation_data=(x_test, y_test), verbose=2)
+    
     final_train_acc = history.history['accuracy'][-1]
     final_test_acc = history.history['val_accuracy'][-1]
 
@@ -52,7 +54,7 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
 
     print(f"The FLOPS are : {flops}")
 
-    max_ram_usage, param_memory, total_memory = estimate_max_memory_usage(model)
+    max_ram_usage, param_memory, total_memory = estimate_max_memory_usage(model=model,dtype_size=params["dtype_size"])
     print(f"Max RAM Usage: {max_ram_usage:.2f} KB")
     print(f"Parameter Memory: {param_memory:.2f} KB")
     print(f"Total Memory Usage: {total_memory:.2f} KB")
