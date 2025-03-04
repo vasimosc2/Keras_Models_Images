@@ -72,5 +72,7 @@ def taku_block(x, params:dict, l2_reg: Union[float, None] = None):
         x = layers.Dropout(params["dropout_rate"])(x)
     x = layers.Conv2D(params["filters_taku_block_2"], (params["kernel_size_taku_block_2"], params["kernel_size_taku_block_2"]), padding='same', activation='relu', kernel_regularizer=reg)(x)
     x = layers.BatchNormalization()(x)
+    if res.shape[-1] != x.shape[-1]:  # Match channels if needed
+        res = layers.Conv2D(params["filters_taku_block_2"], (1, 1), padding="same")(res)
     x = layers.Add()([x, res])
     return x
