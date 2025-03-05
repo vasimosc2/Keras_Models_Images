@@ -44,19 +44,18 @@ def sample_from_search_space(model_search_space:dict) -> dict:
         "activation": random.choice(model_search_space["activation"]),
         "strides": random.choice(model_search_space["strides"]),
         "batch_norm": random.choice(model_search_space["batch_norm"]),
-        "residual_connection": random.choice(model_search_space["residual_connection"]),
         "num_units": random.choice(model_search_space["num_units"]),
         "dense_activation": random.choice(model_search_space["dense_activation"]),
-        "optimizer": random.choice(model_search_space["optimizer"]),
-        "learning_rate": random.choice(model_search_space["learning_rate"]),
+
         "num_output_classes":model_search_space["num_output_classes"]
     }
 
 
 def sample_from_train_and_evaluate(train_and_evaluate:dict) -> dict:
     return{
-        "optimizer":train_and_evaluate["model_config"]["optimizer"],
-        "loss":train_and_evaluate["model_config"]["loss"],
+        "optimizer": train_and_evaluate["model_config"]["optimizer"],
+        "loss": train_and_evaluate["model_config"]["loss"],
+        "learning_rate": random.choice(train_and_evaluate["model_config"]["loss"]),
         "num_epochs": train_and_evaluate["evaluation_config"]["num_epochs"],
         "batch_size": train_and_evaluate["evaluation_config"]["batch_size"],
         "max_ram_consumption": train_and_evaluate["evaluation_config"]["max_ram_consumption"],

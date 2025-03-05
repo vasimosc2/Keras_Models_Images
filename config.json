@@ -7,17 +7,15 @@
         "strides": [1, 2],
         "dropout_rate": [0, 0.1, 0.2, 0.3, 0.5],
         "batch_norm": [true, false],
-        "residual_connection": [true, false],
         "num_units": [64, 128, 256],
         "dense_activation": ["relu", "tanh", "sigmoid"],
-        "optimizer": ["adam", "sgd", "rmsprop"],
-        "learning_rate": [0.001, 0.0005, 0.0001],
         "num_output_classes": 100
     },
     "train_and_evaluate":{
         "model_config": {
-            "optimizer": "adam",
-            "loss": "categorical_crossentropy"
+            "optimizer": ["adam", "sgd", "rmsprop"],
+            "loss": "categorical_crossentropy",
+            "learning_rate": [0.0010, 0.0005, 0.0001]
             },
     
         "evaluation_config": {
