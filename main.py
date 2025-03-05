@@ -55,7 +55,7 @@ def sample_from_train_and_evaluate(train_and_evaluate:dict) -> dict:
     return{
         "optimizer": train_and_evaluate["model_config"]["optimizer"],
         "loss": train_and_evaluate["model_config"]["loss"],
-        "learning_rate": random.choice(train_and_evaluate["model_config"]["loss"]),
+        "learning_rate": random.choice(train_and_evaluate["model_config"]["learning_rate"]),
         "num_epochs": train_and_evaluate["evaluation_config"]["num_epochs"],
         "batch_size": train_and_evaluate["evaluation_config"]["batch_size"],
         "max_ram_consumption": train_and_evaluate["evaluation_config"]["max_ram_consumption"],
