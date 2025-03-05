@@ -39,7 +39,7 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
                   metrics=['accuracy'])
 
     # Callbacks
-    midway_callback = MidwayStopCallback(params["num_epochs"], threshold=0.50)
+    midway_callback = MidwayStopCallback(params["num_epochs"], threshold=0.30)
     early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, verbose=1)
     checkpoint = ModelCheckpoint(filepath=f'saved_models/{model_name}.keras', save_best_only=True)
