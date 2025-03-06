@@ -44,7 +44,7 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
     print(f"Parameter Memory: {param_memory:.2f} KB")
     print(f"Total Memory Usage: {total_memory:.2f} KB")
 
-    if max_ram_usage > params["max_ram_consumption"]:
+    if max_ram_usage * 1024 > params["max_ram_consumption"]:
         print(f"🚨 Training aborted: Estimated RAM usage ({max_ram_usage:.2f} KB) exceeds limit ({params['max_ram_consumption']} KB).")
         return None  # Skip training and return nothing
     
