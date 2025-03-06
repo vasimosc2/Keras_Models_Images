@@ -17,9 +17,9 @@ def get_optimizer(name, learning_rate):
     return optimizers.get(name.lower(), Adam(learning_rate=learning_rate)) 
 
 class MidwayStopCallback(Callback):
-    def __init__(self, total_epochs, threshold=0.35):
+    def __init__(self, total_epochs, threshold=0.40):
         super().__init__()
-        self.mid_epoch = total_epochs // 2
+        self.mid_epoch = total_epochs // 5 # 50 // 5 = 10
         self.threshold = threshold
 
     def on_epoch_end(self, epoch, logs=None):
@@ -31,7 +31,26 @@ class MidwayStopCallback(Callback):
                 print(f"\n🚨 Stopping early: Training accuracy is below {self.threshold} at epoch {epoch+1}")
                 self.model.stop_training = True
 
+
+
+
+
 def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name:str, params:dict):
+
+
+    max_ram_usage, param_memory, total_memory = estimate_max_memory_usage(model=model, data_dtype_multiplier=params["data_dtype_multiplier"])
+
+    print(f"Max RAM Usage: {max_ram_usage:.2f} KB")
+    print(f"Parameter Memory: {param_memory:.2f} KB")
+    print(f"Total Memory Usage: {total_memory:.2f} KB")
+
+    if max_ram_usage > params["max_ram_consumption"]:
+        print(f"🚨 Training aborted: Estimated RAM usage ({max_ram_usage:.2f} KB) exceeds limit ({params['max_ram_consumption']} KB).")
+        return None  # Skip training and return nothing
+    
+    print("✅ Memory check passed! Starting training...")
+
+
     optimizer = get_optimizer(params["optimizer"], params["learning_rate"])
 
     model.compile(optimizer=optimizer,
@@ -39,7 +58,7 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
                   metrics=['accuracy'])
 
     # Callbacks
-    midway_callback = MidwayStopCallback(params["num_epochs"], threshold=0.30)
+    midway_callback = MidwayStopCallback(params["num_epochs"], threshold=0.40)
     early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, verbose=1)
     checkpoint = ModelCheckpoint(filepath=f'saved_models/{model_name}.keras', save_best_only=True)
@@ -49,7 +68,7 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
     history = model.fit(x_train, y_train, 
                         epochs=params["num_epochs"], 
                         batch_size=params["batch_size"], 
-                        validation_data=(x_test, y_test), 
+                        validation_data=(x_test, y_test),  # nomizo einai to test accuracy se kathe fasi
                         verbose=2,
                         callbacks=[midway_callback, early_stopping, reduce_lr, checkpoint])
 
@@ -83,11 +102,10 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
 
     # FLOPS & Memory Usage
     flops = count_flops(model, batch_size=1) / 10**3
-    max_ram_usage, param_memory, total_memory = estimate_max_memory_usage(model=model, data_dtype_multiplier=params["data_dtype_multiplier"])
+
+   
 
     print(f"FLOPS: {flops}")
-    print(f"Max RAM Usage: {max_ram_usage:.2f} KB")
-    print(f"Parameter Memory: {param_memory:.2f} KB")
-    print(f"Total Memory Usage: {total_memory:.2f} KB")
+
 
     return final_test_acc, final_train_acc, precision, recall, model_size_in_mb, flops, max_ram_usage, param_memory, total_memory, training_time

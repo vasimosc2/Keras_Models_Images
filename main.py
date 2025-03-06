@@ -15,6 +15,7 @@ import pandas as pd
 from tensorflow.keras import layers # type: ignore
 from tensorflow.keras import backend as K  # type: ignore
 import os
+import time 
 
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -65,8 +66,6 @@ def sample_from_train_and_evaluate(train_and_evaluate:dict) -> dict:
     }
 
 
-
-# Load the CIFAR-10 dataset
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar100.load_data()
 x_train, x_test = x_train / 255.0, x_test / 255.0
 
@@ -78,47 +77,61 @@ output_class:int = config["model_search_space"]["num_output_classes"]
 y_train = tf.keras.utils.to_categorical(y_train, output_class)
 y_test = tf.keras.utils.to_categorical(y_test, output_class)
 
-# Ensure directories exist
 os.makedirs('saved_models', exist_ok=True)
 os.makedirs('results', exist_ok=True)
 
-
-# List of models to train
 models_to_train = {}
 
-for i in range(1, 10):  # Loop to create 9 models
-    params = sample_from_search_space(config["model_search_space"])  # Get random hyperparameters
-    stage_count = params["stages"]  # Extract number of stages
-    print(f"The random params selected are:\n{json.dumps(params, indent=4)}")
-    model_name = f"TakuNet Random_{i} (Stages: {stage_count})"  # Add stage count to name
+for i in range(1, 30):
+    params = sample_from_search_space(config["model_search_space"])
+    stage_count = params["stages"]
+    print(f"The random params selected for model_{i} are:\n{json.dumps(params, indent=4)}")
+    model_name = f"TakuNet Random_{i} (Stages: {stage_count})"
     models_to_train[model_name] = create_takunet_model(params=params)
 
 
 results = []
-
+print("I am starting the training\n")
+start_time = time.time()
 for model_name, model in models_to_train.items():
+    
     print(f"\nTraining {model_name}...")
     
-    # Train and evaluate the original model
-    test_acc, training_acc, precision, recall, model_size, flops, max_ram, param_mem, total_ram_mem, training_time = train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name, params=sample_from_train_and_evaluate(config["train_and_evaluate"]))
+    
+    results_data = train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name, 
+                                            params=sample_from_train_and_evaluate(config["train_and_evaluate"]))
 
-    # Store original model results
-    results.append({
-        "Model": model_name,
-        "Test Accuracy": test_acc,
-        "Training Accuracy": training_acc,
-        "Precision": precision,
-        "Recall": recall,
-        "Size_MB": model_size,
-        "Flops_K": flops,
-        "Max_RAM_KB": max_ram,
-        "Param_Memory_KB": param_mem,
-        "Total_Memory_KB": total_ram_mem,
-        "Training_Time": training_time
-    })
-    K.clear_session()
+    if results_data is not None:
 
-# Save results to CSV
-df_results = pd.DataFrame(results)
-df_results.to_csv('results/Configurations_Taku_Stages_CIRA100.csv', index=False)
+        test_acc, training_acc, precision, recall, model_size, flops, max_ram, param_mem, total_ram_mem, training_time = results_data
+        
+        results.append({
+            "Model": model_name,
+            "Test Accuracy": test_acc,
+            "Training Accuracy": training_acc,
+            "Precision": precision,
+            "Recall": recall,
+            "Size_MB": model_size,
+            "Flops_K": flops,
+            "Max_RAM_KB": max_ram,
+            "Param_Memory_KB": param_mem,
+            "Total_Memory_KB": total_ram_mem,
+            "Training_Time": training_time
+        })
+
+        K.clear_session()
+    else:
+        print(f"⚠️ Model {model_name} was skipped due to excessive memory usage.")
+end_time = time.time()  # Record end time
+total_time = end_time - start_time
+
+print(f"\n⏳ Total Script Execution Time: {total_time:.2f} seconds ({total_time/60:.2f} minutes)")
+
+if results:
+    df_results = pd.DataFrame(results)
+    df_results.to_csv('results/Configurations_Big_Run_Taku_Stages_CIRA100.csv', index=False)
+    print("✅ Results saved to CSV.")
+else:
+    print("⚠️ No models were trained due to memory constraints.")
+
 
