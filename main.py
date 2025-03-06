@@ -89,6 +89,7 @@ models_to_train = {}
 for i in range(1, 10):  # Loop to create 9 models
     params = sample_from_search_space(config["model_search_space"])  # Get random hyperparameters
     stage_count = params["stages"]  # Extract number of stages
+    print(f"The random params selected are:\n{json.dumps(params, indent=4)}")
     model_name = f"TakuNet Random_{i} (Stages: {stage_count})"  # Add stage count to name
     models_to_train[model_name] = create_takunet_model(params=params)
 
