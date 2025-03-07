@@ -1,7 +1,7 @@
 #!/bin/bash
-source venv/bin/activate
+
 export CUDA_VISIBLE_DEVICES=2
-module load python3/3.10.13
+
 module load cuda/12.8
 
 nvcc --version
