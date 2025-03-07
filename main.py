@@ -68,7 +68,7 @@ def sample_from_train_and_evaluate(train_and_evaluate:dict) -> dict:
 # Data Augmentation Pipeline
 data_augmentation = tf.keras.Sequential([
     layers.RandomFlip("horizontal"),  # Randomly flips images
-    layers.RandomRotation(0.2),       # Rotates images by ±20% (Spinning Effect)
+    layers.RandomRotation(0.1),       # Rotates images by ±20% (Spinning Effect)
     layers.RandomZoom(0.1),           # Slight zoom-in/out
     layers.RandomContrast(0.1)        # Adjust contrast for better generalization
 ])

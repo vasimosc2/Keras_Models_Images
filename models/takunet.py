@@ -58,7 +58,7 @@ def classification_head(x,output_classes:int):
     x = layers.GlobalAveragePooling2D()(x)
     x = layers.Flatten()(x)
     x = layers.Dense(256, activation="relu", kernel_regularizer=regularizers.l2(0.0001))(x)  # Extra dense layer
-    x = layers.Dropout(0.4)(x)
+    x = layers.Dropout(0.2)(x)
     x = layers.Dense(output_classes, activation='softmax')(x)
     return x
 
