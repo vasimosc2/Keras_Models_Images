@@ -22,39 +22,44 @@ with open("config.json", "r") as f:
 output_class = config["model_search_space"]["num_output_classes"]
 
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar100.load_data()
-x_train, x_test = x_train / 255.0, x_test / 255.0
+x_train, x_test = (x_train // 255).astype("int8"), (x_test // 255).astype("int8")  # Convert to int8
+y_train, y_test = y_train.astype("int8"), y_test.astype("int8")  # Convert labels to int8
 
-y_train = tf.keras.utils.to_categorical(y_train, output_class)
-y_test = tf.keras.utils.to_categorical(y_test, output_class)
 
 # Augmentation (includes CutMix & MixUp)
-def cutmix(image, label, alpha=1.0):
-    lambda_value = tf.random.uniform(())
-    cut_ratio = tf.sqrt(1 - lambda_value)
+def cutmix(image, label, alpha=1):
+    """Applies CutMix augmentation using integer-based operations."""
+    lambda_value = tf.random.uniform((), dtype=tf.int32)  # Ensure it's an integer
+    cut_ratio = tf.sqrt(1 - tf.cast(lambda_value, tf.float32))  # Keep calculations in int
+
     height, width = tf.shape(image)[1], tf.shape(image)[2]
     cut_height = tf.cast(height * cut_ratio, tf.int32)
     cut_width = tf.cast(width * cut_ratio, tf.int32)
 
-    cx = tf.random.uniform([], 0, width, dtype=tf.int32)
-    cy = tf.random.uniform([], 0, height, dtype=tf.int32)
+    cx, cy = tf.random.uniform([], 0, width, dtype=tf.int32), tf.random.uniform([], 0, height, dtype=tf.int32)
 
     x1, x2 = tf.clip_by_value(cx - cut_width // 2, 0, width), tf.clip_by_value(cx + cut_width // 2, 0, width)
     y1, y2 = tf.clip_by_value(cy - cut_height // 2, 0, height), tf.clip_by_value(cy + cut_height // 2, 0, height)
 
-    mask = tf.pad(tf.ones((y2 - y1, x2 - x1, 3)), [[y1, height - y2], [x1, width - x2], [0, 0]])
+    mask = tf.pad(tf.ones((y2 - y1, x2 - x1, 3), dtype=tf.int32), [[y1, height - y2], [x1, width - x2], [0, 0]])
 
-    shuffled_image = tf.random.shuffle(image)
-    shuffled_label = tf.random.shuffle(label)
+    shuffled_image, shuffled_label = tf.random.shuffle(image), tf.random.shuffle(label)
 
-    image = image * (1 - mask) + shuffled_image * mask
-    label = label * lambda_value + shuffled_label * (1 - lambda_value)
+    image = tf.cast(image, tf.int32) * (1 - mask) + tf.cast(shuffled_image, tf.int32) * mask
+    label = tf.cast(label, tf.int32) * lambda_value + tf.cast(shuffled_label, tf.int32) * (1 - lambda_value)
+
     return image, label
 
 
+
 def preprocess_images(image, label):
-    image = tf.image.convert_image_dtype(image, tf.float32)
-    if tf.random.uniform(()) > 0.5:
-        image, label = cutmix(image, label)
+    """Ensures all operations stay in integer format."""
+    image = tf.image.convert_image_dtype(image, tf.int32)  # Ensure image is int32
+    label = tf.cast(label, tf.int32)  # Ensure label is int32
+
+    if tf.random.uniform((), dtype=tf.int32) > 0:
+        image, label = cutmix(image, label)  # Apply integer-based CutMix
+
     return image, label
 
 
