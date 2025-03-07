@@ -57,8 +57,8 @@ def preprocess_images(image, label):
     image = tf.image.convert_image_dtype(image, tf.int32)  # Ensure image is int32
     label = tf.cast(label, tf.int32)  # Ensure label is int32
 
-    if tf.random.uniform((), dtype=tf.int32) > 0:
-        image, label = cutmix(image, label)  # Apply integer-based CutMix
+    if tf.random.uniform(shape=(), minval=0, maxval=2, dtype=tf.int32) == 1:
+        image, label = cutmix(image, label)
 
     return image, label
 
