@@ -82,7 +82,7 @@ os.makedirs('results', exist_ok=True)
 
 models_to_train = {}
 
-for i in range(1, 30):
+for i in range(1, 5):
     params = sample_from_search_space(config["model_search_space"])
     stage_count = params["stages"]
     print(f"The random params selected for model_{i} are:\n{json.dumps(params, indent=4)}")
