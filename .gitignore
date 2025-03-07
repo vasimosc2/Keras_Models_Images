@@ -4,3 +4,4 @@ __pycache__/
 venv/
 Counting/__pycache__/
 models/__pycache__/
+saved_models/*
