@@ -19,9 +19,7 @@ import time
 
 # Enable GPU
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-# Remove the line that disables the GPU
-# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Removed
+
 
 # Ensure TensorFlow uses GPU if available
 gpus = tf.config.experimental.list_physical_devices('GPU')
