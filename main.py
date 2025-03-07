@@ -34,11 +34,13 @@ def cutmix(image, label, alpha=1):
 
     # Compute cutout dimensions
     height, width = tf.shape(image)[1], tf.shape(image)[2]
-    
-    # Avoid using float operations in integer processing
-    cut_ratio = tf.sqrt(1 - tf.cast(lambda_value, tf.float32))  # Safe conversion
-    cut_height = tf.cast(height * cut_ratio, tf.int32)
-    cut_width = tf.cast(width * cut_ratio, tf.int32)
+
+    # Convert cut_ratio to int before multiplication
+    cut_ratio = tf.sqrt(tf.cast(1 - lambda_value, tf.float32))  # Keep float calculations safe
+    cut_ratio_int = tf.cast(cut_ratio * 100, tf.int32) // 100  # Convert safely to int
+
+    cut_height = (height * cut_ratio_int) // 100  # Ensure integer multiplication
+    cut_width = (width * cut_ratio_int) // 100  # Ensure integer multiplication
 
     # Ensure random center coordinates use explicit minval and maxval
     cx = tf.random.uniform(shape=(), minval=0, maxval=width, dtype=tf.int32)
@@ -63,6 +65,7 @@ def cutmix(image, label, alpha=1):
     label = tf.cast(label, tf.int32) * lambda_value + tf.cast(shuffled_label, tf.int32) * (1 - lambda_value)
 
     return image, label
+
 
 
 
