@@ -1,154 +1,147 @@
 import json
 import os
+import time
 import random
-import psutil  # type: ignore # For measuring memory usage
-from Training.train_and_evaluate import train_and_evaluate_model
-from models.deeper_cnn import create_deeper_cnn
-from models.simple_cnn import create_simple_cnn
-from models.cnn_with_gap import create_cnn_with_gap
-from models.cnn_with_batchnorm import create_cnn_with_batchnorm
-from models.cnn_with_dropout import create_cnn_with_dropout
-from models.resnet_like import create_resnet_like_cnn
-from models.takunet import create_takunet_model
-import tensorflow as tf  # type: ignore
+import psutil # type: ignore
+import tensorflow as tf # type: ignore
+import keras_tuner as kt # type: ignore
 import pandas as pd
-from tensorflow.keras import layers # type: ignore
-from tensorflow.keras import backend as K  # type: ignore
-import os
-import time 
+from tensorflow.keras import layers, models, backend as K, regularizers # type: ignore
+from models.takunet import create_takunet_model
+from Training.train_and_evaluate import train_and_evaluate_model
+from Counting.peak_ram import estimate_max_memory_usage
 
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+# Enable GPU if available
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # Use GPU
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Disable GPU
 
+# Load config
+with open("config.json", "r") as f:
+    config = json.load(f)
 
-
-
-def sample_from_search_space(model_search_space:dict) -> dict:
-    """Randomly select hyperparameters from the search space."""
-    return {
-        "stages": random.choice(model_search_space["stages"]),
-
-        "filters_stem_1": random.choice(model_search_space["filters"]),
-        "filters_stem_2": random.choice(model_search_space["filters"]),
-        "filters_taku_block_1": random.choice(model_search_space["filters"]),
-        "filters_taku_block_2": random.choice(model_search_space["filters"]),
-
-        "kernel_size_stem_1": random.choice(model_search_space["kernel_size"]),
-        "kernel_size_stem_2": random.choice(model_search_space["kernel_size"]),
-        "kernel_size_taku_block_1": random.choice(model_search_space["kernel_size"]),
-        "kernel_size_taku_block_2": random.choice(model_search_space["kernel_size"]),
-        "kernel_size_refinement_block": random.choice(model_search_space["kernel_size"]),
-
-        "dropout_rate": random.choice(model_search_space["dropout_rate"]),
-
-        "activation": random.choice(model_search_space["activation"]),
-        "strides": random.choice(model_search_space["strides"]),
-        "batch_norm": random.choice(model_search_space["batch_norm"]),
-        "num_units": random.choice(model_search_space["num_units"]),
-        "dense_activation": random.choice(model_search_space["dense_activation"]),
-
-        "num_output_classes":model_search_space["num_output_classes"]
-    }
-
-
-def sample_from_train_and_evaluate(train_and_evaluate:dict) -> dict:
-    return{
-        "optimizer": random.choice(train_and_evaluate["model_config"]["optimizer"]),
-        "loss": train_and_evaluate["model_config"]["loss"],
-        "learning_rate": random.choice(train_and_evaluate["model_config"]["learning_rate"]),
-        "num_epochs": train_and_evaluate["evaluation_config"]["num_epochs"],
-        "batch_size": train_and_evaluate["evaluation_config"]["batch_size"],
-        "max_ram_consumption": train_and_evaluate["evaluation_config"]["max_ram_consumption"],
-        "max_flash_consumption": train_and_evaluate["evaluation_config"]["max_flash_consumption"], 
-        "data_dtype_multiplier": train_and_evaluate["evaluation_config"]["data_dtype_multiplier"],
-        "model_dtype_multiplier": train_and_evaluate["evaluation_config"]["model_dtype_multiplier"],
-    }
-
-# Data Augmentation Pipeline
-data_augmentation = tf.keras.Sequential([
-    layers.RandomFlip("horizontal"),  # Randomly flips images
-    layers.RandomRotation(0.1),       # Rotates images by ±20% (Spinning Effect)
-    layers.RandomZoom(0.1),           # Slight zoom-in/out
-    layers.RandomContrast(0.1)        # Adjust contrast for better generalization
-])
-
-# Function to apply augmentation
-def preprocess_images(image, label):
-    image = tf.image.convert_image_dtype(image, tf.float32)
-    image = data_augmentation(image)  # Apply data augmentation
-    return image, label
-
+output_class = config["model_search_space"]["num_output_classes"]
 
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar100.load_data()
 x_train, x_test = x_train / 255.0, x_test / 255.0
 
-config_file = open("config.json", "r")
-
-config:dict = json.load(config_file)
-output_class:int = config["model_search_space"]["num_output_classes"]
-
 y_train = tf.keras.utils.to_categorical(y_train, output_class)
 y_test = tf.keras.utils.to_categorical(y_test, output_class)
 
-train_ds = tf.data.Dataset.from_tensor_slices((x_train, y_train)).map(preprocess_images).batch(32).shuffle(10000)
-test_ds = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(32)  # No augmentation on test set
+# Augmentation (includes CutMix & MixUp)
+def cutmix(image, label, alpha=1.0):
+    lambda_value = tf.random.uniform(())
+    cut_ratio = tf.sqrt(1 - lambda_value)
+    height, width = tf.shape(image)[1], tf.shape(image)[2]
+    cut_height = tf.cast(height * cut_ratio, tf.int32)
+    cut_width = tf.cast(width * cut_ratio, tf.int32)
 
+    cx = tf.random.uniform([], 0, width, dtype=tf.int32)
+    cy = tf.random.uniform([], 0, height, dtype=tf.int32)
+
+    x1, x2 = tf.clip_by_value(cx - cut_width // 2, 0, width), tf.clip_by_value(cx + cut_width // 2, 0, width)
+    y1, y2 = tf.clip_by_value(cy - cut_height // 2, 0, height), tf.clip_by_value(cy + cut_height // 2, 0, height)
+
+    mask = tf.pad(tf.ones((y2 - y1, x2 - x1, 3)), [[y1, height - y2], [x1, width - x2], [0, 0]])
+
+    shuffled_image = tf.random.shuffle(image)
+    shuffled_label = tf.random.shuffle(label)
+
+    image = image * (1 - mask) + shuffled_image * mask
+    label = label * lambda_value + shuffled_label * (1 - lambda_value)
+    return image, label
+
+
+def preprocess_images(image, label):
+    image = tf.image.convert_image_dtype(image, tf.float32)
+    if tf.random.uniform(()) > 0.5:
+        image, label = cutmix(image, label)
+    return image, label
+
+
+train_ds = tf.data.Dataset.from_tensor_slices((x_train, y_train)).map(preprocess_images).batch(128).shuffle(10000)
+test_ds = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(128)
+
+# Create directory to save models
 os.makedirs('saved_models', exist_ok=True)
 os.makedirs('results', exist_ok=True)
 
-models_to_train = {}
+# 🔥 Define Hyperparameter Search Space for TakuNet
+def build_hyper_takunet(hp):
+    """Dynamically builds a TakuNet model with hyperparameters selected by Keras Tuner, while ensuring RAM constraints"""
+    
+    params = {
+        "stages": hp.Int("stages", 2, 5),  # Tune number of stages (2 to 5)
+        "filters_stem_1": hp.Choice("filters_stem_1", [32, 64, 128]),
+        "filters_stem_2": hp.Choice("filters_stem_2", [32, 64, 128]),
+        "filters_taku_block_1": hp.Choice("filters_taku_block_1", [64, 128, 256]),
+        "filters_taku_block_2": hp.Choice("filters_taku_block_2", [64, 128, 256]),
+        "kernel_size_stem_1": hp.Choice("kernel_size_stem_1", [3, 5, 7]),
+        "kernel_size_stem_2": hp.Choice("kernel_size_stem_2", [3, 5, 7]),
+        "kernel_size_taku_block_1": hp.Choice("kernel_size_taku_block_1", [3, 5]),
+        "kernel_size_taku_block_2": hp.Choice("kernel_size_taku_block_2", [3, 5]),
+        "kernel_size_refinement_block": hp.Choice("kernel_size_refinement_block", [3, 5, 7]),
+        "dropout_rate": hp.Float("dropout_rate", 0.1, 0.4, step=0.1),
+        "activation": hp.Choice("activation", ["relu", "gelu"]),
+        "num_output_classes": output_class  # From config.json
+    }
 
-for i in range(1, 10):
-    params = sample_from_search_space(config["model_search_space"])
-    stage_count = params["stages"]
-    print(f"The random params selected for model_{i} are:\n{json.dumps(params, indent=4)}")
-    model_name = f"TakuNet Random_{i} (Stages: {stage_count})"
-    models_to_train[model_name] = create_takunet_model(params=params)
+    # Create model
+    model = create_takunet_model(params=params)
+
+    # 🔥 RAM Pre-Check Before Returning Model
+    max_ram_usage, _, _ = estimate_max_memory_usage(model=model, data_dtype_multiplier=4)  # Assume float32
+    
+    if max_ram_usage * 1024 > config["train_and_evaluate"]["evaluation_config"]["max_ram_consumption"]:
+        print(f"🚨 Skipping model due to RAM limit: {max_ram_usage:.2f} KB exceeds {config['train_and_evaluate']['evaluation_config']['max_ram_consumption']} KB.")
+        return None  # Reject model if it exceeds RAM limit
+    
+    return model
 
 
-results = []
-print("I am starting the training\n")
+# 🔥 Bayesian Optimization for Hyperparameter Tuning
+tuner = kt.BayesianOptimization(
+    build_hyper_takunet,
+    objective="val_accuracy",
+    max_trials=20,  # Try 20 different configurations
+    executions_per_trial=1,
+    directory="taku_tuning",
+    project_name="CIRA100_HPO"
+)
+
+print("\n🚀 Starting Hyperparameter Tuning...")
 start_time = time.time()
-for model_name, model in models_to_train.items():
-    
-    print(f"\nTraining {model_name}...")
-    
-    
-    results_data = train_and_evaluate_model(model, train_ds, test_ds, model_name, 
-                                            params=sample_from_train_and_evaluate(config["train_and_evaluate"]))
+tuner.search(train_ds, epochs=10, validation_data=test_ds, verbose=2)
 
-    if results_data is not None:
+# Get top 3 best models
+best_hps = tuner.get_best_hyperparameters(num_trials=3)
 
-        test_acc, training_acc, precision, recall, model_size, flops, max_ram, param_mem, total_ram_mem, training_time = results_data
-        
-        results.append({
-            "Model": model_name,
-            "Test Accuracy": test_acc,
-            "Training Accuracy": training_acc,
-            "Precision": precision,
-            "Recall": recall,
-            "Size_MB": model_size,
-            "Flops_K": flops,
-            "Max_RAM_KB": max_ram,
-            "Param_Memory_KB": param_mem,
-            "Total_Memory_KB": total_ram_mem,
-            "Training_Time": training_time
-        })
+# Train and save the top 3 models
+top_models = []
+for i, hps in enumerate(best_hps):
+    best_model = build_hyper_takunet(hps)
+    best_model.compile(
+        optimizer=tf.keras.optimizers.AdamW(learning_rate=0.001),
+        loss="categorical_crossentropy",
+        metrics=["accuracy"]
+    )
+    
+    print(f"\n🏆 Training Model {i+1} (Top-{i+1} Configuration)...")
+    history = best_model.fit(train_ds, epochs=40, validation_data=test_ds, verbose=2)
+    
+    # Evaluate and save results
+    test_loss, test_acc = best_model.evaluate(test_ds, verbose=0)
+    filename = f'saved_models/best_takunet_{i+1}_{test_acc:.4f}.h5'
+    best_model.save(filename)
+    
+    top_models.append({"Model": filename, "Test Accuracy": test_acc})
+    print(f"✅ Model {i+1} saved as {filename}")
 
-        K.clear_session()
-    else:
-        print(f"⚠️ Model {model_name} was skipped due to excessive memory usage.")
-end_time = time.time()  # Record end time
+end_time = time.time()
 total_time = end_time - start_time
 
-print(f"\n⏳ Total Script Execution Time: {total_time:.2f} seconds ({total_time/60:.2f} minutes)")
+print(f"\n✅ Hyperparameter Tuning Completed in {total_time/60:.2f} minutes")
 
-if results:
-    df_results = pd.DataFrame(results)
-    df_results.to_csv('results/Configurations_Big_Run_Taku_Stages_CIRA100.csv', index=False)
-    print("✅ Results saved to CSV.")
-else:
-    print("⚠️ No models were trained due to memory constraints.")
-
-
+# Save results to CSV
+df_results = pd.DataFrame(top_models)
+df_results.to_csv("results/TakuNet_Top3_CIRA100.csv", index=False)
+print("📊 Top 3 models saved to CSV!")
