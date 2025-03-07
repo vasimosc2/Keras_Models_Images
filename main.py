@@ -29,26 +29,41 @@ y_train, y_test = y_train.astype("int8"), y_test.astype("int8")  # Convert label
 # Augmentation (includes CutMix & MixUp)
 def cutmix(image, label, alpha=1):
     """Applies CutMix augmentation using integer-based operations."""
-    lambda_value = tf.random.uniform((), dtype=tf.int32)  # Ensure it's an integer
-    cut_ratio = tf.sqrt(1 - tf.cast(lambda_value, tf.float32))  # Keep calculations in int
+    # Ensure lambda_value is an integer between 0 and 1
+    lambda_value = tf.random.uniform(shape=(), minval=0, maxval=2, dtype=tf.int32)
 
+    # Compute cutout dimensions
     height, width = tf.shape(image)[1], tf.shape(image)[2]
+    
+    # Avoid using float operations in integer processing
+    cut_ratio = tf.sqrt(1 - tf.cast(lambda_value, tf.float32))  # Safe conversion
     cut_height = tf.cast(height * cut_ratio, tf.int32)
     cut_width = tf.cast(width * cut_ratio, tf.int32)
 
-    cx, cy = tf.random.uniform([], 0, width, dtype=tf.int32), tf.random.uniform([], 0, height, dtype=tf.int32)
+    # Ensure random center coordinates use explicit minval and maxval
+    cx = tf.random.uniform(shape=(), minval=0, maxval=width, dtype=tf.int32)
+    cy = tf.random.uniform(shape=(), minval=0, maxval=height, dtype=tf.int32)
 
-    x1, x2 = tf.clip_by_value(cx - cut_width // 2, 0, width), tf.clip_by_value(cx + cut_width // 2, 0, width)
-    y1, y2 = tf.clip_by_value(cy - cut_height // 2, 0, height), tf.clip_by_value(cy + cut_height // 2, 0, height)
+    # Compute bounding box coordinates
+    x1 = tf.clip_by_value(cx - cut_width // 2, 0, width)
+    x2 = tf.clip_by_value(cx + cut_width // 2, 0, width)
+    y1 = tf.clip_by_value(cy - cut_height // 2, 0, height)
+    y2 = tf.clip_by_value(cy + cut_height // 2, 0, height)
 
-    mask = tf.pad(tf.ones((y2 - y1, x2 - x1, 3), dtype=tf.int32), [[y1, height - y2], [x1, width - x2], [0, 0]])
+    # Create the binary mask with integer dtype
+    mask = tf.pad(tf.ones((y2 - y1, x2 - x1, 3), dtype=tf.int32),
+                  [[y1, height - y2], [x1, width - x2], [0, 0]])
 
-    shuffled_image, shuffled_label = tf.random.shuffle(image), tf.random.shuffle(label)
+    # Shuffle image and label to mix with another sample
+    shuffled_image = tf.random.shuffle(image)
+    shuffled_label = tf.random.shuffle(label)
 
+    # Apply CutMix using integer-based computation
     image = tf.cast(image, tf.int32) * (1 - mask) + tf.cast(shuffled_image, tf.int32) * mask
     label = tf.cast(label, tf.int32) * lambda_value + tf.cast(shuffled_label, tf.int32) * (1 - lambda_value)
 
     return image, label
+
 
 
 
