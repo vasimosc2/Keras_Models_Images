@@ -44,8 +44,8 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
     print(f"Parameter Memory: {param_memory:.2f} KB")
     print(f"Total Memory Usage: {total_memory:.2f} KB")
 
-    if max_ram_usage > params["max_ram_consumption"]:
-        print(f"🚨 Training aborted: Estimated RAM usage ({max_ram_usage:.2f} KB) exceeds limit ({params['max_ram_consumption']} KB).")
+    if max_ram_usage * 1024 > params["max_ram_consumption"]:
+        print(f"🚨 Training aborted: Estimated RAM usage ({max_ram_usage:.2f} KB) exceeds limit ({params['max_ram_consumption']/1024} KB).")
         return None  # Skip training and return nothing
     
     print("✅ Memory check passed! Starting training...")
@@ -58,9 +58,10 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
                   metrics=['accuracy'])
 
     # Callbacks
-    midway_callback = MidwayStopCallback(params["num_epochs"], threshold=0.40)
-    early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
-    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, verbose=1)
+    midway_callback = MidwayStopCallback(params["num_epochs"], threshold=0.30)
+    early_stopping_loss = EarlyStopping(monitor='val_loss', patience=8, restore_best_weights=True)
+    early_stopping_acc = EarlyStopping(monitor='val_accuracy', patience=8, mode='max', restore_best_weights=True)
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, verbose=1)
     checkpoint = ModelCheckpoint(filepath=f'saved_models/{model_name}.keras', save_best_only=True)
 
     # Start Training
@@ -70,7 +71,7 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
                         batch_size=params["batch_size"], 
                         validation_data=(x_test, y_test),  # nomizo einai to test accuracy se kathe fasi
                         verbose=2,
-                        callbacks=[midway_callback, early_stopping, reduce_lr, checkpoint])
+                        callbacks=[midway_callback, early_stopping_acc, early_stopping_loss, reduce_lr, checkpoint])
 
     final_train_acc = history.history['accuracy'][-1]
     final_test_acc = history.history['val_accuracy'][-1]

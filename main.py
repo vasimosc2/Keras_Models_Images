@@ -17,10 +17,24 @@ from tensorflow.keras import backend as K  # type: ignore
 import os
 import time 
 
+# Enable GPU
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Disable GPU
+# Remove the line that disables the GPU
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Removed
 
+# Ensure TensorFlow uses GPU if available
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        # Set memory growth for all GPUs
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        print(f"✅ I found 1 and I will use a GPU located at: {gpus[0].name}")
+    except RuntimeError as e:
+        print(f"❌ GPU Error: {e}")
+else:
+    print("⚠️ No GPU found, running on CPU.")
 
 
 
@@ -77,6 +91,50 @@ output_class:int = config["model_search_space"]["num_output_classes"]
 y_train = tf.keras.utils.to_categorical(y_train, output_class)
 y_test = tf.keras.utils.to_categorical(y_test, output_class)
 
+x_train = tf.cast(x_train, tf.float32)
+x_test = tf.cast(x_test, tf.float32)
+
+data_augmentation = tf.keras.Sequential([
+    tf.keras.layers.RandomFlip("horizontal"),
+    tf.keras.layers.RandomRotation(0.2),
+    tf.keras.layers.RandomZoom(0.1),
+])
+
+def create_augmented_dataset(x, y):
+    """Creates an augmented dataset efficiently using tf.data."""
+    
+    # Convert numpy arrays to a TensorFlow dataset
+    dataset = tf.data.Dataset.from_tensor_slices((x, y))
+
+    # Apply augmentation only to images
+    aug_dataset = dataset.map(lambda img, label: (data_augmentation(img), label), num_parallel_calls=tf.data.AUTOTUNE)
+
+    # Batch and prefetch to optimize performance
+    aug_dataset = aug_dataset.batch(128).prefetch(tf.data.AUTOTUNE)  # Batching speeds up processing
+
+    # Convert dataset back to tensors (efficient)
+    x_aug_list, y_aug_list = [], []
+    for img_batch, label_batch in aug_dataset:
+        x_aug_list.append(img_batch)
+        y_aug_list.append(label_batch)
+
+    # Concatenate batched tensors
+    x_aug = tf.concat(x_aug_list, axis=0)
+    y_aug = tf.concat(y_aug_list, axis=0)
+
+    # Concatenate original & augmented datasets
+    x_combined = tf.concat([x, x_aug], axis=0)
+    y_combined = tf.concat([y, y_aug], axis=0)  # Duplicate labels
+
+    return x_combined, y_combined
+
+
+print("🔄 Augmenting dataset...")
+x_train_final, y_train_final = create_augmented_dataset(x_train, y_train)
+print(f"✅ Dataset Size Doubled: {x_train.shape[0]} → {x_train_final.shape[0]} images")
+
+
+
 os.makedirs('saved_models', exist_ok=True)
 os.makedirs('results', exist_ok=True)
 
@@ -98,7 +156,7 @@ for model_name, model in models_to_train.items():
     print(f"\nTraining {model_name}...")
     
     
-    results_data = train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name, 
+    results_data = train_and_evaluate_model(model, x_train_final, y_train_final, x_test, y_test, model_name, 
                                             params=sample_from_train_and_evaluate(config["train_and_evaluate"]))
 
     if results_data is not None:
@@ -129,7 +187,7 @@ print(f"\n⏳ Total Script Execution Time: {total_time:.2f} seconds ({total_time
 
 if results:
     df_results = pd.DataFrame(results)
-    df_results.to_csv('results/Configurations_Big_Run_Taku_Stages_CIRA100.csv', index=False)
+    df_results.to_csv('results/Configurations_Big_Run_GPU_Taku_Stages_CIRA100.csv', index=False)
     print("✅ Results saved to CSV.")
 else:
     print("⚠️ No models were trained due to memory constraints.")
