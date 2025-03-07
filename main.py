@@ -90,7 +90,7 @@ os.makedirs('results', exist_ok=True)
 
 # 🔥 Define Hyperparameter Search Space for TakuNet
 def build_hyper_takunet(hp):
-    """Dynamically builds a TakuNet model with hyperparameters selected by Keras Tuner, while ensuring RAM constraints"""
+    """Dynamically builds a TakuNet model with hyperparameters selected by Keras Tuner, while ensuring RAM constraints."""
     
     params = {
         "stages": hp.Int("stages", 2, 5),  # Tune number of stages (2 to 5)
@@ -116,9 +116,18 @@ def build_hyper_takunet(hp):
     
     if max_ram_usage * 1024 > config["train_and_evaluate"]["evaluation_config"]["max_ram_consumption"]:
         print(f"🚨 Skipping model due to RAM limit: {max_ram_usage:.2f} KB exceeds {config['train_and_evaluate']['evaluation_config']['max_ram_consumption']} KB.")
-        return None  # Reject model if it exceeds RAM limit
-    
+        
+        # 🔥 Instead of returning `None`, return a tiny dummy model to prevent Keras Tuner from crashing.
+        dummy_model = tf.keras.Sequential([
+            tf.keras.layers.Input(shape=(32, 32, 3)),
+            tf.keras.layers.Conv2D(1, (1, 1), activation='relu'),
+            tf.keras.layers.GlobalAveragePooling2D(),
+            tf.keras.layers.Dense(params["num_output_classes"], activation='softmax')
+        ])
+        return dummy_model  # This allows tuning to continue safely.
+
     return model
+
 
 
 # 🔥 Bayesian Optimization for Hyperparameter Tuning
