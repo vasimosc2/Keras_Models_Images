@@ -65,6 +65,20 @@ def sample_from_train_and_evaluate(train_and_evaluate:dict) -> dict:
         "model_dtype_multiplier": train_and_evaluate["evaluation_config"]["model_dtype_multiplier"],
     }
 
+# Data Augmentation Pipeline
+data_augmentation = tf.keras.Sequential([
+    layers.RandomFlip("horizontal"),  # Randomly flips images
+    layers.RandomRotation(0.2),       # Rotates images by ±20% (Spinning Effect)
+    layers.RandomZoom(0.1),           # Slight zoom-in/out
+    layers.RandomContrast(0.1)        # Adjust contrast for better generalization
+])
+
+# Function to apply augmentation
+def preprocess_images(image, label):
+    image = tf.image.convert_image_dtype(image, tf.float32)
+    image = data_augmentation(image)  # Apply data augmentation
+    return image, label
+
 
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar100.load_data()
 x_train, x_test = x_train / 255.0, x_test / 255.0
@@ -77,12 +91,15 @@ output_class:int = config["model_search_space"]["num_output_classes"]
 y_train = tf.keras.utils.to_categorical(y_train, output_class)
 y_test = tf.keras.utils.to_categorical(y_test, output_class)
 
+train_ds = tf.data.Dataset.from_tensor_slices((x_train, y_train)).map(preprocess_images).batch(32).shuffle(10000)
+test_ds = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(32)  # No augmentation on test set
+
 os.makedirs('saved_models', exist_ok=True)
 os.makedirs('results', exist_ok=True)
 
 models_to_train = {}
 
-for i in range(1, 30):
+for i in range(1, 10):
     params = sample_from_search_space(config["model_search_space"])
     stage_count = params["stages"]
     print(f"The random params selected for model_{i} are:\n{json.dumps(params, indent=4)}")
@@ -98,7 +115,7 @@ for model_name, model in models_to_train.items():
     print(f"\nTraining {model_name}...")
     
     
-    results_data = train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name, 
+    results_data = train_and_evaluate_model(model, train_ds, test_ds, model_name, 
                                             params=sample_from_train_and_evaluate(config["train_and_evaluate"]))
 
     if results_data is not None:

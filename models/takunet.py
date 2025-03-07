@@ -57,6 +57,8 @@ def classification_head(x,output_classes:int):
     """Classification head for the Takunet model"""
     x = layers.GlobalAveragePooling2D()(x)
     x = layers.Flatten()(x)
+    x = layers.Dense(256, activation="relu", kernel_regularizer=regularizers.l2(0.0001))(x)  # Extra dense layer
+    x = layers.Dropout(0.4)(x)
     x = layers.Dense(output_classes, activation='softmax')(x)
     return x
 

@@ -19,7 +19,7 @@ def get_optimizer(name, learning_rate):
 class MidwayStopCallback(Callback):
     def __init__(self, total_epochs, threshold=0.40):
         super().__init__()
-        self.mid_epoch = total_epochs // 5 # 50 // 5 = 10
+        self.mid_epoch = total_epochs // 2 # 50 // 5 = 10
         self.threshold = threshold
 
     def on_epoch_end(self, epoch, logs=None):
@@ -35,7 +35,7 @@ class MidwayStopCallback(Callback):
 
 
 
-def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name:str, params:dict):
+def train_and_evaluate_model(model, train_ds, test_ds, model_name: str, params: dict):
 
 
     max_ram_usage, param_memory, total_memory = estimate_max_memory_usage(model=model, data_dtype_multiplier=params["data_dtype_multiplier"])
@@ -65,12 +65,13 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
 
     # Start Training
     start_time = time.time()
-    history = model.fit(x_train, y_train, 
-                        epochs=params["num_epochs"], 
-                        batch_size=params["batch_size"], 
-                        validation_data=(x_test, y_test),  # nomizo einai to test accuracy se kathe fasi
-                        verbose=2,
-                        callbacks=[midway_callback, early_stopping, reduce_lr, checkpoint])
+    history = model.fit(
+        train_ds,  # Training dataset (with augmentation)
+        epochs=params["num_epochs"],
+        validation_data=test_ds,  # Testing dataset
+        verbose=2,
+        callbacks=[midway_callback, early_stopping, reduce_lr, checkpoint]
+    )
 
     final_train_acc = history.history['accuracy'][-1]
     final_test_acc = history.history['val_accuracy'][-1]
@@ -86,9 +87,9 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
         print(f"⚠️ Underfitting detected for model {model_name}! Increasing model complexity...")
 
     # Predictions & Metrics
-    y_pred = model.predict(x_test)
+    y_pred = model.predict(test_ds)
     y_pred_classes = np.argmax(y_pred, axis=1)
-    y_true_classes = np.argmax(y_test, axis=1)
+    y_true_classes = np.concatenate([np.argmax(y, axis=1) for _, y in test_ds], axis=0)
 
     precision = precision_score(y_true_classes, y_pred_classes, average='macro')
     recall = recall_score(y_true_classes, y_pred_classes, average='macro')

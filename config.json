@@ -1,14 +1,15 @@
 {
     "model_search_space":{
         "stages": [1,2,3,4],
-        "filters": [2, 4, 8, 16, 32, 64, 128],
+        "filters": [16, 32, 64, 128, 256],
         "kernel_size": [3, 5],
         "activation": ["relu", "sigmoid"],
         "strides": [1, 2],
         "dropout_rate": [0, 0.1, 0.2, 0.3, 0.5],
-        "batch_norm": [true, false],
+        "batch_norm": [true],
         "num_units": [64, 128, 256],
         "dense_activation": ["relu", "tanh", "sigmoid"],
+        "l2_regularization": [0.0001],
         "num_output_classes": 100
     },
     "train_and_evaluate":{
@@ -19,7 +20,7 @@
             },
     
         "evaluation_config": {
-            "num_epochs": 50,
+            "num_epochs": 10,
             "batch_size": 32,
             "max_ram_consumption": 262144,
             "max_flash_consumption": 1048576, 
