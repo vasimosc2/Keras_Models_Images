@@ -13,7 +13,7 @@
     },
     "train_and_evaluate":{
         "model_config": {
-            "optimizer": ["adam"],
+            "optimizer": ["adamw"],
             "loss": "categorical_crossentropy",
             "learning_rate": [0.0020,0.0010, 0.0005, 0.0001]
             },

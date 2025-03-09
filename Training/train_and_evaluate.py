@@ -7,11 +7,13 @@ from keras.callbacks import Callback, EarlyStopping, ReduceLROnPlateau, ModelChe
 from Counting.count_Flops import count_flops
 from Counting.peak_ram import estimate_max_memory_usage
 from tensorflow.keras.optimizers import Adam, SGD, RMSprop  # type: ignore
+from tensorflow.keras.optimizers.legacy import AdamW  # type: ignore
 
-def get_optimizer(name, learning_rate):
+def get_optimizer(name, learning_rate, weight_decay=1e-4):
     """Returns the optimizer instance based on the name."""
     optimizers = {
         "adam": Adam(learning_rate=learning_rate),
+        "adamw": AdamW(learning_rate=learning_rate, weight_decay=weight_decay),
         "sgd": SGD(learning_rate=learning_rate),
         "rmsprop": RMSprop(learning_rate=learning_rate)
     }
