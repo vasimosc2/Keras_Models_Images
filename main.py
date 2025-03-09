@@ -159,11 +159,12 @@ for model_name, model in models_to_train.items():
 
     if results_data is not None:
 
-        test_acc, training_acc, precision, recall, model_size, flops, max_ram, param_mem, total_ram_mem, training_time = results_data
+        test_acc,tflite_acc, training_acc, precision, recall, model_size, flops, max_ram, param_mem, total_ram_mem, training_time = results_data
         
         results.append({
             "Model": model_name,
             "Test Accuracy": test_acc,
+            "Tensor Flow Light Accuracy" : tflite_acc,
             "Training Accuracy": training_acc,
             "Precision": precision,
             "Recall": recall,

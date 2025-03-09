@@ -93,7 +93,8 @@ unsigned int {model_name}_length = {model_length};
 
 
 def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name: str, params: dict):
-    """Trains a model and saves it in Keras, TFLite, and C array format."""
+    """Trains a model and evaluates both the Keras and TFLite versions."""
+
     max_ram_usage, param_memory, total_memory = estimate_max_memory_usage(model=model, data_dtype_multiplier=params["data_dtype_multiplier"])
 
     print(f"Max RAM Usage: {max_ram_usage:.2f} KB")
@@ -103,7 +104,7 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
     if max_ram_usage * 1024 > params["max_ram_consumption"]:
         print(f"🚨 Training aborted: Estimated RAM usage ({max_ram_usage:.2f} KB) exceeds limit ({params['max_ram_consumption']/1024} KB).")
         return None  
-    
+
     print("✅ Memory check passed! Starting training...")
 
     optimizer = get_optimizer(params["optimizer"], params["learning_rate"])
@@ -134,7 +135,7 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
     model_file_size = os.path.getsize(f'saved_models/{model_name}.keras')
     model_size_in_mb = model_file_size / (1024 ** 2)
 
-    print(f"Test Accuracy: {final_test_acc}")
+    print(f"Test Accuracy (Keras): {final_test_acc:.4f}")
 
     # **Overfitting detection**
     if final_train_acc - final_test_acc > 0.05:
@@ -143,7 +144,7 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
     elif final_test_acc < 0.70:
         print(f"⚠️ Underfitting detected for model {model_name}!")
 
-    # **Predictions & Metrics**
+    # **Predictions & Metrics (Keras)**
     y_pred = model.predict(x_test)
     y_pred_classes = np.argmax(y_pred, axis=1)
     y_true_classes = np.argmax(y_test, axis=1)
@@ -151,8 +152,8 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
     precision = precision_score(y_true_classes, y_pred_classes, average='macro')
     recall = recall_score(y_true_classes, y_pred_classes, average='macro')
 
-    print(f"Precision: {precision}")
-    print(f"Recall: {recall}")
+    print(f"Precision: {precision:.4f}")
+    print(f"Recall: {recall:.4f}")
 
     # **Save model in multiple formats**
     keras_model_path = f'saved_models/{model_name}.keras'
@@ -162,4 +163,44 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
     tflite_model_path = convert_to_tflite(model, model_name)
     convert_tflite_to_c_array(tflite_model_path, model_name)
 
-    return final_test_acc, final_train_acc, precision, recall, model_size_in_mb, count_flops(model, batch_size=1) / 10**3, max_ram_usage, param_memory, total_memory, training_time
+    # **Evaluate the TFLite Model**
+    tflite_acc = evaluate_tflite_model(tflite_model_path, x_test, y_test)
+
+    print(f"Test Accuracy (TFLite): {tflite_acc:.4f}")
+
+    return final_test_acc, tflite_acc, final_train_acc, precision, recall, model_size_in_mb, count_flops(model, batch_size=1) / 10**3, max_ram_usage, param_memory, total_memory, training_time
+
+
+def evaluate_tflite_model(tflite_model_path, x_test, y_test):
+    """Evaluates the TFLite model and returns the accuracy."""
+    interpreter = tf.lite.Interpreter(model_path=tflite_model_path)
+    interpreter.allocate_tensors()
+
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+
+    def preprocess_input(input_data):
+        """Adjusts input data if the model uses uint8 quantization."""
+        if input_details[0]["dtype"] == np.uint8:
+            scale, zero_point = input_details[0]["quantization"]
+            input_data = (input_data / scale + zero_point).astype(np.uint8)
+        return input_data
+
+    y_pred = []
+    for i in range(len(x_test)):
+        input_data = preprocess_input(x_test[i:i+1])
+        interpreter.set_tensor(input_details[0]['index'], input_data)
+        interpreter.invoke()
+        output = interpreter.get_tensor(output_details[0]['index'])
+
+        if output_details[0]["dtype"] == np.uint8:
+            scale, zero_point = output_details[0]["quantization"]
+            output = (output.astype(np.float32) - zero_point) * scale
+
+        y_pred.append(output)
+
+    y_pred_classes = np.argmax(np.array(y_pred), axis=1)
+    y_true_classes = np.argmax(y_test, axis=1)
+
+    accuracy = np.mean(y_pred_classes == y_true_classes)
+    return accuracy
