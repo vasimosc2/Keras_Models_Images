@@ -6,8 +6,7 @@ from sklearn.metrics import precision_score, recall_score  # type: ignore
 from keras.callbacks import Callback, EarlyStopping, ReduceLROnPlateau, ModelCheckpoint  # type: ignore
 from Counting.count_Flops import count_flops
 from Counting.peak_ram import estimate_max_memory_usage
-from tensorflow.keras.optimizers import Adam, SGD, RMSprop  # type: ignore
-from tensorflow.keras.optimizers.legacy import AdamW  # type: ignore
+from tensorflow.keras.optimizers import Adam, AdamW , SGD, RMSprop  # type: ignore
 
 def get_optimizer(name, learning_rate, weight_decay=1e-4):
     """Returns the optimizer instance based on the name."""
