@@ -132,8 +132,6 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
     final_train_acc = history.history['accuracy'][-1]
     final_test_acc = history.history['val_accuracy'][-1]
     training_time = time.time() - start_time
-    model_file_size = os.path.getsize(f'saved_models/{model_name}.keras')
-    model_size_in_mb = model_file_size / (1024 ** 2)
 
     print(f"Test Accuracy (Keras): {final_test_acc:.4f}")
 
@@ -168,7 +166,20 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
 
     print(f"Test Accuracy (TFLite): {tflite_acc:.4f}")
 
-    return final_test_acc, tflite_acc, final_train_acc, precision, recall, model_size_in_mb, count_flops(model, batch_size=1) / 10**3, max_ram_usage, param_memory, total_memory, training_time
+    model_file_size = os.path.getsize(f'saved_models/{model_name}.keras')
+    Keras_size_in_KB = model_file_size / 1024
+
+    tflite_model_size_bytes = os.path.getsize(tflite_model_path)  # Get file size in bytes
+    tflite_model_size_kb = tflite_model_size_bytes / 1024  # Convert to KB
+
+    print(f"TFLite Model Size: {tflite_model_size_kb:.2f} KB")
+
+    c_array_file_path = f"saved_models/{model_name}.h"
+    c_array_file_size_bytes = os.path.getsize(c_array_file_path)  
+    c_array_file_size_kb = c_array_file_size_bytes / 1024 
+    print(f"C Array Header File Size: {c_array_file_size_kb:.2f} KB")
+
+    return final_test_acc, tflite_acc, final_train_acc, precision, recall, Keras_size_in_KB, tflite_model_size_kb, c_array_file_size_kb, count_flops(model, batch_size=1) / 10**3, max_ram_usage, param_memory, total_memory, training_time
 
 
 def evaluate_tflite_model(tflite_model_path, x_test, y_test):

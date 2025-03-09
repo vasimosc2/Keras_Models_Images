@@ -138,7 +138,7 @@ os.makedirs('results', exist_ok=True)
 
 models_to_train = {}
 
-for i in range(1, 5):
+for i in range(1, 21):
     params = sample_from_search_space(config["model_search_space"])
     stage_count = params["stages"]
     print(f"The random params selected for model_{i} are:\n{json.dumps(params, indent=4)}")
@@ -159,7 +159,7 @@ for model_name, model in models_to_train.items():
 
     if results_data is not None:
 
-        test_acc,tflite_acc, training_acc, precision, recall, model_size, flops, max_ram, param_mem, total_ram_mem, training_time = results_data
+        test_acc,tflite_acc, training_acc, precision, recall, keras_model_size, tf_model_size, c_array_size, flops, max_ram, param_mem, total_ram_mem, training_time = results_data
         
         results.append({
             "Model": model_name,
@@ -168,7 +168,9 @@ for model_name, model in models_to_train.items():
             "Training Accuracy": training_acc,
             "Precision": precision,
             "Recall": recall,
-            "Size_MB": model_size,
+            "Keras Size_KB": keras_model_size,
+            "Tensor Flow Light Size_KB": tf_model_size,
+            "C array Size_KB ": c_array_size,
             "Flops_K": flops,
             "Max_RAM_KB": max_ram,
             "Param_Memory_KB": param_mem,
