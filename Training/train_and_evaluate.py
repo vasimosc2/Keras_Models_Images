@@ -183,7 +183,7 @@ def evaluate_tflite_model(tflite_model_path, x_test, y_test):
         """Adjusts input data if the model uses uint8 quantization."""
         if input_details[0]["dtype"] == np.uint8:
             scale, zero_point = input_details[0]["quantization"]
-            input_data = (input_data / scale + zero_point).astype(np.uint8)
+            input_data = tf.cast(input_data / scale + zero_point, tf.uint8)
         return input_data
 
     y_pred = []
