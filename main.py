@@ -1,4 +1,6 @@
+import json
 import os
+import random
 import psutil  # type: ignore # For measuring memory usage
 from Training.train_and_evaluate import train_and_evaluate_model
 from models.deeper_cnn import create_deeper_cnn
@@ -12,75 +14,180 @@ import tensorflow as tf  # type: ignore
 import pandas as pd
 from tensorflow.keras import layers # type: ignore
 from tensorflow.keras import backend as K  # type: ignore
-
-
 import os
+import time 
+
+# Enable GPU
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Disable GPU
 
 
-# Load the CIFAR-10 dataset
+# Ensure TensorFlow uses GPU if available
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        # Set memory growth for all GPUs
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        print(f"✅ I found 1 and I will use a GPU located at: {gpus[0].name}")
+    except RuntimeError as e:
+        print(f"❌ GPU Error: {e}")
+else:
+    print("⚠️ No GPU found, running on CPU.")
+
+
+
+def sample_from_search_space(model_search_space:dict) -> dict:
+    """Randomly select hyperparameters from the search space."""
+    return {
+        "stages": random.choice(model_search_space["stages"]),
+
+        "filters_stem_1": random.choice(model_search_space["filters"]),
+        "filters_stem_2": random.choice(model_search_space["filters"]),
+        "filters_taku_block_1": random.choice(model_search_space["filters"]),
+        "filters_taku_block_2": random.choice(model_search_space["filters"]),
+
+        "kernel_size_stem_1": random.choice(model_search_space["kernel_size"]),
+        "kernel_size_stem_2": random.choice(model_search_space["kernel_size"]),
+        "kernel_size_taku_block_1": random.choice(model_search_space["kernel_size"]),
+        "kernel_size_taku_block_2": random.choice(model_search_space["kernel_size"]),
+        "kernel_size_refinement_block": random.choice(model_search_space["kernel_size"]),
+
+        "dropout_rate": random.choice(model_search_space["dropout_rate"]),
+
+        "activation": random.choice(model_search_space["activation"]),
+        "strides": random.choice(model_search_space["strides"]),
+        "batch_norm": random.choice(model_search_space["batch_norm"]),
+        "num_units": random.choice(model_search_space["num_units"]),
+        "dense_activation": random.choice(model_search_space["dense_activation"]),
+
+        "num_output_classes":model_search_space["num_output_classes"]
+    }
+
+
+def sample_from_train_and_evaluate(train_and_evaluate:dict) -> dict:
+    return{
+        "optimizer": random.choice(train_and_evaluate["model_config"]["optimizer"]),
+        "loss": train_and_evaluate["model_config"]["loss"],
+        "learning_rate": random.choice(train_and_evaluate["model_config"]["learning_rate"]),
+        "num_epochs": train_and_evaluate["evaluation_config"]["num_epochs"],
+        "batch_size": train_and_evaluate["evaluation_config"]["batch_size"],
+        "max_ram_consumption": train_and_evaluate["evaluation_config"]["max_ram_consumption"],
+        "max_flash_consumption": train_and_evaluate["evaluation_config"]["max_flash_consumption"], 
+        "data_dtype_multiplier": train_and_evaluate["evaluation_config"]["data_dtype_multiplier"],
+        "model_dtype_multiplier": train_and_evaluate["evaluation_config"]["model_dtype_multiplier"],
+    }
+
+
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar100.load_data()
 x_train, x_test = x_train / 255.0, x_test / 255.0
-y_train = tf.keras.utils.to_categorical(y_train, 100)
-y_test = tf.keras.utils.to_categorical(y_test, 100)
 
-# Ensure directories exist
+config_file = open("config.json", "r")
+
+config:dict = json.load(config_file)
+output_class:int = config["model_search_space"]["num_output_classes"]
+
+y_train = tf.keras.utils.to_categorical(y_train, output_class)
+y_test = tf.keras.utils.to_categorical(y_test, output_class)
+
+x_train = tf.cast(x_train, tf.float32)
+x_test = tf.cast(x_test, tf.float32)
+
+data_augmentation = tf.keras.Sequential([
+    tf.keras.layers.RandomFlip("horizontal"),
+    tf.keras.layers.RandomRotation(0.2),
+    tf.keras.layers.RandomZoom(0.1),
+])
+
+def create_augmented_dataset(x, y):
+    """Creates an augmented dataset efficiently using tf.data."""
+    
+    # Convert numpy arrays to a TensorFlow dataset
+    dataset = tf.data.Dataset.from_tensor_slices((x, y))
+
+    # Apply augmentation only to images
+    aug_dataset = dataset.map(lambda img, label: (data_augmentation(img), label), num_parallel_calls=tf.data.AUTOTUNE)
+
+    # Batch and prefetch to optimize performance
+    aug_dataset = aug_dataset.batch(128).prefetch(tf.data.AUTOTUNE)  # Batching speeds up processing
+
+    # Convert dataset back to tensors (efficient)
+    x_aug_list, y_aug_list = [], []
+    for img_batch, label_batch in aug_dataset:
+        x_aug_list.append(img_batch)
+        y_aug_list.append(label_batch)
+
+    # Concatenate batched tensors
+    x_aug = tf.concat(x_aug_list, axis=0)
+    y_aug = tf.concat(y_aug_list, axis=0)
+
+    # Concatenate original & augmented datasets
+    x_combined = tf.concat([x, x_aug], axis=0)
+    y_combined = tf.concat([y, y_aug], axis=0)  # Duplicate labels
+
+    return x_combined, y_combined
+
+
+print("🔄 Augmenting dataset...")
+x_train_final, y_train_final = create_augmented_dataset(x_train, y_train)
+print(f"✅ Dataset Size Doubled: {x_train.shape[0]} → {x_train_final.shape[0]} images")
+
+
+
 os.makedirs('saved_models', exist_ok=True)
 os.makedirs('results', exist_ok=True)
 
+models_to_train = {}
 
-# List of models to train
-models_to_train = {
-    "TakuNet 2 stages": create_takunet_model(stages=2),
-    "TakuNet 3 stages": create_takunet_model(stages=3),
-    "TakuNet 4 stages": create_takunet_model(stages=4),
-    "TakuNet 5 stages": create_takunet_model(stages=5),
-    "TakuNet 6 stages": create_takunet_model(stages=6),
-    "TakuNet 7 stages": create_takunet_model(stages=7),
-    "TakuNet 8 stages": create_takunet_model(stages=8),
-    "TakuNet 9 stages": create_takunet_model(stages=9),
-    "TakuNet 10 stages": create_takunet_model(stages=10),
-    # "TakuNet 2 stages + Normal": create_takunet_model(stages=2, extra_layer_inside_taku=None, extra_layer_outside_taku= None, l2_reg=None),
-    # "TakuNet 2 stages + DropOut 0.5": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.5), extra_layer_outside_taku= None, l2_reg=None),
-    # "TakuNet 2 stages + DropOut 0.3 + DropOut 0.1": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.3), extra_layer_outside_taku =layers.Dropout(0.1), l2_reg=None),
-    # "TakuNet 2 stages + DropOut 0.2  + DropOut 0.1": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.2), extra_layer_outside_taku = layers.Dropout(0.1), l2_reg=None),
-    # "TakuNet 2 stages + L2 Regulation 0.01": create_takunet_model(stages=2, extra_layer_inside_taku=None, extra_layer_outside_taku = layers.Dropout(0.3), l2_reg=0.01),
-    # "TakuNet 2 stages + DropOut 0.3 + L2 Regulation 0.01": create_takunet_model(stages=2, extra_layer_inside_taku=layers.Dropout(0.3), extra_layer_outside_taku= None, l2_reg=0.01),
-    # "Simple_CNN": create_simple_cnn(),
-    # "Deeper_CNN": create_deeper_cnn(),
-    # "CNN_With_Dropout": create_cnn_with_dropout(),
-    # "CNN_With_BatchNorm": create_cnn_with_batchnorm(),
-    # "CNN_With_GAP": create_cnn_with_gap(),
-    # "ResNet_Like_CNN": create_resnet_like_cnn()
-}
+for i in range(1, 5):
+    params = sample_from_search_space(config["model_search_space"])
+    stage_count = params["stages"]
+    print(f"The random params selected for model_{i} are:\n{json.dumps(params, indent=4)}")
+    model_name = f"TakuNet Random_{i} (Stages: {stage_count})"
+    models_to_train[model_name] = create_takunet_model(params=params)
+
 
 results = []
-
+print("I am starting the training\n")
+start_time = time.time()
 for model_name, model in models_to_train.items():
+    
     print(f"\nTraining {model_name}...")
     
-    # Train and evaluate the original model
-    test_acc, training_acc, precision, recall, model_size, flops, max_ram, param_mem, total_ram_mem, training_time = train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name)
+    
+    results_data = train_and_evaluate_model(model, x_train_final, y_train_final, x_test, y_test, model_name, 
+                                            params=sample_from_train_and_evaluate(config["train_and_evaluate"]))
 
-    # Store original model results
-    results.append({
-        "Model": model_name,
-        "Test Accuracy": test_acc,
-        "Training Accuracy": training_acc,
-        "Precision": precision,
-        "Recall": recall,
-        "Size_MB": model_size,
-        "Flops_K": flops,
-        "Max_RAM_KB": max_ram,
-        "Param_Memory_KB": param_mem,
-        "Total_Memory_KB": total_ram_mem,
-        "Training_Time": training_time
-    })
-    K.clear_session()
+    if results_data is not None:
 
-# Save results to CSV
-df_results = pd.DataFrame(results)
-df_results.to_csv('results/evaluation_Taku_Stages_CIRA100.csv', index=False)
+        test_acc, training_acc, precision, recall, model_size, flops, max_ram, param_mem, total_ram_mem, training_time = results_data
+        
+        results.append({
+            "Model": model_name,
+            "Test Accuracy": test_acc,
+            "Training Accuracy": training_acc,
+            "Precision": precision,
+            "Recall": recall,
+            "Size_MB": model_size,
+            "Flops_K": flops,
+            "Max_RAM_KB": max_ram,
+            "Param_Memory_KB": param_mem,
+            "Total_Memory_KB": total_ram_mem,
+            "Training_Time": training_time
+        })
+
+        K.clear_session()
+    else:
+        print(f"⚠️ Model {model_name} was skipped due to excessive memory usage.")
+end_time = time.time()  # Record end time
+total_time = end_time - start_time
+
+print(f"\n⏳ Total Script Execution Time: {total_time:.2f} seconds ({total_time/60:.2f} minutes)")
+
+if results:
+    df_results = pd.DataFrame(results)
+    df_results.to_csv('results/Configurations_Big_Run_GPU_Taku_Stages_CIRA100.csv', index=False)
+    print("✅ Results saved to CSV.")
+else:
+    print("⚠️ No models were trained due to memory constraints.")
+
 

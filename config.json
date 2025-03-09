@@ -1,0 +1,32 @@
+{
+    "model_search_space":{
+        "stages": [1,2,3,4],
+        "filters": [2, 4, 8, 16, 32, 64, 128],
+        "kernel_size": [3, 5],
+        "activation": ["relu", "sigmoid"],
+        "strides": [1, 2],
+        "dropout_rate": [0, 0.1, 0.2, 0.3, 0.5],
+        "batch_norm": [true, false],
+        "num_units": [64, 128, 256],
+        "dense_activation": ["relu", "tanh", "sigmoid"],
+        "num_output_classes": 100
+    },
+    "train_and_evaluate":{
+        "model_config": {
+            "optimizer": ["adam"],
+            "loss": "categorical_crossentropy",
+            "learning_rate": [0.0020,0.0010, 0.0005, 0.0001]
+            },
+    
+        "evaluation_config": {
+            "num_epochs": 40,
+            "batch_size": 64,
+            "max_ram_consumption": 262144,
+            "max_flash_consumption": 1048576, 
+            "data_dtype_multiplier": 1,
+            "model_dtype_multiplier": 1
+        }
+    }
+
+    
+}
