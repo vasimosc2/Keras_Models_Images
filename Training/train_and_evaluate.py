@@ -1,11 +1,12 @@
 import numpy as np
 import time
 import os
-from sklearn.metrics import precision_score, recall_score # type: ignore
-from keras.callbacks import Callback, EarlyStopping, ReduceLROnPlateau, ModelCheckpoint # type: ignore
+import tensorflow as tf  # type: ignore
+from sklearn.metrics import precision_score, recall_score  # type: ignore
+from keras.callbacks import Callback, EarlyStopping, ReduceLROnPlateau, ModelCheckpoint  # type: ignore
 from Counting.count_Flops import count_flops
 from Counting.peak_ram import estimate_max_memory_usage
-from tensorflow.keras.optimizers import Adam, SGD, RMSprop # type: ignore
+from tensorflow.keras.optimizers import Adam, SGD, RMSprop  # type: ignore
 
 def get_optimizer(name, learning_rate):
     """Returns the optimizer instance based on the name."""
@@ -16,10 +17,11 @@ def get_optimizer(name, learning_rate):
     }
     return optimizers.get(name.lower(), Adam(learning_rate=learning_rate)) 
 
+
 class MidwayStopCallback(Callback):
     def __init__(self, total_epochs, threshold=0.40):
         super().__init__()
-        self.mid_epoch = total_epochs // 5 # 50 // 5 = 10
+        self.mid_epoch = total_epochs // 5  
         self.threshold = threshold
 
     def on_epoch_end(self, epoch, logs=None):
@@ -27,17 +29,71 @@ class MidwayStopCallback(Callback):
             train_acc = logs.get('accuracy')
             val_acc = logs.get('val_accuracy')
             print(f"\nMidway Epoch {epoch+1}: Training Acc = {train_acc}, Validation Acc = {val_acc}")
-            if train_acc < self.threshold:  # Stop training if training accuracy is too low
+            if train_acc < self.threshold:  
                 print(f"\n🚨 Stopping early: Training accuracy is below {self.threshold} at epoch {epoch+1}")
                 self.model.stop_training = True
 
 
+def convert_to_tflite(model, model_name):
+    """Converts a trained model to TFLite with full-integer quantization."""
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+
+    # **Enable optimizations and quantization**
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+
+    # **Use a representative dataset to optimize quantization**
+    def representative_dataset():
+        for _ in range(100):
+            data = np.random.rand(1, 32, 32, 3).astype(np.float32)
+            yield [data]
+    converter.representative_dataset = representative_dataset
+
+    # **Ensure full integer quantization for microcontroller compatibility**
+    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+    converter.inference_input_type = tf.uint8
+    converter.inference_output_type = tf.uint8
+
+    tflite_model = converter.convert()
+
+    # **Save TFLite model**
+    tflite_model_path = f"saved_models/{model_name}.tflite"
+    with open(tflite_model_path, "wb") as f:
+        f.write(tflite_model)
+
+    print(f"✅ Model converted and saved as {tflite_model_path}")
+    return tflite_model_path
 
 
+def convert_tflite_to_c_array(tflite_model_path, model_name):
+    """Converts the TFLite model into a C array header file for Arduino integration."""
+    with open(tflite_model_path, "rb") as f:
+        tflite_model = f.read()
 
-def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name:str, params:dict):
+    c_array = ", ".join(f"0x{byte:02x}" for byte in tflite_model)
+    model_length = len(tflite_model)
+
+    header_content = f"""#ifndef {model_name.upper()}_H
+#define {model_name.upper()}_H
+
+// Model converted to C array for Arduino
+const unsigned char {model_name}_data[{model_length}] = {{
+    {c_array}
+}};
+
+unsigned int {model_name}_length = {model_length};
+
+#endif // {model_name.upper()}_H
+"""
+
+    header_file_path = f"saved_models/{model_name}.h"
+    with open(header_file_path, "w") as f:
+        f.write(header_content)
+
+    print(f"✅ C header file saved as {header_file_path}")
 
 
+def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name: str, params: dict):
+    """Trains a model and saves it in Keras, TFLite, and C array format."""
     max_ram_usage, param_memory, total_memory = estimate_max_memory_usage(model=model, data_dtype_multiplier=params["data_dtype_multiplier"])
 
     print(f"Max RAM Usage: {max_ram_usage:.2f} KB")
@@ -46,47 +102,46 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
 
     if max_ram_usage * 1024 > params["max_ram_consumption"]:
         print(f"🚨 Training aborted: Estimated RAM usage ({max_ram_usage:.2f} KB) exceeds limit ({params['max_ram_consumption']/1024} KB).")
-        return None  # Skip training and return nothing
+        return None  
     
     print("✅ Memory check passed! Starting training...")
 
-
     optimizer = get_optimizer(params["optimizer"], params["learning_rate"])
 
-    model.compile(optimizer=optimizer,
-                  loss=params["loss"],
-                  metrics=['accuracy'])
+    model.compile(optimizer=optimizer, loss=params["loss"], metrics=['accuracy'])
 
-    # Callbacks
+    # **Callbacks**
     midway_callback = MidwayStopCallback(params["num_epochs"], threshold=0.30)
     early_stopping_loss = EarlyStopping(monitor='val_loss', patience=8, restore_best_weights=True)
     early_stopping_acc = EarlyStopping(monitor='val_accuracy', patience=8, mode='max', restore_best_weights=True)
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, verbose=1)
     checkpoint = ModelCheckpoint(filepath=f'saved_models/{model_name}.keras', save_best_only=True)
 
-    # Start Training
+    # **Start Training**
     start_time = time.time()
-    history = model.fit(x_train, y_train, 
-                        epochs=params["num_epochs"], 
-                        batch_size=params["batch_size"], 
-                        validation_data=(x_test, y_test),  # nomizo einai to test accuracy se kathe fasi
-                        verbose=2,
-                        callbacks=[midway_callback, early_stopping_acc, early_stopping_loss, reduce_lr, checkpoint])
+    history = model.fit(
+        x_train, y_train, 
+        epochs=params["num_epochs"], 
+        batch_size=params["batch_size"], 
+        validation_data=(x_test, y_test),
+        verbose=2,
+        callbacks=[midway_callback, early_stopping_acc, early_stopping_loss, reduce_lr, checkpoint]
+    )
 
     final_train_acc = history.history['accuracy'][-1]
     final_test_acc = history.history['val_accuracy'][-1]
-
     training_time = time.time() - start_time
+
     print(f"Test Accuracy: {final_test_acc}")
 
-    # Overfitting and underfitting detection
+    # **Overfitting detection**
     if final_train_acc - final_test_acc > 0.05:
-        print(f"⚠️ Overfitting detected for model {model_name}! Adjusting model...")
+        print(f"⚠️ Overfitting detected for model {model_name}!")
 
     elif final_test_acc < 0.70:
-        print(f"⚠️ Underfitting detected for model {model_name}! Increasing model complexity...")
+        print(f"⚠️ Underfitting detected for model {model_name}!")
 
-    # Predictions & Metrics
+    # **Predictions & Metrics**
     y_pred = model.predict(x_test)
     y_pred_classes = np.argmax(y_pred, axis=1)
     y_true_classes = np.argmax(y_test, axis=1)
@@ -97,16 +152,12 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
     print(f"Precision: {precision}")
     print(f"Recall: {recall}")
 
-    # Compute model file size
-    model_file_size = os.path.getsize(f'saved_models/{model_name}.keras')
-    model_size_in_mb = model_file_size / (1024 ** 2)
+    # **Save model in multiple formats**
+    keras_model_path = f'saved_models/{model_name}.keras'
+    model.save(keras_model_path)
+    print(f"✅ Model saved in Keras format: {keras_model_path}")
 
-    # FLOPS & Memory Usage
-    flops = count_flops(model, batch_size=1) / 10**3
+    tflite_model_path = convert_to_tflite(model, model_name)
+    convert_tflite_to_c_array(tflite_model_path, model_name)
 
-   
-
-    print(f"FLOPS: {flops}")
-
-
-    return final_test_acc, final_train_acc, precision, recall, model_size_in_mb, flops, max_ram_usage, param_memory, total_memory, training_time
+    return final_test_acc, final_train_acc, precision, recall, count_flops(model, batch_size=1) / 10**3, max_ram_usage, param_memory, total_memory, training_time
