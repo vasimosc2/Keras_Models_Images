@@ -199,8 +199,11 @@ def evaluate_tflite_model(tflite_model_path, x_test, y_test):
 
         y_pred.append(output)
 
-    y_pred_classes = np.argmax(np.array(y_pred), axis=1)
-    y_true_classes = np.argmax(y_test, axis=1)
+    y_pred = np.array(y_pred).squeeze()  # Remove unnecessary dimensions
+    y_pred_classes = np.argmax(y_pred, axis=-1)  # Ensure correct reduction
+
+    y_true_classes = np.argmax(y_test, axis=-1)  # Ensure correct shape
 
     accuracy = np.mean(y_pred_classes == y_true_classes)
+
     return accuracy
