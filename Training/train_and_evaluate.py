@@ -131,6 +131,8 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
     final_train_acc = history.history['accuracy'][-1]
     final_test_acc = history.history['val_accuracy'][-1]
     training_time = time.time() - start_time
+    model_file_size = os.path.getsize(f'saved_models/{model_name}.keras')
+    model_size_in_mb = model_file_size / (1024 ** 2)
 
     print(f"Test Accuracy: {final_test_acc}")
 
@@ -160,4 +162,4 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
     tflite_model_path = convert_to_tflite(model, model_name)
     convert_tflite_to_c_array(tflite_model_path, model_name)
 
-    return final_test_acc, final_train_acc, precision, recall, count_flops(model, batch_size=1) / 10**3, max_ram_usage, param_memory, total_memory, training_time
+    return final_test_acc, final_train_acc, precision, recall, model_size_in_mb, count_flops(model, batch_size=1) / 10**3, max_ram_usage, param_memory, total_memory, training_time
