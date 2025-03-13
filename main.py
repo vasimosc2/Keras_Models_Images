@@ -12,6 +12,7 @@ from models.resnet_like import create_resnet_like_cnn
 from models.takunet import create_takunet_model
 import tensorflow as tf  # type: ignore
 import pandas as pd
+import numpy as np
 from tensorflow.keras import layers # type: ignore
 from tensorflow.keras import backend as K  # type: ignore
 import os
@@ -129,6 +130,7 @@ def create_augmented_dataset(x, y):
 
 print("🔄 Augmenting dataset...")
 x_train_final, y_train_final = create_augmented_dataset(x_train, y_train)
+#x_test = (x_test * 255).numpy().astype(np.uint8)
 print(f"✅ Dataset Size Doubled: {x_train.shape[0]} → {x_train_final.shape[0]} images")
 
 
@@ -138,7 +140,7 @@ os.makedirs('results', exist_ok=True)
 
 models_to_train = {}
 
-for i in range(1, 5):
+for i in range(1, 21):
     params = sample_from_search_space(config["model_search_space"])
     stage_count = params["stages"]
     print(f"The random params selected for model_{i} are:\n{json.dumps(params, indent=4)}")
