@@ -64,7 +64,12 @@ def classification_head(x,output_classes:int):
 
 def taku_block(inputs, params: dict, l2_reg: Union[float, None] = None):
     reg = regularizers.l2(l2_reg) if l2_reg else None
-    x = layers.DepthwiseConv2D(kernel_size=params["kernel_size_taku_block_1"], padding='same', use_bias=False, kernel_regularizer=reg)(inputs)
+   # Conditionally pass kernel_regularizer
+    if reg:
+        x = layers.DepthwiseConv2D(kernel_size=params["kernel_size_taku_block_1"], padding='same', use_bias=False, kernel_regularizer=reg)(inputs)
+    else:
+        x = layers.DepthwiseConv2D(kernel_size=params["kernel_size_taku_block_1"], padding='same', use_bias=False)(inputs)
+    
     x = layers.ReLU(6.0)(x)
     x = layers.BatchNormalization()(x)
     if params["dropout_rate"] > 0:
