@@ -23,10 +23,10 @@ def create_takunet_model(
 	
     # Stages with Taku Blocks
     for _ in range(params["stages"]):
-        x = stage_block(x,params=params)
-        # x = taku_block(x=x, params=params, l2_reg=l2_reg)
-        # x = layers.Conv2D(64, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)  # Downsampling
-        # x = layers.BatchNormalization()(x)
+        #x = stage_block(x,params=params)
+        x = taku_block_old(x=x, params=params, l2_reg=l2_reg)
+        x = layers.Conv2D(64, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)  # Downsampling
+        x = layers.BatchNormalization()(x)
 
     # Refinement Block
     x = refinement_block(x,kernel_size=params["kernel_size_refinement_block"])
@@ -68,6 +68,45 @@ def classification_head(x,output_classes:int):
     return x
 
 
+
+def taku_block_old(x, params:dict, l2_reg: Union[float, None] = None):
+    res = x
+    reg = regularizers.l2(l2_reg) if l2_reg else None  # Apply L2 if given
+    x = layers.Conv2D(params["filters_taku_block_1"], (params["kernel_size_taku_block_1"], params["kernel_size_taku_block_1"]), padding='same', activation='relu', kernel_regularizer=reg)(x)
+    x = layers.BatchNormalization()(x)
+    if params["dropout_rate"] > 0:
+        x = layers.Dropout(params["dropout_rate"])(x)
+    x = layers.Conv2D(params["filters_taku_block_2"], (params["kernel_size_taku_block_2"], params["kernel_size_taku_block_2"]), padding='same', activation='relu', kernel_regularizer=reg)(x)
+    x = layers.BatchNormalization()(x)
+    if res.shape[-1] != x.shape[-1]:  # Match channels if needed
+        res = layers.Conv2D(params["filters_taku_block_2"], (1, 1), padding="same")(res)
+    x = layers.Add()([x, res])
+    return x
+
+# The new TAKU-BLOCK
+
+def stage_block(inputs, params):
+    x = inputs
+    for _ in range(params["stages"]):
+        x = taku_block(x, params)
+    if len(x.shape) ==2:
+        x = tf.keras.layers.Reshape((1, 1, x.shape[-1]))(x)
+    if len(inputs.shape) ==2:
+        inputs = tf.keras.layers.Reshape((1, 1, inputs.shape[-1]))(inputs)
+    concat = layers.Concatenate()([inputs, x])
+    downsampled = downsampler_block(concat)
+    print(f"I passed stage with shape = {downsampled.shape}")
+    return downsampled
+
+
+
+def downsampler_block(inputs):
+    x = layers.Conv2D(filters=inputs.shape[-1], kernel_size=1, use_bias=False)(inputs)
+    x = layers.ReLU(6.0)(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.GlobalAveragePooling2D()(x)  # Assuming GRN as Global Response Normalization
+    return x
+
 def taku_block(inputs, params: dict, l2_reg: Union[float, None] = None):
     reg = regularizers.l2(l2_reg) if l2_reg else None
 
@@ -89,39 +128,3 @@ def taku_block(inputs, params: dict, l2_reg: Union[float, None] = None):
         x = layers.Dropout(params["dropout_rate"])(x)
     
     return x
-
-
-
-def downsampler_block(inputs):
-    x = layers.Conv2D(filters=inputs.shape[-1], kernel_size=1, use_bias=False)(inputs)
-    x = layers.ReLU(6.0)(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.GlobalAveragePooling2D()(x)  # Assuming GRN as Global Response Normalization
-    return x
-
-def stage_block(inputs, params):
-    x = inputs
-    for _ in range(params["stages"]):
-        x = taku_block(x, params)
-    if len(x.shape) ==2:
-        x = tf.keras.layers.Reshape((1, 1, x.shape[-1]))(x)
-    if len(inputs.shape) ==2:
-        inputs = tf.keras.layers.Reshape((1, 1, inputs.shape[-1]))(inputs)
-    concat = layers.Concatenate()([inputs, x])
-    downsampled = downsampler_block(concat)
-    print(f"I passed stage with shape = {downsampled.shape}")
-    return downsampled
-
-# def taku_block(x, params:dict, l2_reg: Union[float, None] = None):
-#     res = x
-#     reg = regularizers.l2(l2_reg) if l2_reg else None  # Apply L2 if given
-#     x = layers.Conv2D(params["filters_taku_block_1"], (params["kernel_size_taku_block_1"], params["kernel_size_taku_block_1"]), padding='same', activation='relu', kernel_regularizer=reg)(x)
-#     x = layers.BatchNormalization()(x)
-#     if params["dropout_rate"] > 0:
-#         x = layers.Dropout(params["dropout_rate"])(x)
-#     x = layers.Conv2D(params["filters_taku_block_2"], (params["kernel_size_taku_block_2"], params["kernel_size_taku_block_2"]), padding='same', activation='relu', kernel_regularizer=reg)(x)
-#     x = layers.BatchNormalization()(x)
-#     if res.shape[-1] != x.shape[-1]:  # Match channels if needed
-#         res = layers.Conv2D(params["filters_taku_block_2"], (1, 1), padding="same")(res)
-#     x = layers.Add()([x, res])
-#     return x
