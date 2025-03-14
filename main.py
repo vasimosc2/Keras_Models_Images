@@ -85,7 +85,7 @@ x_train, x_test = x_train / 255.0, x_test / 255.0
 config_file = open("config.json", "r")
 
 config:dict = json.load(config_file)
-output_class:int = config["model_search_space"]["num_output_classes"]
+output_class:int = config["model_search_space"]["refiner_block"]["num_output_classes"]
 
 y_train = tf.keras.utils.to_categorical(y_train, output_class)
 y_test = tf.keras.utils.to_categorical(y_test, output_class)
@@ -142,8 +142,10 @@ models_to_train = {}
 
 for i in range(1, 21):
     params = sample_from_search_space(config["model_search_space"])
+    stages = params["stages_block"]["stages_number"]
+    taku_blocks = params["stages_block"]["taku_block"]["taku_block_number"]
     print(f"The random params selected for model_{i} are:\n{json.dumps(params, indent=4)}")
-    model_name = f"TakuNet Random_{i} (Stages: {params["stages_block"]["stages_number"]} Blocks{params["stages_block"]["taku_block"]["taku_block_number"]})"
+    model_name = f"TakuNet Random_{i} (Stages: {stages} Blocks{taku_blocks})"
     models_to_train[model_name] = TakuNet(input_shape=(32,32,3),params=params)
 
 
