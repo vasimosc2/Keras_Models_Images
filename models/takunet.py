@@ -69,7 +69,7 @@ def downsampler_block(inputs: tuple, params: dict, number_of_stages: int, curr_s
     else:
         x = layers.AveragePooling2D(pool_size=2, strides=2, padding='same')(x)
 
-    x = GlobalResponseNormalization()(x)
+    x = layers.LayerNormalization()(x)
 
     return x
 

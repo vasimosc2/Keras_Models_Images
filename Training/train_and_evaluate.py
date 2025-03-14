@@ -185,44 +185,51 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
 
 def evaluate_tflite_model(tflite_model_path, x_test, y_test):
     """Evaluates the TFLite model and returns the accuracy."""
-    try:
-        delegate = tf.lite.experimental.load_delegate("libtensorflowlite_gpu_delegate.so")
-        interpreter = tf.lite.Interpreter(model_path=tflite_model_path, experimental_delegates=[delegate])
-        print("✅ Running TFLite model on GPU!")
-    except Exception as e:
-        print(f"⚠️ GPU delegate not available ({e}), falling back to CPU.")
-        interpreter = tf.lite.Interpreter(model_path=tflite_model_path)
+    interpreter = tf.lite.Interpreter(model_path=tflite_model_path, experimental_delegates=[])
 
     interpreter.allocate_tensors()
 
     input_details = interpreter.get_input_details()
     output_details = interpreter.get_output_details()
 
+    # Debugging prints
+    print("✅ Model loaded successfully!")
+    print("📌 Input Details:", input_details)
+    print("📌 Output Details:", output_details)
+    print("Expected Input Shape:", input_details[0]['shape'])
+    print("Actual Input Shape:", x_test[0].shape)
+
     def preprocess_input(input_data):
         """Adjusts input data if the model uses uint8 quantization."""
         if input_details[0]["dtype"] == np.uint8:
             scale, zero_point = input_details[0]["quantization"]
-            input_data = tf.cast(input_data / scale + zero_point, tf.uint8)
+            input_data = np.round(input_data / scale + zero_point).astype(np.uint8)
         return input_data
 
     y_pred = []
     for i in range(len(x_test)):
         input_data = preprocess_input(x_test[i:i+1])
+
+        # Ensure shape is correct
+        input_data = np.reshape(input_data, input_details[0]['shape'])
+        
         interpreter.set_tensor(input_details[0]['index'], input_data)
         interpreter.invoke()
+        
         output = interpreter.get_tensor(output_details[0]['index'])
-
+        
         if output_details[0]["dtype"] == np.uint8:
             scale, zero_point = output_details[0]["quantization"]
             output = (output.astype(np.float32) - zero_point) * scale
-
+        
         y_pred.append(output)
 
-    y_pred = np.array(y_pred).squeeze()  # Remove unnecessary dimensions
-    y_pred_classes = np.argmax(y_pred, axis=-1)  # Ensure correct reduction
+    y_pred = np.array(y_pred).squeeze()
+    y_pred_classes = np.argmax(y_pred, axis=-1) if output.ndim > 1 else (output > 0.5).astype(np.int32)
 
-    y_true_classes = np.argmax(y_test, axis=-1)  # Ensure correct shape
+    y_true_classes = np.argmax(y_test, axis=-1)
 
     accuracy = np.mean(y_pred_classes == y_true_classes)
 
     return accuracy
+

@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 *.pyo
 venv/
+gpu_venv/
 Counting/__pycache__/
 models/__pycache__/
 saved_models/*

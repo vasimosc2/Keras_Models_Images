@@ -140,12 +140,12 @@ os.makedirs('results', exist_ok=True)
 
 models_to_train = {}
 
-for i in range(1, 21):
+for i in range(1, 2):
     params = sample_from_search_space(config["model_search_space"])
     stages = params["stages_block"]["stages_number"]
     taku_blocks = params["stages_block"]["taku_block"]["taku_block_number"]
     print(f"The random params selected for model_{i} are:\n{json.dumps(params, indent=4)}")
-    model_name = f"TakuNet Random_{i} (Stages: {stages} Blocks{taku_blocks})"
+    model_name = f"TakuNet Random_{i} (Stages: {stages} Blocks: {taku_blocks})"
     models_to_train[model_name] = TakuNet(input_shape=(32,32,3),params=params)
 
 
