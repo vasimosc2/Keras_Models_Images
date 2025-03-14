@@ -115,6 +115,7 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
 
     # **Callbacks**
     checkpoint_path = f'saved_models/{model_name}_best.keras'
+    midway_callback = MidwayStopCallback(params["num_epochs"], threshold=0.30)
     checkpoint = ModelCheckpoint(filepath=checkpoint_path, monitor='val_accuracy', save_best_only=True, mode='max', verbose=1)
     early_stopping_loss = EarlyStopping(monitor='val_loss', patience=8, restore_best_weights=True)
     early_stopping_acc = EarlyStopping(monitor='val_accuracy', patience=8, mode='max', restore_best_weights=True)
@@ -128,7 +129,7 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
         batch_size=params["batch_size"],
         validation_data=(x_test, y_test),
         verbose=2,
-        callbacks=[early_stopping_acc, early_stopping_loss, reduce_lr, checkpoint]
+        callbacks=[midway_callback,early_stopping_acc, early_stopping_loss, reduce_lr, checkpoint]
     )
     training_time = time.time() - start_time
 
