@@ -1,127 +1,113 @@
-from typing import Union
-import tensorflow as tf  # type: ignore
-from tensorflow.keras import layers, models, regularizers  # type: ignore
+from tensorflow.keras.layers import Layer # type: ignore
+from tensorflow.keras import layers, Model, Input, regularizers # type: ignore
+import tensorflow as tf # type: ignore
 
+class GlobalResponseNormalization(Layer):
+    """Custom Keras Layer for Global Response Normalization (GRN)"""
+    def __init__(self, epsilon=1e-6, **kwargs):
+        super(GlobalResponseNormalization, self).__init__(**kwargs)
+        self.epsilon = epsilon
 
+    def call(self, inputs):
+        mean = tf.reduce_mean(inputs, axis=[1, 2], keepdims=True)
+        variance = tf.reduce_mean(tf.square(inputs - mean), axis=[1, 2], keepdims=True)
+        return inputs / tf.sqrt(variance + self.epsilon)
 
-def create_takunet_model(
-    params:dict,
-    extra_layer_outside_taku: Union[layers.Layer, None] = None,
-    l2_reg: Union[float, None] = None
-):
-    """Build the Takunet model using modular blocks"""
-    inputs = tf.keras.Input(shape=(32, 32, 3))
-
-    # Stem Block
-    x = stem_block(inputs,params=params)
-    stages = params["stages"]
-    print(f"The x before the stages is {x.shape} the total stages are {stages}")
-
-    if extra_layer_outside_taku is not None:
-        x = extra_layer_outside_taku(x)
-        
-	
-    # Stages with Taku Blocks
-    for _ in range(params["stages"]):
-        x = stage_block(x,params=params)
-        # x = taku_block(x=x, params=params, l2_reg=l2_reg)
-        # x = layers.Conv2D(64, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)  # Downsampling
-        # x = layers.BatchNormalization()(x)
-
-    # Refinement Block
-    x = refinement_block(x,kernel_size=params["kernel_size_refinement_block"])
-
-    # Classification Head
-    x = classification_head(x,output_classes=params["num_output_classes"])
-
-    # Create model
-    model = models.Model(inputs, x)
-    return model
-
-
-
-
-# Blocks
-
-def stem_block(inputs,params:dict):
-    """Stem block of the Takunet model"""
-    x = layers.Conv2D(params["filters_stem_1"], (params["kernel_size_stem_1"], params["kernel_size_stem_1"]), padding='same', activation='relu')(inputs)
+def stem_block(inputs:tuple, params: dict):
+    """Stem Block: Initial feature extraction"""
+    x = layers.Conv2D(filters = params["filters"], kernel_size = params["Conv_kernel"], strides=2, padding='same', dilation_rate= params["dilation_rate"], activation='relu6')(inputs)
+    print(x.shape)
     x = layers.BatchNormalization()(x)
-    x = layers.Conv2D(params["filters_stem_2"], (params["kernel_size_stem_2"], params["kernel_size_stem_2"]), padding='same', activation='relu')(x)
+    print(x.shape)
+    x = layers.DepthwiseConv2D(kernel_size = params["DWConv_kernel"], strides=2, padding='same', activation='relu6')(x)
+    print(x.shape)
     x = layers.BatchNormalization()(x)
+    print(x.shape)
+    #x = layers.Add()([x, inputs])  # Residual connection
+    print(x.shape)
     return x
 
-def refinement_block(x,kernel_size:int):
-    """Refinement block using Depthwise Convolution"""
-    print("I am in the refinement layer")
-    if len(x.shape) ==2:
-        x = tf.keras.layers.Reshape((1, 1, x.shape[-1]))(x)
-    x = layers.DepthwiseConv2D((kernel_size, kernel_size), padding='same', activation='relu')(x)
-    x = layers.BatchNormalization()(x)
-    return x
-
-def classification_head(x,output_classes:int):
-    """Classification head for the Takunet model"""
-    x = layers.GlobalAveragePooling2D()(x)
-    x = layers.Flatten()(x)
-    x = layers.Dense(output_classes, activation='softmax')(x)
-    return x
-
-
-def taku_block(inputs, params: dict, l2_reg: Union[float, None] = None):
-    reg = regularizers.l2(l2_reg) if l2_reg else None
-
-    # Reshape if input is 2D (batch_size, channels)
-    if len(inputs.shape) == 2:
-        inputs = tf.keras.layers.Reshape((1, 1, inputs.shape[-1]))(inputs)  # Convert to (None, 1, 1, C)
-        print(inputs.shape)
+def taku_block(inputs:tuple, params: dict):
+    """Taku Block: Depthwise Convolution with Residual Connection"""
     
-    # Apply DepthwiseConv2D
-    if reg:
-        x = layers.DepthwiseConv2D(kernel_size=params["kernel_size_taku_block_1"], padding='same', use_bias=False, kernel_regularizer=reg)(inputs)
+
+    x = layers.DepthwiseConv2D(kernel_size = params["DWConv_kernel"], strides=1, padding='same', use_bias=False)(inputs)
+    x = layers.BatchNormalization()(x)
+    x = layers.ReLU(6.0)(x)
+    x = layers.Add()([x, inputs])  # Residual connection
+
+    return x
+
+def global_response_normalization(x:tuple, epsilon=1e-6):
+    """Global Response Normalization (GRN)"""
+    mean = tf.reduce_mean(x, axis=[1, 2], keepdims=True)
+    variance = tf.reduce_mean(tf.square(x - mean), axis=[1, 2], keepdims=True)
+    return x / tf.sqrt(variance + epsilon)
+
+def downsampler_block(inputs: tuple, params: dict, number_of_stages: int, curr_stage_number: int):
+    """Downsampler Block: Reduces spatial dimensions and expands channels"""
+    
+    filters = inputs.shape[-1]  # Number of input channels
+    
+    # Ensure num_groups is a valid divisor of filters
+    num_groups = max(1, min(number_of_stages, filters))  # Ensure it does not exceed filters
+    
+    # If num_groups is not a valid divisor, set it to 1
+    if filters % num_groups != 0:
+        num_groups = 1  
+    
+    kernel_size = params["Conv_kernel"]
+    if inputs.shape[1] < kernel_size or inputs.shape[2] < kernel_size:  # If H or W < kernel size
+        kernel_size = 1
+    x = layers.Conv2D(filters=filters, kernel_size=kernel_size, 
+                      groups=num_groups, use_bias=False)(inputs)
+    x = layers.BatchNormalization()(x)
+    x = layers.ReLU(6.0)(x)
+
+    if curr_stage_number < number_of_stages:
+        x = layers.MaxPooling2D(pool_size=2, strides=2, padding='same')(x)
     else:
-        x = layers.DepthwiseConv2D(kernel_size=params["kernel_size_taku_block_1"], padding='same', use_bias=False)(inputs)
-    
-    x = layers.ReLU(6.0)(x)
-    x = layers.BatchNormalization()(x)
-    
-    if params["dropout_rate"] > 0:
-        x = layers.Dropout(params["dropout_rate"])(x)
-    
+        x = layers.AveragePooling2D(pool_size=2, strides=2, padding='same')(x)
+
+    x = GlobalResponseNormalization()(x)
+
     return x
 
 
-
-def downsampler_block(inputs):
-    x = layers.Conv2D(filters=inputs.shape[-1], kernel_size=1, use_bias=False)(inputs)
-    x = layers.ReLU(6.0)(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.GlobalAveragePooling2D()(x)  # Assuming GRN as Global Response Normalization
-    return x
-
-def stage_block(inputs, params):
+def stage_block(inputs:tuple, params:dict , curr_stage_number:int):
+    """Stage Block: Multiple Taku Blocks followed by Downsampler"""
     x = inputs
-    for _ in range(params["stages"]):
-        x = taku_block(x, params)
-    if len(x.shape) ==2:
-        x = tf.keras.layers.Reshape((1, 1, x.shape[-1]))(x)
-    if len(inputs.shape) ==2:
-        inputs = tf.keras.layers.Reshape((1, 1, inputs.shape[-1]))(inputs)
+    for _ in range(params["taku_block"]["taku_block_number"]):
+        x = taku_block(inputs = x, params = params["taku_block"])
+
     concat = layers.Concatenate()([inputs, x])
-    downsampled = downsampler_block(concat)
-    print(f"I passed stage with shape = {downsampled.shape}")
+    downsampled = downsampler_block(inputs=concat, params=params["downsampler"], number_of_stages = params["stages_number"], curr_stage_number = curr_stage_number )
+    
     return downsampled
 
-# def taku_block(x, params:dict, l2_reg: Union[float, None] = None):
-#     res = x
-#     reg = regularizers.l2(l2_reg) if l2_reg else None  # Apply L2 if given
-#     x = layers.Conv2D(params["filters_taku_block_1"], (params["kernel_size_taku_block_1"], params["kernel_size_taku_block_1"]), padding='same', activation='relu', kernel_regularizer=reg)(x)
-#     x = layers.BatchNormalization()(x)
-#     if params["dropout_rate"] > 0:
-#         x = layers.Dropout(params["dropout_rate"])(x)
-#     x = layers.Conv2D(params["filters_taku_block_2"], (params["kernel_size_taku_block_2"], params["kernel_size_taku_block_2"]), padding='same', activation='relu', kernel_regularizer=reg)(x)
-#     x = layers.BatchNormalization()(x)
-#     if res.shape[-1] != x.shape[-1]:  # Match channels if needed
-#         res = layers.Conv2D(params["filters_taku_block_2"], (1, 1), padding="same")(res)
-#     x = layers.Add()([x, res])
-#     return x
+def refiner_block(inputs:tuple, params: dict ):
+    """Refiner Block: Final feature aggregation and classification"""
+   
+
+    x = layers.DepthwiseConv2D(kernel_size = params["DWConv_kernel"], strides=1, padding='same', use_bias=False)(inputs)
+    x = layers.BatchNormalization()(x)
+    x = layers.GlobalAveragePooling2D()(x)  # AdaptiveAvgPool reducing spatial dimensions to 1x1
+    x = layers.Dense(params["num_output_classes"], activation='softmax')(x)  # Output probabilities
+
+    return x
+
+def TakuNet(input_shape, params):
+    """Builds the TakuNet model"""
+    inputs = tf.keras.Input(shape=(32, 32, 6))
+
+    # Stem Block
+    x = stem_block(inputs=inputs, params=params["stem_block"])
+
+    for curr_stage_number in range(params["stages_block"]["stages_number"]):
+        x = stage_block(inputs = x, params = params["stages_block"], curr_stage_number = curr_stage_number)
+
+    outputs = refiner_block(x, params["refiner_block"])
+
+    model = Model(inputs, outputs)
+    model.summary()
+    return model
