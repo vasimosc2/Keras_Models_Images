@@ -98,7 +98,7 @@ def refiner_block(inputs:tuple, params: dict ):
 
 def TakuNet(input_shape, params):
     """Builds the TakuNet model"""
-    inputs = tf.keras.Input(shape=(32, 32, 6))
+    inputs = tf.keras.Input(shape=(32, 32, 3))
 
     # Stem Block
     x = stem_block(inputs=inputs, params=params["stem_block"])
