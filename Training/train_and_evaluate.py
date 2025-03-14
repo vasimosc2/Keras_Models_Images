@@ -185,7 +185,7 @@ def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name
 
 def evaluate_tflite_model(tflite_model_path, x_test, y_test):
     """Evaluates the TFLite model and returns the accuracy."""
-    interpreter = tf.lite.Interpreter(model_path=tflite_model_path, experimental_delegates=[])
+    interpreter = tf.lite.Interpreter(model_path=tflite_model_path)
 
     interpreter.allocate_tensors()
 

@@ -140,7 +140,7 @@ os.makedirs('results', exist_ok=True)
 
 models_to_train = {}
 
-for i in range(1, 2):
+for i in range(1, 21):
     params = sample_from_search_space(config["model_search_space"])
     stages = params["stages_block"]["stages_number"]
     taku_blocks = params["stages_block"]["taku_block"]["taku_block_number"]
@@ -191,7 +191,7 @@ print(f"\n⏳ Total Script Execution Time: {total_time:.2f} seconds ({total_time
 
 if results:
     df_results = pd.DataFrame(results)
-    df_results.to_csv('results/New_TakuNet_GPU_AdamW_Run.csv', index=False)
+    df_results.to_csv('results/New_TakuNet_Big_Run.csv', index=False)
     print("✅ Results saved to CSV.")
 else:
     print("⚠️ No models were trained due to memory constraints.")

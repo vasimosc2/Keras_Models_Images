@@ -1,5 +1,5 @@
 from tensorflow.keras.layers import Layer # type: ignore
-from tensorflow.keras import layers, Model, Input, regularizers # type: ignore
+from tensorflow.keras import layers, Model # type: ignore
 import tensorflow as tf # type: ignore
 
 class GlobalResponseNormalization(Layer):
@@ -98,7 +98,7 @@ def refiner_block(inputs:tuple, params: dict ):
 
 def TakuNet(input_shape, params):
     """Builds the TakuNet model"""
-    inputs = tf.keras.Input(shape=(32, 32, 3))
+    inputs = tf.keras.Input(shape=(input_shape))
 
     # Stem Block
     x = stem_block(inputs=inputs, params=params["stem_block"])
