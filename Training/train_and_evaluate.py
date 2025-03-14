@@ -95,46 +95,51 @@ unsigned int {model_name}_length = {model_length};
 
 def train_and_evaluate_model(model, x_train, y_train, x_test, y_test, model_name: str, params: dict):
     """Trains a model and evaluates both the Keras and TFLite versions."""
-
-    max_ram_usage, param_memory, total_memory = estimate_max_memory_usage(model=model, data_dtype_multiplier=params["data_dtype_multiplier"])
+    
+    max_ram_usage, param_memory, total_memory = estimate_max_memory_usage(
+        model=model, data_dtype_multiplier=params["data_dtype_multiplier"]
+    )
 
     print(f"Max RAM Usage: {max_ram_usage:.2f} KB")
     print(f"Parameter Memory: {param_memory:.2f} KB")
     print(f"Total Memory Usage: {total_memory:.2f} KB")
 
     if max_ram_usage * 1024 > params["max_ram_consumption"]:
-        print(f"🚨 Training aborted: Estimated RAM usage ({max_ram_usage:.2f} KB) exceeds limit ({params['max_ram_consumption']/1024} KB).")
-        return None  
+        print(f"🚨 Training aborted: Estimated RAM usage ({max_ram_usage:.2f} KB) exceeds limit.")
+        return None
 
     print("✅ Memory check passed! Starting training...")
 
     optimizer = get_optimizer(params["optimizer"], params["learning_rate"])
-
     model.compile(optimizer=optimizer, loss=params["loss"], metrics=['accuracy'])
 
     # **Callbacks**
-    midway_callback = MidwayStopCallback(params["num_epochs"], threshold=0.30)
+    checkpoint_path = f'saved_models/{model_name}_best.keras'
+    checkpoint = ModelCheckpoint(filepath=checkpoint_path, monitor='val_accuracy', save_best_only=True, mode='max', verbose=1)
     early_stopping_loss = EarlyStopping(monitor='val_loss', patience=8, restore_best_weights=True)
     early_stopping_acc = EarlyStopping(monitor='val_accuracy', patience=8, mode='max', restore_best_weights=True)
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, verbose=1)
-    checkpoint = ModelCheckpoint(filepath=f'saved_models/{model_name}.keras', save_best_only=True)
 
     # **Start Training**
     start_time = time.time()
     history = model.fit(
-        x_train, y_train, 
-        epochs=params["num_epochs"], 
-        batch_size=params["batch_size"], 
+        x_train, y_train,
+        epochs=params["num_epochs"],
+        batch_size=params["batch_size"],
         validation_data=(x_test, y_test),
         verbose=2,
-        callbacks=[midway_callback, early_stopping_acc, early_stopping_loss, reduce_lr, checkpoint]
+        callbacks=[early_stopping_acc, early_stopping_loss, reduce_lr, checkpoint]
     )
-
-    final_train_acc = history.history['accuracy'][-1]
-    final_test_acc = history.history['val_accuracy'][-1]
     training_time = time.time() - start_time
 
-    print(f"Test Accuracy (Keras): {final_test_acc:.4f}")
+    # **Load Best Model**
+    model.load_weights(checkpoint_path)
+    print(f"✅ Best model restored from {checkpoint_path}")
+
+    # **Final Accuracy Metrics**
+    final_train_acc = max(history.history['accuracy'])  # Best training accuracy
+    final_test_acc = max(history.history['val_accuracy'])  # Best validation accuracy
+    print(f"✅ Final Test Accuracy (Best Model): {final_test_acc:.4f}")
 
     # **Overfitting detection**
     if final_train_acc - final_test_acc > 0.05:
