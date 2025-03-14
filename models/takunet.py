@@ -15,16 +15,18 @@ class GlobalResponseNormalization(Layer):
 
 def stem_block(inputs:tuple, params: dict):
     """Stem Block: Initial feature extraction"""
-    x = layers.Conv2D(filters = params["filters"], kernel_size = params["Conv_kernel"], strides=2, padding='same', dilation_rate= params["dilation_rate"], activation='relu6')(inputs)
+    x = layers.Conv2D(filters=params["filters"], kernel_size=params["Conv_kernel"],
+                strides=2, padding='same', activation=None, use_bias=False)(inputs)
     print(x.shape)
     x = layers.BatchNormalization()(x)
-    print(x.shape)
-    x = layers.DepthwiseConv2D(kernel_size = params["DWConv_kernel"], strides=2, padding='same', activation='relu6')(x)
+    x = layers.ReLU(6.0)(x)
+    x = layers.Dropout(0.2)(x)
+    x = layers.DepthwiseConv2D(kernel_size=params["DWConv_kernel"], strides=2, padding='same', use_bias=False)(x)
     print(x.shape)
     x = layers.BatchNormalization()(x)
+    x = layers.ReLU(6.0)(x)
     print(x.shape)
     #x = layers.Add()([x, inputs])  # Residual connection
-    print(x.shape)
     return x
 
 def taku_block(inputs:tuple, params: dict):
@@ -34,15 +36,16 @@ def taku_block(inputs:tuple, params: dict):
     x = layers.DepthwiseConv2D(kernel_size = params["DWConv_kernel"], strides=1, padding='same', use_bias=False)(inputs)
     x = layers.BatchNormalization()(x)
     x = layers.ReLU(6.0)(x)
+    x = layers.Dropout(0.2)(x)
     x = layers.Add()([x, inputs])  # Residual connection
 
     return x
 
-def global_response_normalization(x:tuple, epsilon=1e-6):
-    """Global Response Normalization (GRN)"""
-    mean = tf.reduce_mean(x, axis=[1, 2], keepdims=True)
-    variance = tf.reduce_mean(tf.square(x - mean), axis=[1, 2], keepdims=True)
-    return x / tf.sqrt(variance + epsilon)
+# def global_response_normalization(x:tuple, epsilon=1e-6):
+#     """Global Response Normalization (GRN)"""
+#     mean = tf.reduce_mean(x, axis=[1, 2], keepdims=True)
+#     variance = tf.reduce_mean(tf.square(x - mean), axis=[1, 2], keepdims=True)
+#     return x / tf.sqrt(variance + epsilon)
 
 def downsampler_block(inputs: tuple, params: dict, number_of_stages: int, curr_stage_number: int):
     """Downsampler Block: Reduces spatial dimensions and expands channels"""
@@ -59,10 +62,12 @@ def downsampler_block(inputs: tuple, params: dict, number_of_stages: int, curr_s
     kernel_size = params["Conv_kernel"]
     if inputs.shape[1] < kernel_size or inputs.shape[2] < kernel_size:  # If H or W < kernel size
         kernel_size = 1
+
     x = layers.Conv2D(filters=filters, kernel_size=kernel_size, 
                       groups=num_groups, use_bias=False)(inputs)
     x = layers.BatchNormalization()(x)
     x = layers.ReLU(6.0)(x)
+    x = layers.Dropout(0.2)(x)
 
     if curr_stage_number < number_of_stages:
         x = layers.MaxPooling2D(pool_size=2, strides=2, padding='same')(x)
@@ -91,7 +96,9 @@ def refiner_block(inputs:tuple, params: dict ):
 
     x = layers.DepthwiseConv2D(kernel_size = params["DWConv_kernel"], strides=1, padding='same', use_bias=False)(inputs)
     x = layers.BatchNormalization()(x)
+    x = layers.Dropout(0.3)(x)
     x = layers.GlobalAveragePooling2D()(x)  # AdaptiveAvgPool reducing spatial dimensions to 1x1
+    x = layers.Dropout(0.5)(x)
     x = layers.Dense(params["num_output_classes"], activation='softmax')(x)  # Output probabilities
 
     return x
