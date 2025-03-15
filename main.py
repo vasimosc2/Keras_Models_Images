@@ -3,10 +3,6 @@ import os
 import random
 from typing import List
 import psutil  # type: ignore # For measuring memory usage
-
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
-from TakuNet import TakuNetModel
-from data_processing import get_dataset
 import tensorflow as tf  # type: ignore
 import pandas as pd
 from tensorflow.keras import backend as K  # type: ignore
@@ -14,7 +10,8 @@ import os
 import time
 
 
-# ✅ Ensure TensorFlow uses GPU if available
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
     try:
@@ -35,6 +32,9 @@ with open("config.json", "r") as config_file:
     config = json.load(config_file)
 
 
+
+from TakuNet import TakuNetModel
+from data_processing import get_dataset
 
 x_train, y_train, x_test, y_test = get_dataset(output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], use_augmented_data=False)
 
