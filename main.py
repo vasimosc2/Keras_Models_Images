@@ -44,7 +44,7 @@ def sample_from_search_space(model_search_space: dict) -> dict:
             "filters": random.choice(model_search_space["stem_block"]["filters"]),
             "Conv_kernel": random.choice(model_search_space["stem_block"]["Conv_kernel"]),
             "strides": random.choice(model_search_space["stem_block"]["strides"]),
-            "dropout": random.choice(model_search_space["stem_block"]["droupout"]),
+            "dropout": random.choice(model_search_space["stem_block"]["dropout"]),
             "dilation_rate": random.choice(model_search_space["stem_block"]["dilation_rate"]),
             "DWConv_kernel": random.choice(model_search_space["stem_block"]["DWConv_kernel"]),
         },
@@ -52,17 +52,17 @@ def sample_from_search_space(model_search_space: dict) -> dict:
             "stages_number": random.choice(model_search_space["stages_block"]["stages_number"]),
             "taku_block": {
                 "taku_block_number": random.choice(model_search_space["stages_block"]["taku_block"]["taku_block_number"]),
-                "dropout": random.choice(model_search_space["stages_block"]["taku_block"]["droupout"]),
+                "dropout": random.choice(model_search_space["stages_block"]["taku_block"]["dropout"]),
                 "DWConv_kernel": random.choice(model_search_space["stages_block"]["taku_block"]["DWConv_kernel"]),
             },
             "downsampler": {
-                "dropout": random.choice(model_search_space["stages_block"]["downsampler"]["droupout"]),
+                "dropout": random.choice(model_search_space["stages_block"]["downsampler"]["dropout"]),
                 "Conv_kernel": random.choice(model_search_space["stages_block"]["downsampler"]["Conv_kernel"]),
             }
         },
         "refiner_block": {
             "DWConv_kernel": random.choice(model_search_space["refiner_block"]["DWConv_kernel"]),
-            "dropout": random.choice(model_search_space["refiner_block"]["droupout"]),
+            "dropout": random.choice(model_search_space["refiner_block"]["dropout"]),
             "num_output_classes": model_search_space["refiner_block"]["num_output_classes"]
         }
     }

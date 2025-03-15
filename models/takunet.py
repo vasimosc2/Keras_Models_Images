@@ -9,8 +9,8 @@ def stem_block(inputs:tuple, params: dict):
     print(x.shape)
     x = layers.BatchNormalization()(x)
     x = layers.ReLU(6.0)(x)
-    if params["droupout"]>0:
-        x = layers.Dropout(params["droupout"])(x)
+    if params["dropout"]>0:
+        x = layers.Dropout(params["dropout"])(x)
     x = layers.DepthwiseConv2D(kernel_size=params["DWConv_kernel"], strides=2, padding='same', use_bias=False)(x)
     print(x.shape)
     x = layers.BatchNormalization()(x)
@@ -24,8 +24,8 @@ def taku_block(inputs:tuple, params: dict):
     x = layers.DepthwiseConv2D(kernel_size = params["DWConv_kernel"], strides=1, padding='same', use_bias=False)(inputs)
     x = layers.BatchNormalization()(x)
     x = layers.ReLU(6.0)(x)
-    if params["droupout"] > 0:
-        x = layers.Dropout(params["droupout"])(x)
+    if params["dropout"] > 0:
+        x = layers.Dropout(params["dropout"])(x)
     x = layers.Add()([x, inputs])  # Residual connection
 
     return x
@@ -50,8 +50,8 @@ def downsampler_block(inputs: tuple, params: dict, number_of_stages: int, curr_s
                       groups=num_groups, use_bias=False)(inputs)
     x = layers.BatchNormalization()(x)
     x = layers.ReLU(6.0)(x)
-    if params["droupout"] > 0:
-        x = layers.Dropout(params["droupout"])(x)
+    if params["dropout"] > 0:
+        x = layers.Dropout(params["dropout"])(x)
 
     if curr_stage_number < number_of_stages:
         x = layers.MaxPooling2D(pool_size=2, strides=2, padding='same')(x)
@@ -82,8 +82,8 @@ def refiner_block(inputs:tuple, params: dict ):
     x = layers.BatchNormalization()(x)
     x = layers.Dropout(0.3)(x)
     x = layers.GlobalAveragePooling2D()(x)  # AdaptiveAvgPool reducing spatial dimensions to 1x1
-    if params["droupout"] > 0:
-        x = layers.Dropout(params["droupout"])(x)
+    if params["dropout"] > 0:
+        x = layers.Dropout(params["dropout"])(x)
     x = layers.Dense(params["num_output_classes"], activation='softmax')(x)  # Output probabilities
 
     return x
