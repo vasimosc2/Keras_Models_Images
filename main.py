@@ -44,6 +44,7 @@ def sample_from_search_space(model_search_space: dict) -> dict:
             "filters": random.choice(model_search_space["stem_block"]["filters"]),
             "Conv_kernel": random.choice(model_search_space["stem_block"]["Conv_kernel"]),
             "strides": random.choice(model_search_space["stem_block"]["strides"]),
+            "dropout": random.choice(model_search_space["stem_block"]["droupout"]),
             "dilation_rate": random.choice(model_search_space["stem_block"]["dilation_rate"]),
             "DWConv_kernel": random.choice(model_search_space["stem_block"]["DWConv_kernel"]),
         },
@@ -51,14 +52,17 @@ def sample_from_search_space(model_search_space: dict) -> dict:
             "stages_number": random.choice(model_search_space["stages_block"]["stages_number"]),
             "taku_block": {
                 "taku_block_number": random.choice(model_search_space["stages_block"]["taku_block"]["taku_block_number"]),
+                "dropout": random.choice(model_search_space["stages_block"]["taku_block"]["droupout"]),
                 "DWConv_kernel": random.choice(model_search_space["stages_block"]["taku_block"]["DWConv_kernel"]),
             },
             "downsampler": {
+                "dropout": random.choice(model_search_space["stages_block"]["downsampler"]["droupout"]),
                 "Conv_kernel": random.choice(model_search_space["stages_block"]["downsampler"]["Conv_kernel"]),
             }
         },
         "refiner_block": {
             "DWConv_kernel": random.choice(model_search_space["refiner_block"]["DWConv_kernel"]),
+            "dropout": random.choice(model_search_space["refiner_block"]["droupout"]),
             "num_output_classes": model_search_space["refiner_block"]["num_output_classes"]
         }
     }
@@ -191,7 +195,7 @@ print(f"\n⏳ Total Script Execution Time: {total_time:.2f} seconds ({total_time
 
 if results:
     df_results = pd.DataFrame(results)
-    df_results.to_csv('results/New_TakuNet_Big_Run.csv', index=False)
+    df_results.to_csv('results/Random_Dropout.csv', index=False)
     print("✅ Results saved to CSV.")
 else:
     print("⚠️ No models were trained due to memory constraints.")
