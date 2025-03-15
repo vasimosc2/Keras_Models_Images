@@ -19,10 +19,9 @@ os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
     try:
-        # Set memory growth for all GPUs
         for gpu in gpus:
             tf.config.experimental.set_memory_growth(gpu, True)
-        print(f"✅ I found 1 and I will use a GPU located at: {gpus[0].name}")
+        print(f"✅ I found a GPU and will use: {gpus[0].name}")
     except RuntimeError as e:
         print(f"❌ GPU Error: {e}")
 else:
