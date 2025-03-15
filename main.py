@@ -1,19 +1,12 @@
 import json
 import os
 import random
+from typing import List
 import psutil  # type: ignore # For measuring memory usage
-from Training.train_and_evaluate import train_and_evaluate_model
-from models.deeper_cnn import create_deeper_cnn
-from models.simple_cnn import create_simple_cnn
-from models.cnn_with_gap import create_cnn_with_gap
-from models.cnn_with_batchnorm import create_cnn_with_batchnorm
-from models.cnn_with_dropout import create_cnn_with_dropout
-from models.resnet_like import create_resnet_like_cnn
-from models.takunet import TakuNet
+from TakuNet import TakuNetModel
+from data_processing import get_dataset
 import tensorflow as tf  # type: ignore
 import pandas as pd
-import numpy as np
-from tensorflow.keras import layers # type: ignore
 from tensorflow.keras import backend as K  # type: ignore
 import os
 import time 
@@ -37,9 +30,23 @@ else:
 
 
 
-def sample_from_search_space(model_search_space: dict) -> dict:
-    """Randomly select hyperparameters from the search space while maintaining the hierarchical structure."""
-    params = {
+with open("config.json", "r") as config_file:
+    config = json.load(config_file)
+
+
+
+x_train, y_train, x_test, y_test = get_dataset(output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], use_augmented_data=False)
+
+
+os.makedirs('saved_models', exist_ok=True)
+os.makedirs('results', exist_ok=True)
+
+
+
+
+def sample_from_search_space(model_search_space):
+    """Randomly selects model architecture hyperparameters."""
+    return {
         "stem_block": {
             "filters": random.choice(model_search_space["stem_block"]["filters"]),
             "Conv_kernel": random.choice(model_search_space["stem_block"]["Conv_kernel"]),
@@ -66,137 +73,72 @@ def sample_from_search_space(model_search_space: dict) -> dict:
             "num_output_classes": model_search_space["refiner_block"]["num_output_classes"]
         }
     }
-    return params
 
-
-def sample_from_train_and_evaluate(train_and_evaluate:dict) -> dict:
-    return{
+def sample_from_train_and_evaluate(train_and_evaluate):
+    """Randomly selects training hyperparameters."""
+    return {
         "optimizer": random.choice(train_and_evaluate["model_config"]["optimizer"]),
         "loss": train_and_evaluate["model_config"]["loss"],
         "learning_rate": random.choice(train_and_evaluate["model_config"]["learning_rate"]),
+        "learning_rate_patience": random.choice(train_and_evaluate["model_config"]["learning_rate_patience"]),
+        "early_stopping_patience": random.choice(train_and_evaluate["model_config"]["early_stopping_patience"]),
         "num_epochs": train_and_evaluate["evaluation_config"]["num_epochs"],
         "batch_size": train_and_evaluate["evaluation_config"]["batch_size"],
         "max_ram_consumption": train_and_evaluate["evaluation_config"]["max_ram_consumption"],
-        "max_flash_consumption": train_and_evaluate["evaluation_config"]["max_flash_consumption"], 
         "data_dtype_multiplier": train_and_evaluate["evaluation_config"]["data_dtype_multiplier"],
         "model_dtype_multiplier": train_and_evaluate["evaluation_config"]["model_dtype_multiplier"],
     }
 
 
-(x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar100.load_data()
-x_train, x_test = x_train / 255.0, x_test / 255.0
+models_to_train:List[TakuNetModel] = []
 
-config_file = open("config.json", "r")
+for i in range(1, 21):  # Train 20 models with random hyperparameters
+    model_params = sample_from_search_space(config["model_search_space"])
+    train_params = sample_from_train_and_evaluate(config["train_and_evaluate"])
 
-config:dict = json.load(config_file)
-output_class:int = config["model_search_space"]["refiner_block"]["num_output_classes"]
+    model_name = f"TakuNet_Random_{i}"
+    print(f"\n🔍 Selected hyperparameters for {model_name}:\n{json.dumps(model_params, indent=4)}")
 
-y_train = tf.keras.utils.to_categorical(y_train, output_class)
-y_test = tf.keras.utils.to_categorical(y_test, output_class)
-
-x_train = tf.cast(x_train, tf.float32)
-x_test = tf.cast(x_test, tf.float32)
-
-data_augmentation = tf.keras.Sequential([
-    tf.keras.layers.RandomFlip("horizontal"),
-    tf.keras.layers.RandomRotation(0.2),
-    tf.keras.layers.RandomZoom(0.1),
-])
-
-def create_augmented_dataset(x, y):
-    """Creates an augmented dataset efficiently using tf.data."""
-    
-    # Convert numpy arrays to a TensorFlow dataset
-    dataset = tf.data.Dataset.from_tensor_slices((x, y))
-
-    # Apply augmentation only to images
-    aug_dataset = dataset.map(lambda img, label: (data_augmentation(img), label), num_parallel_calls=tf.data.AUTOTUNE)
-
-    # Batch and prefetch to optimize performance
-    aug_dataset = aug_dataset.batch(128).prefetch(tf.data.AUTOTUNE)  # Batching speeds up processing
-
-    # Convert dataset back to tensors (efficient)
-    x_aug_list, y_aug_list = [], []
-    for img_batch, label_batch in aug_dataset:
-        x_aug_list.append(img_batch)
-        y_aug_list.append(label_batch)
-
-    # Concatenate batched tensors
-    x_aug = tf.concat(x_aug_list, axis=0)
-    y_aug = tf.concat(y_aug_list, axis=0)
-
-    # Concatenate original & augmented datasets
-    x_combined = tf.concat([x, x_aug], axis=0)
-    y_combined = tf.concat([y, y_aug], axis=0)  # Duplicate labels
-
-    return x_combined, y_combined
-
-
-print("🔄 Augmenting dataset...")
-x_train_final, y_train_final = create_augmented_dataset(x_train, y_train)
-#x_test = (x_test * 255).numpy().astype(np.uint8)
-print(f"✅ Dataset Size Doubled: {x_train.shape[0]} → {x_train_final.shape[0]} images")
-
-
-
-os.makedirs('saved_models', exist_ok=True)
-os.makedirs('results', exist_ok=True)
-
-models_to_train = {}
-
-for i in range(1, 21):
-    params = sample_from_search_space(config["model_search_space"])
-    stages = params["stages_block"]["stages_number"]
-    taku_blocks = params["stages_block"]["taku_block"]["taku_block_number"]
-    print(f"The random params selected for model_{i} are:\n{json.dumps(params, indent=4)}")
-    model_name = f"TakuNet Random_{i} (Stages: {stages} Blocks: {taku_blocks})"
-    models_to_train[model_name] = TakuNet(input_shape=(32,32,3),params=params)
+    models_to_train.append(TakuNetModel(model_name=model_name, input_shape=(32, 32, 3), model_params=model_params, train_params=train_params, x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test))
 
 
 results = []
-print("I am starting the training\n")
+print("🚀 Starting model training...\n")
+
 start_time = time.time()
-for model_name, model in models_to_train.items():
-    
-    print(f"\nTraining {model_name}...")
-    
-    
-    results_data = train_and_evaluate_model(model, x_train_final, y_train_final, x_test, y_test, model_name, 
-                                            params=sample_from_train_and_evaluate(config["train_and_evaluate"]))
+for model in models_to_train:
+    print(f"\nTraining {model.model_name}...")
 
-    if results_data is not None:
+    model.train()  # Train the model
 
-        test_acc,tflite_acc, training_acc, precision, recall, keras_model_size, tf_model_size, c_array_size, flops, max_ram, param_mem, total_ram_mem, training_time = results_data
-        
+    if model.results.train_accuracy is not None:
         results.append({
-            "Model": model_name,
-            "Test Accuracy": test_acc,
-            "Tensor Flow Light Accuracy" : tflite_acc,
-            "Training Accuracy": training_acc,
-            "Precision": precision,
-            "Recall": recall,
-            "Keras Size_KB": keras_model_size,
-            "Tensor Flow Light Size_KB": tf_model_size,
-            "C array Size_KB ": c_array_size,
-            "Flops_K": flops,
-            "Max_RAM_KB": max_ram,
-            "Param_Memory_KB": param_mem,
-            "Total_Memory_KB": total_ram_mem,
-            "Training_Time": training_time
+            "Model": model.model_name,
+            "Best Train Accuracy": model.results.train_accuracy,
+            "Best Test Accuracy": model.results.test_accuracy,
+            "Precision": model.results.precision,
+            "Recall": model.results.recall,
+            "F1 Score": model.results.f1_score,
+            "Max RAM Usage (KB)": model.results.max_ram_usage,
+            "Param Memory (KB)": model.results.param_memory,
+            "Total Memory (KB)": model.results.total_memory,
+            "Training Time (s)": model.results.training_time
         })
-
         K.clear_session()
     else:
-        print(f"⚠️ Model {model_name} was skipped due to excessive memory usage.")
-end_time = time.time()  # Record end time
+        print(f"⚠️ Model {model.model_name} was skipped due to excessive memory usage.")
+
+
+end_time = time.time()
 total_time = end_time - start_time
 
-print(f"\n⏳ Total Script Execution Time: {total_time:.2f} seconds ({total_time/60:.2f} minutes)")
+print(f"\n⏳ Total Training Time: {total_time:.2f} seconds ({total_time/60:.2f} minutes)")
 
+# **Save Results**
 if results:
     df_results = pd.DataFrame(results)
-    df_results.to_csv('results/Random_Dropout.csv', index=False)
-    print("✅ Results saved to CSV.")
+    df_results.to_csv('results/Training_Results.csv', index=False)
+    print("✅ Results saved to CSV: results/Training_Results.csv")
 else:
     print("⚠️ No models were trained due to memory constraints.")
 
