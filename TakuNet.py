@@ -4,7 +4,7 @@ import os
 import tensorflow as tf # type: ignore
 from tensorflow.keras import layers, Model # type: ignore
 from typing import Dict, Tuple
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score # type: ignore
+from sklearn.metrics import precision_score, recall_score, f1_score # type: ignore
 from tensorflow.keras.callbacks import Callback, EarlyStopping, ReduceLROnPlateau, ModelCheckpoint # type: ignore
 from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop # type: ignore
 
@@ -36,12 +36,12 @@ class TakuNetModel:
         return x
     
     def _taku_block(self, inputs):
-        x = layers.DepthwiseConv2D(kernel_size=self.model_params["taku_block"]["DWConv_kernel"], 
+        x = layers.DepthwiseConv2D(kernel_size=self.model_params["stages_block"]["taku_block"]["DWConv_kernel"], 
                                    strides=1, padding='same', use_bias=False)(inputs)
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
-        if self.model_params["taku_block"]["dropout"] > 0:
-            x = layers.Dropout(self.model_params["taku_block"]["dropout"])(x)
+        if self.model_params["stages_block"]["taku_block"]["dropout"] > 0:
+            x = layers.Dropout(self.model_params["stages_block"]["taku_block"]["dropout"])(x)
         return layers.Add()([x, inputs])
     
     def _downsampler_block(self, inputs, curr_stage_number):
@@ -49,14 +49,14 @@ class TakuNetModel:
         num_groups = max(1, min(self.model_params["stages_block"]["stages_number"], filters))
         if filters % num_groups != 0:
             num_groups = 1  
-        kernel_size = min(self.model_params["downsampler"]["Conv_kernel"], inputs.shape[1], inputs.shape[2])
+        kernel_size = min(self.model_params["stages_block"]["downsampler"]["Conv_kernel"], inputs.shape[1], inputs.shape[2])
         
         x = layers.Conv2D(filters=filters, kernel_size=kernel_size, 
                           groups=num_groups, use_bias=False)(inputs)
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
-        if self.model_params["downsampler"]["dropout"] > 0:
-            x = layers.Dropout(self.model_params["downsampler"]["dropout"])(x)
+        if self.model_params["stages_block"]["downsampler"]["dropout"] > 0:
+            x = layers.Dropout(self.model_params["stages_block"]["downsampler"]["dropout"])(x)
         
         pool_layer = layers.MaxPooling2D if curr_stage_number < self.model_params["stages_block"]["stages_number"] else layers.AveragePooling2D
         x = pool_layer(pool_size=2, strides=2, padding='same')(x)

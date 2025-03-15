@@ -3,25 +3,27 @@ import os
 import random
 from typing import List
 import psutil  # type: ignore # For measuring memory usage
+
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 from TakuNet import TakuNetModel
 from data_processing import get_dataset
 import tensorflow as tf  # type: ignore
 import pandas as pd
 from tensorflow.keras import backend as K  # type: ignore
 import os
-import time 
-
-# Enable GPU
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+import time
 
 
-# Ensure TensorFlow uses GPU if available
+# ✅ Ensure TensorFlow uses GPU if available
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
     try:
-        for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
-        print(f"✅ I found a GPU and will use: {gpus[0].name}")
+        if any(tf.config.experimental.get_memory_growth(gpu) for gpu in gpus):
+            print("⚠️ GPU is already initialized! `set_memory_growth()` will fail.")
+        else:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            print(f"✅ Using GPU: {gpus[0].name}")
     except RuntimeError as e:
         print(f"❌ GPU Error: {e}")
 else:
