@@ -21,45 +21,73 @@ class TakuNetModel:
         self.y_test = y_test
         self.results = TrainingResults()
     
-    def _stem_block(self, inputs):
+    def _stem_block(self, inputs:tuple):
+        print(f"stem1 block shape {inputs.shape}\n")
         x = layers.Conv2D(filters=self.model_params["stem_block"]["filters"], 
                           kernel_size=self.model_params["stem_block"]["Conv_kernel"],
-                          strides=2, padding='same', use_bias=False)(inputs)
+                          strides=self.model_params["stem_block"]["Conv_strides"], 
+                          padding='same', 
+                          use_bias=False)(inputs)
+        print(f"stem2 block shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
+        print(f"stem3 block shape {x.shape}\n")
         x = layers.ReLU(6.0)(x)
+        print(f"stem4 block shape {x.shape}\n")
         if self.model_params["stem_block"]["dropout"] > 0:
             x = layers.Dropout(self.model_params["stem_block"]["dropout"])(x)
+        print(f"stem5 block shape {x.shape}\n")
         x = layers.DepthwiseConv2D(kernel_size=self.model_params["stem_block"]["DWConv_kernel"],
-                                   strides=2, padding='same', use_bias=False)(x)
+                                   strides=self.model_params["stem_block"]["DWConv_strides"],
+                                   padding='same', 
+                                   use_bias=False)(x)
+        print(f"stem6 block shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
+        print(f"stem7 block shape {x.shape}\n")
         return x
     
-    def _taku_block(self, inputs):
+    def _taku_block(self, inputs:tuple):
+        print(f"TakuBlock 1 shape {inputs.shape}\n")
         x = layers.DepthwiseConv2D(kernel_size=self.model_params["stages_block"]["taku_block"]["DWConv_kernel"], 
-                                   strides=1, padding='same', use_bias=False)(inputs)
+                                   strides=self.model_params["stages_block"]["taku_block"]["DWConv_strides"], 
+                                   padding='same', 
+                                   use_bias=False)(inputs)
+        
+        print(f"TakuBlock 2 shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
+        print(f"TakuBlock 3 shape {x.shape}\n")
         x = layers.ReLU(6.0)(x)
+        print(f"TakuBlock 4 shape {x.shape}\n")
         if self.model_params["stages_block"]["taku_block"]["dropout"] > 0:
             x = layers.Dropout(self.model_params["stages_block"]["taku_block"]["dropout"])(x)
+        print(f"TakuBlock 5 shape {x.shape}\n")
         return layers.Add()([x, inputs])
     
-    def _downsampler_block(self, inputs, curr_stage_number):
+    def _downsampler_block(self, inputs:tuple, curr_stage_number):
+        print(f"DownSample input shape {inputs.shape}\n")
         filters = inputs.shape[-1]
         num_groups = max(1, min(self.model_params["stages_block"]["stages_number"], filters))
         if filters % num_groups != 0:
             num_groups = 1  
         kernel_size = min(self.model_params["stages_block"]["downsampler"]["Conv_kernel"], inputs.shape[1], inputs.shape[2])
         
-        x = layers.Conv2D(filters=filters, kernel_size=kernel_size, 
-                          groups=num_groups, use_bias=False)(inputs)
+        x = layers.Conv2D(filters=filters, 
+                          kernel_size=kernel_size, 
+                          groups=num_groups, 
+                          use_bias=False)(inputs)
+        print(f"DownSample 2 shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
+        print(f"DownSample 3 shape {x.shape}\n")
         x = layers.ReLU(6.0)(x)
+        print(f"DownSample 4 shape {x.shape}\n")
         if self.model_params["stages_block"]["downsampler"]["dropout"] > 0:
             x = layers.Dropout(self.model_params["stages_block"]["downsampler"]["dropout"])(x)
-        
+        print(f"DownSample 5 shape {x.shape}\n")
         pool_layer = layers.MaxPooling2D if curr_stage_number < self.model_params["stages_block"]["stages_number"] else layers.AveragePooling2D
-        x = pool_layer(pool_size=2, strides=2, padding='same')(x)
+        x = pool_layer(pool_size=self.model_params["stages_block"]["downsampler"]["pool_size"], 
+                       strides=self.model_params["stages_block"]["downsampler"]["strides"], 
+                       padding='same')(x)
+        print(f"DownSample 6 shape {x.shape}\n")
         return layers.LayerNormalization()(x)
     
     def _stage_block(self, inputs, curr_stage_number):
@@ -70,13 +98,21 @@ class TakuNetModel:
         return self._downsampler_block(concat, curr_stage_number)
     
     def _refiner_block(self, inputs):
+        print(f"Refiner Block input shape {inputs.shape}\n")
         x = layers.DepthwiseConv2D(kernel_size=self.model_params["refiner_block"]["DWConv_kernel"], 
-                                   strides=1, padding='same', use_bias=False)(inputs)
+                                   strides=["refiner_block"]["DWConvConv_strides"], 
+                                   padding='same', 
+                                   use_bias=False)(inputs)
+        print(f"Refiner Block 2 shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
+        print(f"Refiner Block 3 shape {x.shape}\n")
         x = layers.Dropout(0.3)(x)
+        print(f"Refiner Block 4 shape {x.shape}\n")
         x = layers.GlobalAveragePooling2D()(x)
+        print(f"Refiner Block 5 shape {x.shape}\n")
         if self.model_params["refiner_block"]["dropout"] > 0:
             x = layers.Dropout(self.model_params["refiner_block"]["dropout"])(x)
+        print(f"Refiner Block 6 shape {x.shape}\n")
         return layers.Dense(self.model_params["refiner_block"]["num_output_classes"], activation='softmax')(x)
     
     def _build_model(self) -> tf.keras.Model:
@@ -114,7 +150,7 @@ class TakuNetModel:
         early_stopping_acc = EarlyStopping(monitor='val_accuracy', patience=self.train_params["early_stopping_patience"], mode='max', restore_best_weights=True)
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=self.train_params["learning_rate_patience"], verbose=1)
         midway_callback = MidwayStopCallback(total_epochs=self.train_params["num_epochs"], divider=self.train_params["divider"], threshold=0.30)
-        
+
         # **Train Model with Timing**
         start_time = time.time()
         history = self.model.fit(

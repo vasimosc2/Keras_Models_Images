@@ -51,10 +51,11 @@ def sample_from_search_space(model_search_space):
         "stem_block": {
             "filters": random.choice(model_search_space["stem_block"]["filters"]),
             "Conv_kernel": random.choice(model_search_space["stem_block"]["Conv_kernel"]),
-            "strides": random.choice(model_search_space["stem_block"]["strides"]),
+            "Conv_strides": random.choice(model_search_space["stem_block"]["Conv_strides"]),
             "dropout": random.choice(model_search_space["stem_block"]["dropout"]),
             "dilation_rate": random.choice(model_search_space["stem_block"]["dilation_rate"]),
             "DWConv_kernel": random.choice(model_search_space["stem_block"]["DWConv_kernel"]),
+            "DWConv_strides": random.choice(model_search_space["stem_block"]["DWConv_strides"])
         },
         "stages_block": {
             "stages_number": random.choice(model_search_space["stages_block"]["stages_number"]),
@@ -62,14 +63,18 @@ def sample_from_search_space(model_search_space):
                 "taku_block_number": random.choice(model_search_space["stages_block"]["taku_block"]["taku_block_number"]),
                 "dropout": random.choice(model_search_space["stages_block"]["taku_block"]["dropout"]),
                 "DWConv_kernel": random.choice(model_search_space["stages_block"]["taku_block"]["DWConv_kernel"]),
+                "DWConv_strides": random.choice(model_search_space["stages_block"]["taku_block"]["DWConv_strides"])
             },
             "downsampler": {
                 "dropout": random.choice(model_search_space["stages_block"]["downsampler"]["dropout"]),
+                "pool_size": random.choice(model_search_space["stages_block"]["downsampler"]["pool_size"]),
                 "Conv_kernel": random.choice(model_search_space["stages_block"]["downsampler"]["Conv_kernel"]),
+                "strides": random.choice(model_search_space["stages_block"]["downsampler"]["strides"]),
             }
         },
         "refiner_block": {
             "DWConv_kernel": random.choice(model_search_space["refiner_block"]["DWConv_kernel"]),
+            "DWConv_strides": random.choice(model_search_space["refiner_block"]["DWConv_strides"]),
             "dropout": random.choice(model_search_space["refiner_block"]["dropout"]),
             "num_output_classes": model_search_space["refiner_block"]["num_output_classes"]
         }
@@ -94,7 +99,7 @@ def sample_from_train_and_evaluate(train_and_evaluate):
 
 models_to_train:List[TakuNetModel] = []
 
-for i in range(1, 21):  # Train 20 models with random hyperparameters
+for i in range(1, 3):  # Train 20 models with random hyperparameters
     model_params = sample_from_search_space(config["model_search_space"])
     train_params = sample_from_train_and_evaluate(config["train_and_evaluate"])
 
