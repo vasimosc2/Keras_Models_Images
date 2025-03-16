@@ -83,7 +83,7 @@ def sample_from_train_and_evaluate(train_and_evaluate):
         "learning_rate": random.choice(train_and_evaluate["model_config"]["learning_rate"]),
         "learning_rate_patience": random.choice(train_and_evaluate["model_config"]["learning_rate_patience"]),
         "early_stopping_patience": random.choice(train_and_evaluate["model_config"]["early_stopping_patience"]),
-        "divider": train_and_evaluate["model_config"]["divider"],
+        "divider": random.choice(train_and_evaluate["model_config"]["divider"]),
         "num_epochs": train_and_evaluate["evaluation_config"]["num_epochs"],
         "batch_size": train_and_evaluate["evaluation_config"]["batch_size"],
         "max_ram_consumption": train_and_evaluate["evaluation_config"]["max_ram_consumption"],
