@@ -113,7 +113,8 @@ class TakuNetModel:
         early_stopping_loss = EarlyStopping(monitor='val_loss', patience=self.train_params["learning_rate_patience"], restore_best_weights=True)
         early_stopping_acc = EarlyStopping(monitor='val_accuracy', patience=self.train_params["early_stopping_patience"], mode='max', restore_best_weights=True)
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=self.train_params["learning_rate_patience"], verbose=1)
-
+        midway_callback = MidwayStopCallback(total_epochs=self.train_params["num_epochs"], divider=self.train_params["divider"], threshold=0.30)
+        
         # **Train Model with Timing**
         start_time = time.time()
         history = self.model.fit(
@@ -122,7 +123,7 @@ class TakuNetModel:
             batch_size=self.train_params["batch_size"],
             validation_data=(self.x_test, self.y_test),
             verbose=2,
-            callbacks=[early_stopping_acc, early_stopping_loss, reduce_lr, checkpoint]
+            callbacks=[midway_callback, early_stopping_acc, early_stopping_loss, reduce_lr, checkpoint]
         )
 
         training_time = time.time() - start_time
@@ -165,7 +166,7 @@ class TakuNetModel:
         self.model.save(keras_model_path)
         print(f"✅ Model saved in Keras format: {keras_model_path}")
 
-        tflite_model_path = self.convert_to_tflite()
+        self.convert_to_tflite()
         self.convert_tflite_to_c_array()
 
         # **Evaluate the TFLite Model**
@@ -174,9 +175,8 @@ class TakuNetModel:
 
         # **File Size Reporting**
         keras_size_kb = os.path.getsize(keras_model_path) / 1024
-        tflite_size_kb = os.path.getsize(tflite_model_path) / 1024
-        c_array_file_path = f"HeaderFiles/{self.model_name}.h"
-        c_array_size_kb = os.path.getsize(c_array_file_path) / 1024
+        tflite_size_kb = os.path.getsize(f"TfLiteModels/{self.model_name}.tflite") / 1024
+        c_array_size_kb = os.path.getsize(f"HeaderFiles/{self.model_name}.h") / 1024
 
         print(f"Keras Model Size: {keras_size_kb:.2f} KB")
         print(f"TFLite Model Size: {tflite_size_kb:.2f} KB")
@@ -277,7 +277,6 @@ class TakuNetModel:
             f.write(tflite_model)
 
         print(f"✅ Model converted and saved as {tflite_model_path}")
-    
 
     def convert_tflite_to_c_array(self)->None:
         """Converts the TFLite model into a C array header file for Arduino integration."""

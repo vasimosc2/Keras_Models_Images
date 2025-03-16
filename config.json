@@ -31,8 +31,9 @@
             "optimizer": ["adamw","adam"],
             "loss": "categorical_crossentropy",
             "learning_rate": [0.0020,0.0010],
-            "learning_rate_patience" : [5,6,8],
-            "early_stopping_patience"  : [5,6,8]
+            "divider" : [5],
+            "learning_rate_patience" : [5],
+            "early_stopping_patience"  : [6,8]
             },
     
         "evaluation_config": {
