@@ -94,7 +94,7 @@ class TakuNetModel:
     def _refiner_block(self, inputs):
         print(f"Refiner Block input shape {inputs.shape}\n")
         x = layers.DepthwiseConv2D(kernel_size=self.model_params["refiner_block"]["DWConv_kernel"], 
-                                   strides=["refiner_block"]["DWConv_strides"], 
+                                   strides = self.model_params["refiner_block"]["DWConv_strides"], 
                                    padding='same', 
                                    use_bias=False)(inputs)
         print(f"Refiner Block 2 shape {x.shape}\n")
