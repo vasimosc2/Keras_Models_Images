@@ -3,7 +3,6 @@ import os
 import random
 from typing import List
 import psutil  # type: ignore # For measuring memory usage
-from compute_ram_show import compute_layer_ram_usage
 import tensorflow as tf  # type: ignore
 import pandas as pd
 from tensorflow.keras import backend as K  # type: ignore
@@ -36,6 +35,7 @@ with open("config.json", "r") as config_file:
 
 from TakuNet import TakuNetModel
 from data_processing import get_dataset
+from compute_ram_show import compute_layer_ram_usage
 
 x_train, y_train, x_test, y_test = get_dataset(output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], use_augmented_data=False)
 
