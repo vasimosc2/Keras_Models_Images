@@ -46,22 +46,22 @@ class TakuNetModel:
         x = layers.ReLU(6.0)(x)
         return x
     
-    def _taku_block(self, inputs:tuple):
-        print(f"TakuBlock 1 shape {inputs.shape}\n")
+    def _taku_block(self, inputs:tuple, taku_block_number:int):
+        print(f"TakuBlock {taku_block_number}: input shape {inputs.shape}\n")
         x = layers.DepthwiseConv2D(kernel_size=self.model_params["stages_block"]["taku_block"]["DWConv_kernel"], 
                                    strides=self.model_params["stages_block"]["taku_block"]["DWConv_strides"], 
                                    padding='same', 
                                    use_bias=False)(inputs)
         
-        print(f"TakuBlock 2 shape {x.shape}\n")
+        print(f"TakuBlock {taku_block_number}: output shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
         if self.model_params["stages_block"]["taku_block"]["dropout"] > 0:
             x = layers.Dropout(self.model_params["stages_block"]["taku_block"]["dropout"])(x)
         return layers.Add()([x, inputs])
     
-    def _downsampler_block(self, inputs:tuple, curr_stage_number):
-        print(f"DownSample input shape {inputs.shape}\n")
+    def _downsampler_block(self, inputs:tuple, curr_stage_number:int):
+        print(f"DownSampler of Stage {curr_stage_number}  input shape {inputs.shape}\n")
         filters = inputs.shape[-1]
         num_groups = max(1, min(self.model_params["stages_block"]["stages_number"], filters))
         if filters % num_groups != 0:
@@ -72,7 +72,7 @@ class TakuNetModel:
                           kernel_size=kernel_size, 
                           groups=num_groups, 
                           use_bias=False)(inputs)
-        print(f"DownSample 2 shape {x.shape}\n")
+        print(f"DownSampler of Stage {curr_stage_number}, second shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
         if self.model_params["stages_block"]["downsampler"]["dropout"] > 0:
@@ -81,27 +81,28 @@ class TakuNetModel:
         x = pool_layer(pool_size=self.model_params["stages_block"]["downsampler"]["pool_size"], 
                        strides=self.model_params["stages_block"]["downsampler"]["strides"], 
                        padding='same')(x)
-        print(f"DownSample 3 shape {x.shape}\n")
+        print(f"DownSampler of Stage {curr_stage_number}, output shape {x.shape}\n")
         return layers.LayerNormalization()(x)
     
     def _stage_block(self, inputs, curr_stage_number):
         x = inputs
-        for _ in range(self.model_params["stages_block"]["taku_block"]["taku_block_number"]):
-            x = self._taku_block(x)
+        for i in range(self.model_params["stages_block"]["taku_block"]["taku_block_number"]):
+            print(f" Start assembling Taku block {i}\n")
+            x = self._taku_block(inputs=x, taku_block_number=i )
         concat = layers.Concatenate()([inputs, x])
-        return self._downsampler_block(concat, curr_stage_number)
+        return self._downsampler_block(inputs=concat, curr_stage_number=curr_stage_number)
     
     def _refiner_block(self, inputs):
-        print(f"Refiner Block input shape {inputs.shape}\n")
+        print(f"Refiner Block: input shape {inputs.shape}\n")
         x = layers.DepthwiseConv2D(kernel_size=self.model_params["refiner_block"]["DWConv_kernel"], 
                                    strides = self.model_params["refiner_block"]["DWConv_strides"], 
                                    padding='same', 
                                    use_bias=False)(inputs)
-        print(f"Refiner Block 2 shape {x.shape}\n")
+        print(f"Refiner Block: Second shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
         x = layers.Dropout(0.3)(x)
         x = layers.GlobalAveragePooling2D()(x)
-        print(f"Refiner Block 3 shape {x.shape}\n")
+        print(f"Refiner Block: Output shape {x.shape}\n")
         if self.model_params["refiner_block"]["dropout"] > 0:
             x = layers.Dropout(self.model_params["refiner_block"]["dropout"])(x)
         return layers.Dense(self.model_params["refiner_block"]["num_output_classes"], activation='softmax')(x)
@@ -110,6 +111,7 @@ class TakuNetModel:
         inputs = tf.keras.Input(shape=self.input_shape)
         x = self._stem_block(inputs)
         for curr_stage_number in range(self.model_params["stages_block"]["stages_number"]):
+            print(f"Assembling Stage Block {curr_stage_number}\n")
             x = self._stage_block(x, curr_stage_number)
         outputs = self._refiner_block(x)
         return Model(inputs, outputs)
