@@ -3,6 +3,7 @@ import os
 import random
 from typing import List
 import psutil  # type: ignore # For measuring memory usage
+from compute_ram_show import compute_layer_ram_usage
 import tensorflow as tf  # type: ignore
 import pandas as pd
 from tensorflow.keras import backend as K  # type: ignore
@@ -105,9 +106,9 @@ for i in range(1, 3):  # Train 20 models with random hyperparameters
 
     model_name = f"TakuNet_Random_{i}"
     print(f"\n🔍 Selected hyperparameters for {model_name}:\n{json.dumps(model_params, indent=4)}")
-
-    models_to_train.append(TakuNetModel(model_name=model_name, input_shape=(32, 32, 3), model_params=model_params, train_params=train_params, x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test))
-
+    taku_model: TakuNetModel = TakuNetModel(model_name=model_name, input_shape=(32, 32, 3), model_params=model_params, train_params=train_params, x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test)
+    models_to_train.append(taku_model)
+    compute_layer_ram_usage(taku_model.model, data_dtype_multiplier=4)
 
 results = []
 print("🚀 Starting model training...\n")
