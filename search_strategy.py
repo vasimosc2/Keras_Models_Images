@@ -91,11 +91,31 @@ class EvolutionarySearch:
         """Applies random mutations to a model's hyperparameters."""
         if random.random() < self.mutation_rate:
             key = random.choice(list(model_params.keys()))
+            
+            if key not in self.config["model_search_space"]:
+                print(f"Warning: Key '{key}' not found in model_search_space. Skipping mutation.")
+                return model_params  # Skip mutation for this key
+            
             if isinstance(model_params[key], dict):
                 subkey = random.choice(list(model_params[key].keys()))
-                model_params[key][subkey] = random.choice(self.config["model_search_space"][key][subkey])
+                
+                if subkey not in self.config["model_search_space"][key]:
+                    print(f"Warning: Subkey '{subkey}' not found under '{key}' in model_search_space. Skipping mutation.")
+                    return model_params  # Skip mutation for this subkey
+
+                choices = self.config["model_search_space"][key][subkey]
+                if choices:  # Ensure the list is not empty
+                    model_params[key][subkey] = random.choice(choices)
+                else:
+                    print(f"Warning: No available choices for '{key}.{subkey}'. Skipping mutation.")
+            
             else:
-                model_params[key] = random.choice(self.config["model_search_space"][key])
+                choices = self.config["model_search_space"][key]
+                if choices:  # Ensure the list is not empty
+                    model_params[key] = random.choice(choices)
+                else:
+                    print(f"Warning: No available choices for '{key}'. Skipping mutation.")
+        
         return model_params
     
     def _crossover(self, parent1: TakuNetModel, parent2: TakuNetModel) -> TakuNetModel:
