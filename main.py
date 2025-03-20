@@ -108,7 +108,7 @@ for i in range(1, 2):  # Train 20 models with random hyperparameters
     print(f"\n🔍 Selected hyperparameters for {model_name}:\n{json.dumps(model_params, indent=4)}")
     taku_model: TakuNetModel = TakuNetModel(model_name=model_name, input_shape=(32, 32, 3), model_params=model_params, train_params=train_params, x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test)
     models_to_train.append(taku_model)
-    compute_layer_ram_usage(taku_model.model, data_dtype_multiplier=4)
+    compute_layer_ram_usage(taku_model.model, data_dtype_multiplier=1)
 
 results = []
 print("🚀 Starting model training...\n")
