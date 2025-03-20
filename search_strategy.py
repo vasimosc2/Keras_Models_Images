@@ -135,5 +135,5 @@ class EvolutionarySearch:
             self.population = new_population
             #current_best_model = max(self.population, key=self._evaluate_fitness)
             current_best_model = max(self.population, key=lambda model: model.results.test_accuracy if model.results.test_accuracy is not None else -1)
-            print(f"Best Model Fitness: {self.evaluate_fitness(self.population[0]):.4f} in generation {generation}")
+            print(f"Best Model Fitness: {self._evaluate_fitness(self.population[0]):.4f} in generation {generation}")
             yield current_best_model
