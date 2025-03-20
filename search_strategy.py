@@ -25,15 +25,38 @@ class EvolutionarySearch:
     
     def _random_hyperparameters(self) -> Dict:
         """Generates a random set of hyperparameters from the search space."""
+        model_search_space = self.config["model_search_space"]
         return {
-            "stem_block": {key: random.choice(values) for key, values in self.config["model_search_space"]["stem_block"].items()},
-            "stages_block": {
-                "stages_number": random.choice(self.config["model_search_space"]["stages_block"]["stages_number"]),
-                "taku_block": {key: random.choice(values) for key, values in self.config["model_search_space"]["stages_block"]["taku_block"].items()},
-                "downsampler": {key: random.choice(values) for key, values in self.config["model_search_space"]["stages_block"]["downsampler"].items()},
-            },
-            "refiner_block": {key: random.choice(values) for key, values in self.config["model_search_space"]["refiner_block"].items() if key != "num_output_classes"},
-            "num_output_classes": self.config["model_search_space"]["refiner_block"]["num_output_classes"]
+                "stem_block": {
+                    "filters": random.choice(model_search_space["stem_block"]["filters"]),
+                    "Conv_kernel": random.choice(model_search_space["stem_block"]["Conv_kernel"]),
+                    "Conv_strides": random.choice(model_search_space["stem_block"]["Conv_strides"]),
+                    "dropout": random.choice(model_search_space["stem_block"]["dropout"]),
+                    "dilation_rate": random.choice(model_search_space["stem_block"]["dilation_rate"]),
+                    "DWConv_kernel": random.choice(model_search_space["stem_block"]["DWConv_kernel"]),
+                    "DWConv_strides": random.choice(model_search_space["stem_block"]["DWConv_strides"])
+                    },
+                "stages_block": {
+                    "stages_number": random.choice(model_search_space["stages_block"]["stages_number"]),
+                    "taku_block": {
+                        "taku_block_number": random.choice(model_search_space["stages_block"]["taku_block"]["taku_block_number"]),
+                        "dropout": random.choice(model_search_space["stages_block"]["taku_block"]["dropout"]),
+                        "DWConv_kernel": random.choice(model_search_space["stages_block"]["taku_block"]["DWConv_kernel"]),
+                        "DWConv_strides": random.choice(model_search_space["stages_block"]["taku_block"]["DWConv_strides"])
+                    },
+                    "downsampler": {
+                        "dropout": random.choice(model_search_space["stages_block"]["downsampler"]["dropout"]),
+                        "pool_size": random.choice(model_search_space["stages_block"]["downsampler"]["pool_size"]),
+                        "Conv_kernel": random.choice(model_search_space["stages_block"]["downsampler"]["Conv_kernel"]),
+                        "strides": random.choice(model_search_space["stages_block"]["downsampler"]["strides"]),
+                    }
+                },
+                "refiner_block": {
+                    "DWConv_kernel": random.choice(model_search_space["refiner_block"]["DWConv_kernel"]),
+                    "DWConv_strides": random.choice(model_search_space["refiner_block"]["DWConv_strides"]),
+                    "dropout": random.choice(model_search_space["refiner_block"]["dropout"]),
+                    "num_output_classes": model_search_space["refiner_block"]["num_output_classes"]
+                }
         }
     
     def _initialize_population(self):
