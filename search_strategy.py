@@ -90,31 +90,21 @@ class EvolutionarySearch:
     def _mutate(self, model_params: Dict) -> Dict:
         """Applies random mutations to a model's hyperparameters."""
         if random.random() < self.mutation_rate:
-            key = random.choice(list(model_params.keys()))
+            block = random.choice(list(model_params.keys())) # This returns the block that the mutation is goind to happen
             
-            if key not in self.config["model_search_space"]:
-                print(f"Warning: Key '{key}' not found in model_search_space. Skipping mutation.")
-                return model_params  # Skip mutation for this key
-            
-            if isinstance(model_params[key], dict):
-                subkey = random.choice(list(model_params[key].keys()))
-                
-                if subkey not in self.config["model_search_space"][key]:
-                    print(f"Warning: Subkey '{subkey}' not found under '{key}' in model_search_space. Skipping mutation.")
-                    return model_params  # Skip mutation for this subkey
+            if type(model_params[block]) is dict:
+                subBlock = random.choice(list(model_params[block].keys()))
 
-                choices = self.config["model_search_space"][key][subkey]
-                if choices:  # Ensure the list is not empty
-                    model_params[key][subkey] = random.choice(choices)
-                else:
-                    print(f"Warning: No available choices for '{key}.{subkey}'. Skipping mutation.")
+                potentialFilter = self.config["model_search_space"][block][subBlock]
+
+                if type(potentialFilter) is dict:
+                    filter = random.choice(list(model_params[block][subBlock].keys()))
+                    model_params[block][subBlock][filter] = random.choice(self.config["model_search_space"][block][subBlock][filter])
+                if type(potentialFilter) is list:
+                    model_params[block][subBlock] = random.choice(potentialFilter)
             
             else:
-                choices = self.config["model_search_space"][key]
-                if choices:  # Ensure the list is not empty
-                    model_params[key] = random.choice(choices)
-                else:
-                    print(f"Warning: No available choices for '{key}'. Skipping mutation.")
+                raise Exception(f"Very weird models_params[block] {model_params[block]}")
         
         return model_params
     

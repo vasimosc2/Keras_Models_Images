@@ -10,3 +10,4 @@ results/*
 HeaderFiles/*
 TfLiteModels/*
 *.txt
+test/*
