@@ -167,13 +167,6 @@ class TakuNetModel:
 
         print(f"✅ Best Test Accuracy (Best Model): {best_test_acc:.4f}")
 
-        # **Overfitting Check**
-        # if final_train_acc - final_test_acc > 0.05:
-        #     print(f"⚠️ Overfitting detected for model {self.model_name}!")
-
-        # elif final_test_acc < 0.70:
-        #     print(f"⚠️ Underfitting detected for model {self.model_name}!")
-
         # **Predictions & Metrics**
         y_test_pred = self.model.predict(self.x_test)
         y_test_pred_classes = np.argmax(y_test_pred, axis=1)

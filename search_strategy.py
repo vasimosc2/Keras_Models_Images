@@ -4,14 +4,15 @@ import json
 from typing import Iterator, List, Dict
 from TakuNet import TakuNetModel
 from data_processing import get_dataset
+import time
 
 class EvolutionarySearch:
-    def __init__(self, config_path: str, population_size: int, generations: int, mutation_rate: float, crossover_rate: float):
+    def __init__(self, config_path: str, population_size: int, time: float, mutation_rate: float, crossover_rate: float):
         with open(config_path, "r") as file:
             self.config = json.load(file)
         
         self.population_size = population_size
-        self.generations = generations
+        self.time = time
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
         self.population: List[TakuNetModel] = []
@@ -108,7 +109,7 @@ class EvolutionarySearch:
         
         return model_params
     
-    def _crossover(self, parent1: TakuNetModel, parent2: TakuNetModel) -> TakuNetModel:
+    def _crossover(self, parent1: TakuNetModel, parent2: TakuNetModel, model_number:int) -> TakuNetModel:
         """Performs crossover between two parent models."""
         child_params = copy.deepcopy(parent1.model_params)
         if random.random() < self.crossover_rate:
@@ -120,30 +121,36 @@ class EvolutionarySearch:
                 child_params[key] = parent2.model_params[key]
         
         train_params = copy.deepcopy(parent1.train_params)
-        model_name = f"TakuNet_Crossover_{random.randint(0, 1000)}"
+        model_name = f"TakuNet_Crossover_{model_number}"
         return TakuNetModel(model_name, (32, 32, 3), child_params, train_params, self.x_train, self.y_train, self.x_test, self.y_test)
     
     def evolve(self)->Iterator[TakuNetModel]:
         """Runs the evolutionary search process."""
+        start_time = time.time()
+        max_duration_seconds = self.time * 3600
         self._initialize_population()
-        for generation in range(self.generations):
-            print(f"\n🔄 Generation {generation + 1}/{self.generations}...")
-
-            parents:List[TakuNetModel] = self._select_parents() # The half best population
+        model_number = 0
+        while time.time() - start_time < max_duration_seconds:
+            print(f"\n⏳ Evolving new population (elapsed: {(time.time() - start_time)/60:.2f} min)...")
+            parents:List[TakuNetModel] = self._select_parents()
             new_population = parents.copy()
             
             while len(new_population) < self.population_size:
                 if random.random() < 0.5:
+                    model_number = model_number + 1
                     parent1, parent2 = random.sample(parents, 2)
-                    new_population.append(self._crossover(parent1, parent2))
+                    new_population.append(self._crossover(parent1, parent2, model_number))
                 else:
+                    model_number = model_number + 1
                     mutant_params = self._mutate(copy.deepcopy(random.choice(parents).model_params))
                     train_params = copy.deepcopy(parents[0].train_params)
-                    model_name = f"TakuNet_Mutant_{random.randint(0, 1000)}"
+                    model_name = f"TakuNet_Mutant_{model_number}"
                     new_population.append(TakuNetModel(model_name, (32, 32, 3), mutant_params, train_params, self.x_train, self.y_train, self.x_test, self.y_test))
             
             self.population = new_population
-            #current_best_model = max(self.population, key=self._evaluate_fitness)
-            current_best_model = max(self.population, key=lambda model: model.results.test_accuracy if model.results.test_accuracy is not None else -1)
-            print(f"Best Model Fitness: {self._evaluate_fitness(self.population[0]):.4f} in generation {generation}")
+            
+            current_best_model:TakuNetModel = max(
+                                    self.population, 
+                                    key=lambda model: model.results.test_accuracy if model.results.test_accuracy is not None else -1)
+            print(f"🔥 Yielding best model after population evolution: {current_best_model.model_name}")
             yield current_best_model
