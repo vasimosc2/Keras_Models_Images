@@ -62,16 +62,17 @@ class EvolutionarySearch:
     
     def _initialize_population(self):
         """Creates the initial population of models."""
-        for _ in range(self.population_size):
+        for i in range(self.population_size):
             model_params = self._random_hyperparameters()
             train_params = {key: random.choice(values) if isinstance(values, list) else values for key, values in self.config["train_and_evaluate"]["model_config"].items()}
             train_params.update(self.config["train_and_evaluate"]["evaluation_config"])
-            model = TakuNetModel(f"TakuNet_{_}", (32, 32, 3), model_params, train_params, self.x_train, self.y_train, self.x_test, self.y_test)
+            model = TakuNetModel(f"TakuNet_Init_{i}", (32, 32, 3), model_params, train_params, self.x_train, self.y_train, self.x_test, self.y_test)
             self.population.append(model)
     
     def _evaluate_fitness(self, model: TakuNetModel) -> float:
         """Evaluates a model's performance based on accuracy, precision, recall, and memory constraints."""
-        model.train()
+        if not model.is_trained:
+            model.train() # This stops the re-training of models that have been trained already
         if model.results.train_accuracy is None:
             return -1  # Discard models that exceed memory limits
         return model.results.test_accuracy + model.results.precision + model.results.recall # This must be changed in order to evaluate better the models
@@ -131,6 +132,11 @@ class EvolutionarySearch:
         self._initialize_population()
         model_number = 0
         while time.time() - start_time < max_duration_seconds:
+            current_best_model:TakuNetModel = max(
+                                    self.population, 
+                                    key=lambda model: model.results.test_accuracy if model.results.test_accuracy is not None else -1)
+            print(f"🔥 Yielding best model after population evolution: {current_best_model.model_name}")
+            yield current_best_model
             print(f"\n⏳ Evolving new population (elapsed: {(time.time() - start_time)/60:.2f} min)...")
             parents:List[TakuNetModel] = self._select_parents()
             new_population = parents.copy()
@@ -148,9 +154,3 @@ class EvolutionarySearch:
                     new_population.append(TakuNetModel(model_name, (32, 32, 3), mutant_params, train_params, self.x_train, self.y_train, self.x_test, self.y_test))
             
             self.population = new_population
-            
-            current_best_model:TakuNetModel = max(
-                                    self.population, 
-                                    key=lambda model: model.results.test_accuracy if model.results.test_accuracy is not None else -1)
-            print(f"🔥 Yielding best model after population evolution: {current_best_model.model_name}")
-            yield current_best_model

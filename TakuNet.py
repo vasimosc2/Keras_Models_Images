@@ -19,6 +19,7 @@ class TakuNetModel:
         self.y_train = y_train
         self.x_test = x_test
         self.y_test = y_test
+        self.is_trained = False
         self.results = TrainingResults()
     
     def _stem_block(self, inputs:tuple):
@@ -137,7 +138,7 @@ class TakuNetModel:
         self.model.compile(optimizer=optimizer, loss=self.train_params["loss"], metrics=['accuracy'])
 
         # **Callbacks**
-        checkpoint_path = f'saved_models/{self.model_name}_best.keras'
+        checkpoint_path = f'saved_models/{self.model_name}.keras'
         checkpoint = ModelCheckpoint(filepath=checkpoint_path, monitor='val_accuracy', save_best_only=True, mode='max', verbose=0)
         early_stopping_loss = EarlyStopping(monitor='val_loss', patience=self.train_params["learning_rate_patience"], restore_best_weights=True)
         early_stopping_acc = EarlyStopping(monitor='val_accuracy', patience=self.train_params["early_stopping_patience"], mode='max', restore_best_weights=True)
@@ -183,10 +184,9 @@ class TakuNetModel:
         self.results.total_memory = total_memory
         self.results.training_time = training_time 
 
+        # ** Declare that this model is trained.
+        self.is_trained = True
         # **Save Model in Multiple Formats**
-        keras_model_path = f'saved_models/{self.model_name}.keras'
-        self.model.save(keras_model_path)
-        print(f"✅ Model saved in Keras format: {keras_model_path}")
 
         self.convert_to_tflite()
         self.convert_tflite_to_c_array()
@@ -196,7 +196,7 @@ class TakuNetModel:
         print(f"Test Accuracy (TFLite): {tflite_acc:.4f}")
 
         # **File Size Reporting**
-        keras_size_kb = os.path.getsize(keras_model_path) / 1024
+        keras_size_kb = os.path.getsize(checkpoint_path) / 1024
         tflite_size_kb = os.path.getsize(f"TfLiteModels/{self.model_name}.tflite") / 1024
         c_array_size_kb = os.path.getsize(f"HeaderFiles/{self.model_name}.h") / 1024
 
@@ -206,7 +206,7 @@ class TakuNetModel:
 
         print("\n✅ Training complete. Best model and metrics stored in `self.results`.\n")
     
-    def memoryEstimation(self,data_dtype_multiplier: int = 4)-> Tuple[float, float, float]:
+    def memoryEstimation(self,data_dtype_multiplier: int = 1)-> Tuple[float, float, float]:
         """
         ROM (Read-Only Memory) → Memory used to store layer parameters (weights & biases).
         RAM (Random-Access Memory) → Memory used to store activations (input & output tensors).
@@ -295,15 +295,27 @@ class TakuNetModel:
         # **Save TFLite model**
         os.makedirs('TfLiteModels', exist_ok=True)
         tflite_model_path = f"TfLiteModels/{self.model_name}.tflite"
-        with open(tflite_model_path, "wb") as f:
-            f.write(tflite_model)
 
-        print(f"✅ Model converted and saved as {tflite_model_path}")
+        try:
+            with open( tflite_model_path, "w") as f:
+                f.write( tflite_model )
+            print(f"✅ Model converted and saved as {tflite_model_path}")
+        except OSError as e:
+            if e.errno == 28:
+                print("⚠️ Skipping header file generation: No space left on device.")
+            else:
+                print(f"❌ Unexpected error while writing header file: {e}")
 
     def convert_tflite_to_c_array(self)->None:
         """Converts the TFLite model into a C array header file for Arduino integration."""
-        with open(f"TfLiteModels/{self.model_name}.tflite", "rb") as f:
-            tflite_model = f.read()
+        tflite_path = f"TfLiteModels/{self.model_name}.tflite"
+    
+        try:
+            with open(tflite_path, "rb") as f:
+                tflite_model = f.read()
+        except FileNotFoundError:
+            print(f"❌ TFLite file not found at {tflite_path}")
+            return
 
         c_array = ", ".join(f"0x{byte:02x}" for byte in tflite_model)
         model_length = len(tflite_model)
@@ -320,18 +332,32 @@ class TakuNetModel:
 
         #endif // {self.model_name.upper()}_H
         """
+
         os.makedirs('HeaderFiles', exist_ok=True)
         header_file_path = f"HeaderFiles/{self.model_name}.h"
-        with open(header_file_path, "w") as f:
-            f.write(header_content)
 
-        print(f"✅ C header file saved as {header_file_path}")
+        try:
+            with open(header_file_path, "w") as f:
+                f.write(header_content)
+            print(f"✅ C header file saved as {header_file_path}")
+        except OSError as e:
+            if e.errno == 28:
+                print("⚠️ Skipping header file generation: No space left on device.")
+            else:
+                print(f"❌ Unexpected error while writing header file: {e}")
     
     
         
     def evaluate_tflite_model(self)-> float:
         """Evaluates the TFLite model and returns the accuracy."""
-        interpreter = tf.lite.Interpreter(model_path=f"TfLiteModels/{self.model_name}.tflite")
+        tflite_path = f"TfLiteModels/{self.model_name}.tflite"
+
+        try:
+            interpreter = tf.lite.Interpreter(model_path=tflite_path)
+            interpreter.allocate_tensors()
+        except (OSError, ValueError) as e:
+            print(f"⚠️ Could not load TFLite model from {tflite_path}: {e}")
+            return -1.0
 
         interpreter.allocate_tensors()
 
