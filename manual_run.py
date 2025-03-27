@@ -100,7 +100,14 @@ def sample_from_train_and_evaluate(train_and_evaluate):
 
 models_to_train:List[TakuNetModel] = []
 
-for i in range(1, 2):  # Train 20 models with random hyperparameters
+
+
+
+number_of_models = 5
+
+
+
+for i in range(1, number_of_models + 1):  # Train number_of_models with random hyperparameters
     model_params = sample_from_search_space(config["model_search_space"])
     train_params = sample_from_train_and_evaluate(config["train_and_evaluate"])
 

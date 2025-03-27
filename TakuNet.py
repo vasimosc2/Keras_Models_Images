@@ -147,6 +147,7 @@ class TakuNetModel:
 
         # **Train Model with Timing**
         start_time = time.time()
+        print(f"✅Start training of {self.model_name}\n")
         history = self.model.fit(
             self.x_train, self.y_train,
             epochs=self.train_params["num_epochs"],
@@ -160,13 +161,13 @@ class TakuNetModel:
 
         # **Load Best Model**
         self.model.load_weights(checkpoint_path)
-        print(f"✅ Best model restored from {checkpoint_path}")
+        print(f"✅ Best model restored from {checkpoint_path}\n")
 
         # **Compute Accuracy Metrics**
         best_train_acc = max(history.history['accuracy'])   # training accuracy
         best_test_acc = max(history.history['val_accuracy'])  # test accuracy
 
-        print(f"✅ Best Test Accuracy (Best Model): {best_test_acc:.4f}")
+        print(f"✅ Best Test Accuracy (Best Model): {best_test_acc:.4f}\n")
 
         # **Predictions & Metrics**
         y_test_pred = self.model.predict(self.x_test)
@@ -365,7 +366,7 @@ class TakuNetModel:
         output_details = interpreter.get_output_details()
 
         # Debugging prints
-        print("✅ Model loaded successfully!")
+        print("✅ Model loaded successfully!\n")
         print("📌 Input Details:", input_details)
         print("📌 Output Details:", output_details)
         print("Expected Input Shape:", input_details[0]['shape'])
