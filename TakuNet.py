@@ -194,6 +194,7 @@ class TakuNetModel:
 
         # **Evaluate the TFLite Model**
         tflite_acc = self.evaluate_tflite_model()
+        self.results.test_accuracy = tflite_acc
         print(f"Test Accuracy (TFLite): {tflite_acc:.4f}")
 
         # **File Size Reporting**
@@ -201,6 +202,8 @@ class TakuNetModel:
         tflite_size_kb = os.path.getsize(f"TfLiteModels/{self.model_name}.tflite") / 1024
         c_array_size_kb = os.path.getsize(f"HeaderFiles/{self.model_name}.h") / 1024
 
+        self.results.tflite_size = tflite_size_kb
+        
         print(f"Keras Model Size: {keras_size_kb:.2f} KB")
         print(f"TFLite Model Size: {tflite_size_kb:.2f} KB")
         print(f"C Array File Size: {c_array_size_kb:.2f} KB")
@@ -455,15 +458,19 @@ class TrainingResults:
         self.total_memory = None
         self.training_time = None
         self.fitness_score = None
+        self.tflite_accuracy = None
+        self.tflite_size = None
 
     def __repr__(self):
         return (f"TrainingResults(\n"
                 f"  Train Accuracy: {self.train_accuracy:.4f}\n"
                 f"  Test Accuracy: {self.test_accuracy:.4f}\n"
+                f"  TFlite Test Accuracy: {self.tflite_accuracy:.4f}\n"
                 f"  Precision: {self.precision:.4f}\n"
                 f"  Recall: {self.recall:.4f}\n"
                 f"  F1 Score: {self.f1_score:.4f}\n"
                 f"  Max Ram Use: {self.max_ram_usage:.4f}\n"
                 f"  Max Param Memory Use: {self.param_memory:.4f}\n"
                 f"  Total_memory Use: {self.total_memory:.4f}\n"
+                f"  TFlite Memory Use: {self.tflite_size:.4f}\n"
                 f"  Training Time: {self.training_time}\n)")

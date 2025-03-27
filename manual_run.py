@@ -8,6 +8,12 @@ import pandas as pd
 from tensorflow.keras import backend as K  # type: ignore
 import os
 import time
+import argparse
+
+parser = argparse.ArgumentParser(description="Train TakuNet models with sampled hyperparameters.")
+parser.add_argument("--num_models", type=int, default=5, help="Number of models to train (default: 5)")
+args = parser.parse_args()
+number_of_models = args.num_models
 
 
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
@@ -100,13 +106,6 @@ def sample_from_train_and_evaluate(train_and_evaluate):
 
 models_to_train:List[TakuNetModel] = []
 
-
-
-
-number_of_models = 5
-
-
-
 for i in range(1, number_of_models + 1):  # Train number_of_models with random hyperparameters
     model_params = sample_from_search_space(config["model_search_space"])
     train_params = sample_from_train_and_evaluate(config["train_and_evaluate"])
@@ -131,10 +130,12 @@ for model in models_to_train:
             "Model": model.model_name,
             "Best Train Accuracy": model.results.train_accuracy,
             "Best Test Accuracy": model.results.test_accuracy,
+            "TFlite Test Accuracy": model.results.tflite_accuracy,
             "Precision": model.results.precision,
             "Recall": model.results.recall,
             "F1 Score": model.results.f1_score,
             "Max RAM Usage (KB)": model.results.max_ram_usage,
+            "TFlite Estimation size(KB)": model.results.tflite_size,
             "Param Memory (KB)": model.results.param_memory,
             "Total Memory (KB)": model.results.total_memory,
             "Training Time (s)": model.results.training_time
