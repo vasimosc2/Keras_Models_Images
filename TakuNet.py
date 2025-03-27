@@ -194,7 +194,7 @@ class TakuNetModel:
 
         # **Evaluate the TFLite Model**
         tflite_acc = self.evaluate_tflite_model()
-        self.results.test_accuracy = tflite_acc
+        self.results.tflite_accuracy = tflite_acc
         print(f"Test Accuracy (TFLite): {tflite_acc:.4f}")
 
         # **File Size Reporting**
