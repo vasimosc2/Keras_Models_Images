@@ -132,11 +132,7 @@ class EvolutionarySearch:
         self._initialize_population()
         model_number = 0
         while time.time() - start_time < max_duration_seconds:
-            current_best_model:TakuNetModel = max(
-                                    self.population, 
-                                    key=lambda model: model.results.test_accuracy if model.results.test_accuracy is not None else -1)
-            print(f"🔥 Yielding best model after population evolution: {current_best_model.model_name}")
-            yield current_best_model
+            
             print(f"\n⏳ Evolving new population (elapsed: {(time.time() - start_time)/60:.2f} min)...")
             parents:List[TakuNetModel] = self._select_parents()
             new_population = parents.copy()
@@ -152,5 +148,13 @@ class EvolutionarySearch:
                     train_params = copy.deepcopy(parents[0].train_params)
                     model_name = f"TakuNet_Mutant_{model_number}"
                     new_population.append(TakuNetModel(model_name, (32, 32, 3), mutant_params, train_params, self.x_train, self.y_train, self.x_test, self.y_test))
-            
+
+            # Here the initial Population of the loop (of the generation) is trained and I yield the best 
+            # TODO , I have to do something with the Pareto Front, to add only the models that do not have another model explicitly better
+            current_best_model:TakuNetModel = max(
+                                    self.population, 
+                                    key=lambda model: model.results.test_accuracy if model.results.test_accuracy is not None else -1)
+            print(f"🔥 Yielding best model after population evolution: {current_best_model.model_name}")
+            yield current_best_model
+            # update the population
             self.population = new_population
