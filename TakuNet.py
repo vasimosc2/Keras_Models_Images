@@ -297,7 +297,7 @@ class TakuNetModel:
         tflite_model_path = f"TfLiteModels/{self.model_name}.tflite"
 
         try:
-            with open( tflite_model_path, "w") as f:
+            with open( tflite_model_path, "wb") as f:
                 f.write( tflite_model )
             print(f"✅ Model converted and saved as {tflite_model_path}")
         except OSError as e:
