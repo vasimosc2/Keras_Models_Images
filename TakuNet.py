@@ -284,9 +284,10 @@ class TakuNetModel:
 
         # **Use a representative dataset to optimize quantization**
         def representative_dataset():
-            for _ in range(100):
-                data = np.random.rand(1, 32, 32, 3).astype(np.float32)
+            for i in range(100):
+                data = self.x_train[i:i+1].astype(np.float32)
                 yield [data]
+
         converter.representative_dataset = representative_dataset
 
         # **Ensure full integer quantization for microcontroller compatibility**
@@ -294,7 +295,9 @@ class TakuNetModel:
         converter.inference_input_type = tf.uint8
         converter.inference_output_type = tf.uint8
 
-        tflite_model = converter.convert()
+        with suppress_stdout_stderr():
+            tflite_model = converter.convert()
+        
 
         # **Save TFLite model**
         os.makedirs('TfLiteModels', exist_ok=True)
@@ -474,3 +477,19 @@ class TrainingResults:
                 f"  Total_memory Use: {self.total_memory:.4f}\n"
                 f"  TFlite Memory Use: {self.tflite_size:.4f}\n"
                 f"  Training Time: {self.training_time}\n)")
+
+import sys
+import contextlib
+
+@contextlib.contextmanager
+def suppress_stdout_stderr():
+    with open(os.devnull, 'w') as devnull:
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        try:
+            sys.stdout = devnull
+            sys.stderr = devnull
+            yield
+        finally:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
