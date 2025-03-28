@@ -144,7 +144,7 @@ class TakuNetModel:
         # **Callbacks**
         checkpoint_path = f'saved_models/{self.model_name}.keras'
         checkpoint = ModelCheckpoint(filepath=checkpoint_path, monitor='val_accuracy', save_best_only=True, mode='max', verbose=0)
-        early_stopping_loss = EarlyStopping(monitor='val_loss', patience=self.train_params["learning_rate_patience"], restore_best_weights=True)
+        early_stopping_loss = EarlyStopping(monitor='val_loss',patience=self.train_params["early_stopping_patience"], restore_best_weights=True)
         early_stopping_acc = EarlyStopping(monitor='val_accuracy', patience=self.train_params["early_stopping_patience"], mode='max', restore_best_weights=True)
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=self.train_params["learning_rate_patience"], verbose=1)
         midway_callback = MidwayStopCallback(total_epochs=self.train_params["num_epochs"], divider=self.train_params["divider"], threshold=0.30)
