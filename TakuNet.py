@@ -289,7 +289,7 @@ class TakuNetModel:
         # **Use a representative dataset to optimize quantization**
         def representative_dataset():
             for i in range(100):
-                data = self.x_train[i:i+1].astype(tf.float32)
+                data:tf.Tensor = tf.cast(self.x_train[i:i+1], tf.float32)  # ✅ FIXED HERE
                 yield [data]
 
         converter.representative_dataset = representative_dataset
