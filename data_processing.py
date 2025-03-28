@@ -9,8 +9,8 @@ def load_cifar100(output_classes:int):
     y_train = tf.keras.utils.to_categorical(y_train, output_classes)
     y_test = tf.keras.utils.to_categorical(y_test, output_classes)
 
-    x_train = tf.cast(x_train, tf.float32)
-    x_test = tf.cast(x_test, tf.float32)
+    x_train:tf.Tensor = tf.cast(x_train, tf.float32)
+    x_test:tf.Tensor = tf.cast(x_test, tf.float32)
 
     return x_train, y_train, x_test, y_test
 
