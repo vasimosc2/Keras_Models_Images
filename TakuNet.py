@@ -127,7 +127,11 @@ class TakuNetModel:
         print(f"Total Memory Usage: {total_memory:.2f} KB")
 
         if max_ram_usage * 1024 > self.train_params["max_ram_consumption"]:
-            print(f"🚨 Training aborted: Estimated RAM usage ({max_ram_usage:.2f} KB) exceeds limit.")
+            print(f"🚨 Training aborted: Estimated RAM usage ({max_ram_usage:.2f} KB) exceeds limit.") # See this as well
+            print("\n The results will be None in this Model")
+            return None
+        if param_memory * 1024 > 0.9 * self.train_params["max_flash_consumption"]: # The parameters size is relatively close to the TFlite size, so a good estimation is to keep that 
+            print(f"🚨 Training aborted: Estimated Flash usage ({param_memory:.2f} KB) exceeds limit.")
             print("\n The results will be None in this Model")
             return None
 
@@ -295,9 +299,7 @@ class TakuNetModel:
         converter.inference_input_type = tf.uint8
         converter.inference_output_type = tf.uint8
 
-        with suppress_stdout_stderr():
-            tflite_model = converter.convert()
-        
+        tflite_model = converter.convert()
 
         # **Save TFLite model**
         os.makedirs('TfLiteModels', exist_ok=True)
@@ -477,19 +479,3 @@ class TrainingResults:
                 f"  Total_memory Use: {self.total_memory:.4f}\n"
                 f"  TFlite Memory Use: {self.tflite_size:.4f}\n"
                 f"  Training Time: {self.training_time}\n)")
-
-import sys
-import contextlib
-
-@contextlib.contextmanager
-def suppress_stdout_stderr():
-    with open(os.devnull, 'w') as devnull:
-        old_stdout = sys.stdout
-        old_stderr = sys.stderr
-        try:
-            sys.stdout = devnull
-            sys.stderr = devnull
-            yield
-        finally:
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
