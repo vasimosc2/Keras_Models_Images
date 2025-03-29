@@ -2,7 +2,7 @@ import json
 import os
 import time
 import pandas as pd
-import tensorflow as tf # type: ignore
+import tensorflow as tf
 from tensorflow.keras import backend as K # type: ignore
 
 
@@ -24,7 +24,7 @@ if gpus:
 else:
     print("⚠️ No GPU found, running on CPU.")
 
-from search_strategy import EvolutionarySearch # type: ignore
+from search_strategy import EvolutionarySearch
 # Load configuration
 CONFIG_PATH = "config.json"
 

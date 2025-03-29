@@ -1,12 +1,12 @@
 import numpy as np
 import time
 import os
-import tensorflow as tf # type: ignore
-from tensorflow.keras import layers, Model # type: ignore
+import tensorflow as tf
+from tensorflow.keras import layers, Model
 from typing import Dict, Tuple
-from sklearn.metrics import precision_score, recall_score, f1_score # type: ignore
-from tensorflow.keras.callbacks import Callback, EarlyStopping, ReduceLROnPlateau, ModelCheckpoint # type: ignore
-from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop # type: ignore
+from sklearn.metrics import precision_score, recall_score, f1_score
+from tensorflow.keras.callbacks import Callback, EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop
 
 class TakuNetModel:
     def __init__(self, model_name:str, input_shape: Tuple[int, int, int], model_params: Dict, train_params:Dict, x_train, y_train, x_test, y_test):

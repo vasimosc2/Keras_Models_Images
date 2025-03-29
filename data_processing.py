@@ -1,5 +1,4 @@
-import tensorflow as tf # type: ignore
-
+import tensorflow as tf
 
 def load_cifar100(output_classes:int):
     """Loads CIFAR-100 dataset and normalizes it."""

@@ -1,5 +1,4 @@
 import numpy as np
-import tensorflow as tf # type: ignore
 
 def compute_layer_ram_usage(model, data_dtype_multiplier=4):
     """

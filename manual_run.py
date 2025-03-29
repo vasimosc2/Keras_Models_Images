@@ -3,9 +3,9 @@ import os
 import random
 from typing import List
 import psutil  # type: ignore # For measuring memory usage
-import tensorflow as tf  # type: ignore
+import tensorflow as tf
 import pandas as pd
-from tensorflow.keras import backend as K  # type: ignore
+from tensorflow.keras import backend as K
 import os
 import time
 import argparse

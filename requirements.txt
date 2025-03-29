@@ -4,3 +4,4 @@ pandas
 scikit-learn
 psutil
 tflite-runtime
+matplotlib

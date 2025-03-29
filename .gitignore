@@ -9,5 +9,6 @@ saved_models/*
 results/*
 HeaderFiles/*
 TfLiteModels/*
+HeaderModels/*
 *.txt
 test/*
