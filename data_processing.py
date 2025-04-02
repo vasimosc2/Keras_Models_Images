@@ -3,6 +3,7 @@ import numpy as np
 import tensorflow as tf
 import os
 import matplotlib.pyplot as plt
+from utils import getClassLabels
 
 def load_cifar100(output_classes: int) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar100.load_data()
@@ -52,7 +53,7 @@ def mixup(x: tf.Tensor, y: tf.Tensor, alpha: float = 0.4, batch_size: int = 1024
         shuffled_y = tf.gather(y_batch, idx)
 
         lambda_val = tf.random.uniform([], minval=0, maxval=alpha, dtype=tf.float32)
-        print (lambda_val)
+        print(lambda_val)
         x_mix = lambda_val * x_batch + (1 - lambda_val) * shuffled_x
         y_mix = lambda_val * y_batch + (1 - lambda_val) * shuffled_y
 
@@ -77,23 +78,9 @@ def apply_pipeline(x: tf.Tensor, y: tf.Tensor, augmentation: tf.keras.Sequential
     y_aug = tf.concat(y_aug_list, axis=0)
     return x_aug, y_aug
 
-import pickle
-from tensorflow.keras.utils import get_file
-
 def save_mixup_samples(x: tf.Tensor, y: tf.Tensor, x_mix: tf.Tensor, y_mix: tf.Tensor, idx_list, root_folder: str):
     """Save 5 MixUp samples under Samples/mixup/ with class names loaded from CIFAR meta file."""
-
-    # Load fine label names from CIFAR-100 meta file
-    meta_path = get_file(
-        "meta",
-        origin="https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz",
-        untar=True
-    )
-
-    with open(os.path.join(meta_path, "cifar-100-python/meta"), 'rb') as f:
-        labels = pickle.load(f, encoding='latin1')
-        fine_labels = labels['fine_label_names']
-
+    fine_labels = getClassLabels.load_fine_labels_from_json()
     folder_path = os.path.join(root_folder, "mixup")
     os.makedirs(folder_path, exist_ok=True)
 
