@@ -102,8 +102,8 @@ def main(model_name: str = None):
 
     import data_processing
     use_augmented_data: bool = True
-    apply_standard: bool = True
-    apply_color: bool = True
+    apply_standard: bool = False
+    apply_color: bool = False
     apply_geometric: bool = True
     apply_mixup: bool = True
     x_train, y_train, x_test, y_test = data_processing.get_dataset(output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"],
