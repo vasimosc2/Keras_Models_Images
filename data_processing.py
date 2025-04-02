@@ -74,28 +74,28 @@ def apply_pipeline(x: tf.Tensor, y: tf.Tensor, augmentation: tf.keras.Sequential
     x_aug = tf.concat(x_aug_list, axis=0)
     y_aug = tf.concat(y_aug_list, axis=0)
     return x_aug, y_aug
-def save_mixup_samples(x: tf.Tensor, y: tf.Tensor, x_mix: tf.Tensor, y_mix: tf.Tensor, root_folder:str, folder_name: str):
-    """Save 5 MixUp samples showing the two source images and the mixed result."""
+
+def save_mixup_samples(x: tf.Tensor, y: tf.Tensor, x_mix: tf.Tensor, y_mix: tf.Tensor, root_folder: str):
+    """Save 5 MixUp samples under Samples/mixup/"""
     folder_path = os.path.join(root_folder, "mixup")
     os.makedirs(folder_path, exist_ok=True)
+
     for i in range(5):
-        # Reconstruct the label weights from the mixed label
         label_mix = y_mix[i].numpy()
         label_indices = np.argsort(label_mix)[-2:]
         weights = label_mix[label_indices]
 
-        # Estimate the two source images (not exact, for visualization only)
         img_mix = x_mix[i].numpy()
         img_a = x[i].numpy()
         img_b = x[np.random.randint(0, len(x))].numpy()
 
         fig, axs = plt.subplots(1, 3, figsize=(9, 3))
         axs[0].imshow(img_a)
-        axs[0].set_title(f"Image A")
+        axs[0].set_title("Image A")
         axs[0].axis("off")
 
         axs[1].imshow(img_b)
-        axs[1].set_title(f"Image B")
+        axs[1].set_title("Image B")
         axs[1].axis("off")
 
         axs[2].imshow(img_mix)
@@ -103,12 +103,15 @@ def save_mixup_samples(x: tf.Tensor, y: tf.Tensor, x_mix: tf.Tensor, y_mix: tf.T
         axs[2].axis("off")
 
         plt.tight_layout()
-        save_path = os.path.join(folder_name, f"mixup_sample_{i}.png")
+        save_path = os.path.join(folder_path, f"mixup_sample_{i}.png")
         plt.savefig(save_path)
         plt.close()
 
-def save_augmented_samples(x: tf.Tensor, y: tf.Tensor, root_folder:str, folder_name: str, aug_type: str):
-    """Save 5 sample images before and after augmentation to disk."""
+    print(f"✅ Saved mixup samples to: {folder_path}")
+
+
+def save_augmented_samples(x: tf.Tensor, y: tf.Tensor, root_folder: str, aug_type: str):
+    """Save 5 sample images before and after augmentation to Samples/<aug_type>/"""
     folder_path = os.path.join(root_folder, aug_type)
     os.makedirs(folder_path, exist_ok=True)
 
@@ -132,11 +135,12 @@ def save_augmented_samples(x: tf.Tensor, y: tf.Tensor, root_folder:str, folder_n
         axs[1].axis("off")
 
         plt.tight_layout()
-        save_path = os.path.join(folder_name, f"{aug_type}_sample_{i}.png")
+        save_path = os.path.join(folder_path, f"{aug_type}_sample_{i}.png")
         plt.savefig(save_path)
         plt.close()
 
-    print(f"✅ Saved {aug_type} samples to: {folder_name}")
+    print(f"✅ Saved {aug_type} samples to: {folder_path}")
+
 
 def create_augmented_dataset(
     x: tf.Tensor,
@@ -155,7 +159,7 @@ def create_augmented_dataset(
         x_mix, y_mix = mixup(x, y)
         aug_x_list.append(x_mix)
         aug_y_list.append(y_mix)
-        save_mixup_samples(x, y, x_mix, y_mix, root_folder="Samples", folder_name="augmented_samples")
+        save_mixup_samples(x, y, x_mix, y_mix, root_folder="Samples")
         print("✅\n")
 
     if apply_standard:
@@ -164,7 +168,7 @@ def create_augmented_dataset(
         aug_x, aug_y = apply_pipeline(x, y, aug)
         aug_x_list.append(aug_x)
         aug_y_list.append(aug_y)
-        save_augmented_samples(x, y, root_folder="Samples", folder_name= "augmented_samples", aug_type="standard")
+        save_augmented_samples(x, y, root_folder="Samples", aug_type="standard")
         print("✅\n")
 
     if apply_color:
@@ -173,7 +177,7 @@ def create_augmented_dataset(
         aug_x, aug_y = apply_pipeline(x, y, aug)
         aug_x_list.append(aug_x)
         aug_y_list.append(aug_y)
-        save_augmented_samples(x, y, root_folder="Samples", folder_name= "augmented_samples", aug_type="color")
+        save_augmented_samples(x, y, root_folder="Samples", aug_type="color")
         print("✅\n")
 
     if apply_geometric:
@@ -182,7 +186,7 @@ def create_augmented_dataset(
         aug_x, aug_y = apply_pipeline(x, y, aug)
         aug_x_list.append(aug_x)
         aug_y_list.append(aug_y)
-        save_augmented_samples(x, y,root_folder="Samples", folder_name= "augmented_samples", aug_type="geometric")
+        save_augmented_samples(x, y, root_folder="Samples", aug_type="geometric")
         print("✅\n")
 
     return tf.concat(aug_x_list, axis=0), tf.concat(aug_y_list, axis=0)
