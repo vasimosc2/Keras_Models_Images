@@ -1,5 +1,6 @@
 import json
 import os
+import random
 from typing import List
 import tensorflow as tf
 import pandas as pd
@@ -43,7 +44,7 @@ from TakuNet import TakuNetModel
 from data_processing import get_dataset
 from compute_ram_show import compute_layer_ram_usage
 
-x_train, y_train, x_test, y_test = get_dataset(output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], use_augmented_data=False)
+
 
 
 os.makedirs('saved_models', exist_ok=True)
@@ -55,6 +56,23 @@ for i in range(1, number_of_models + 1):  # Train number_of_models with random h
     model_params = getSearchSpaceParameters.sample_from_search_space(config["model_search_space"])
     train_params = getTrainingParameters.sample_from_train_and_evaluate(config["train_and_evaluate"])
 
+    aug_type = random.choice(['standard', 'color', 'geometric', 'mixup'])
+
+    apply_standard = aug_type == 'standard'
+    apply_color = aug_type == 'color'
+    apply_geometric = aug_type == 'geometric'
+    apply_mixup = aug_type == 'mixup'
+    
+    print(f"\n🎲 Randomly selected augmentation for model {i}: {aug_type}\n")
+
+    x_train, y_train, x_test, y_test = get_dataset(output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], 
+                                                    use_augmented_data=True,
+                                                    apply_standard = apply_standard,
+                                                    apply_color = apply_color,
+                                                    apply_geometric = apply_geometric,
+                                                    apply_mixup = apply_mixup,
+                                                    apply_cutmix = False
+                                                )
     model_name = f"TakuNet_Random_{i}"
     print(f"\n🔍 Selected hyperparameters for {model_name}:\n{json.dumps(model_params, indent=4)}")
     taku_model: TakuNetModel = TakuNetModel(model_name=model_name, input_shape=(32, 32, 3), model_params=model_params, train_params=train_params, x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test)
