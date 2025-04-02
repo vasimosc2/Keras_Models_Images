@@ -2,11 +2,11 @@ import json
 import os
 import argparse
 from typing import Dict
-import data_processing
-import manual_run
 import tensorflow as tf
 from TakuNet import TakuNetModel
 from tensorflow.keras.models import load_model
+
+from utils import getTrainingParameters
 
 # def save_tflite_model(model, x_train_sample, model_name):
 #     converter = tf.lite.TFLiteConverter.from_keras_model(model)
@@ -97,7 +97,9 @@ def main(model_name: str = None):
 
 
     loaded_model:tf.keras.Model = load_model(model_path)
-    training_params:Dict = manual_run.sample_from_train_and_evaluate(config["train_and_evaluate"])
+    training_params:Dict = getTrainingParameters.sample_from_train_and_evaluate(config["train_and_evaluate"])
+
+    import data_processing
     x_train, y_train, x_test, y_test = data_processing.get_dataset(output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], use_augmented_data=False)
 
     model = TakuNetModel(

@@ -10,6 +10,8 @@ import os
 import time
 import argparse
 
+from utils import getSearchSpaceParameters, getTrainingParameters
+
 parser = argparse.ArgumentParser(description="Train TakuNet models with sampled hyperparameters.")
 parser.add_argument("--num_models", type=int, default=5, help="Number of models to train (default: 5)")
 args = parser.parse_args()
@@ -49,67 +51,11 @@ x_train, y_train, x_test, y_test = get_dataset(output_classes= config["model_sea
 os.makedirs('saved_models', exist_ok=True)
 os.makedirs('results', exist_ok=True)
 
-
-
-
-def sample_from_search_space(model_search_space):
-    """Randomly selects model architecture hyperparameters."""
-    return {
-        "stem_block": {
-            "filters": random.choice(model_search_space["stem_block"]["filters"]),
-            "Conv_kernel": random.choice(model_search_space["stem_block"]["Conv_kernel"]),
-            "Conv_strides": random.choice(model_search_space["stem_block"]["Conv_strides"]),
-            "dropout": random.choice(model_search_space["stem_block"]["dropout"]),
-            "dilation_rate": random.choice(model_search_space["stem_block"]["dilation_rate"]),
-            "DWConv_kernel": random.choice(model_search_space["stem_block"]["DWConv_kernel"]),
-            "DWConv_strides": random.choice(model_search_space["stem_block"]["DWConv_strides"])
-        },
-        "stages_block": {
-            "stages_number": random.choice(model_search_space["stages_block"]["stages_number"]),
-            "taku_block": {
-                "taku_block_number": random.choice(model_search_space["stages_block"]["taku_block"]["taku_block_number"]),
-                "dropout": random.choice(model_search_space["stages_block"]["taku_block"]["dropout"]),
-                "DWConv_kernel": random.choice(model_search_space["stages_block"]["taku_block"]["DWConv_kernel"]),
-                "DWConv_strides": random.choice(model_search_space["stages_block"]["taku_block"]["DWConv_strides"])
-            },
-            "downsampler": {
-                "dropout": random.choice(model_search_space["stages_block"]["downsampler"]["dropout"]),
-                "pool_size": random.choice(model_search_space["stages_block"]["downsampler"]["pool_size"]),
-                "Conv_kernel": random.choice(model_search_space["stages_block"]["downsampler"]["Conv_kernel"]),
-                "strides": random.choice(model_search_space["stages_block"]["downsampler"]["strides"]),
-            }
-        },
-        "refiner_block": {
-            "DWConv_kernel": random.choice(model_search_space["refiner_block"]["DWConv_kernel"]),
-            "DWConv_strides": random.choice(model_search_space["refiner_block"]["DWConv_strides"]),
-            "dropout": random.choice(model_search_space["refiner_block"]["dropout"]),
-            "num_output_classes": model_search_space["refiner_block"]["num_output_classes"]
-        }
-    }
-
-def sample_from_train_and_evaluate(train_and_evaluate)->Dict:
-    """Randomly selects training hyperparameters."""
-    return {
-        "optimizer": random.choice(train_and_evaluate["model_config"]["optimizer"]),
-        "loss": train_and_evaluate["model_config"]["loss"],
-        "learning_rate": random.choice(train_and_evaluate["model_config"]["learning_rate"]),
-        "learning_rate_patience": random.choice(train_and_evaluate["model_config"]["learning_rate_patience"]),
-        "early_stopping_patience": random.choice(train_and_evaluate["model_config"]["early_stopping_patience"]),
-        "divider": random.choice(train_and_evaluate["model_config"]["divider"]),
-        "num_epochs": train_and_evaluate["evaluation_config"]["num_epochs"],
-        "batch_size": train_and_evaluate["evaluation_config"]["batch_size"],
-        "max_ram_consumption": train_and_evaluate["evaluation_config"]["max_ram_consumption"],
-        "max_flash_consumption": train_and_evaluate["evaluation_config"]["max_flash_consumption"],
-        "data_dtype_multiplier": train_and_evaluate["evaluation_config"]["data_dtype_multiplier"],
-        "model_dtype_multiplier": train_and_evaluate["evaluation_config"]["model_dtype_multiplier"],
-    }
-
-
 models_to_train:List[TakuNetModel] = []
 
 for i in range(1, number_of_models + 1):  # Train number_of_models with random hyperparameters
-    model_params = sample_from_search_space(config["model_search_space"])
-    train_params = sample_from_train_and_evaluate(config["train_and_evaluate"])
+    model_params = getSearchSpaceParameters.sample_from_search_space(config["model_search_space"])
+    train_params = getTrainingParameters.sample_from_train_and_evaluate(config["train_and_evaluate"])
 
     model_name = f"TakuNet_Random_{i}"
     print(f"\n🔍 Selected hyperparameters for {model_name}:\n{json.dumps(model_params, indent=4)}")
