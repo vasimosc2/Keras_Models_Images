@@ -104,7 +104,7 @@ def main(model_name: str = None):
     use_augmented_data: bool = True
     apply_standard: bool = False
     apply_color: bool = False
-    apply_geometric: bool = True
+    apply_geometric: bool = False
     apply_mixup: bool = True
     x_train, y_train, x_test, y_test = data_processing.get_dataset(output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"],
                                                                    use_augmented_data=use_augmented_data,
