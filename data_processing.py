@@ -4,7 +4,7 @@ import tensorflow as tf
 import os
 import matplotlib.pyplot as plt
 from utils import getClassLabels
-import tensorflow_probability as tfp
+#import tensorflow_probability as tfp
 def load_cifar100(output_classes: int) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar100.load_data()
     x_train, x_test = x_train / 255.0, x_test / 255.0
@@ -70,7 +70,7 @@ def cutmix_batch(x, y, alpha=1.0):
     shuffled_x = tf.gather(x, indices)
     shuffled_y = tf.gather(y, indices)
 
-    lam = tfp.distributions.Beta(alpha, alpha).sample()
+    lam = tf.random.gamma(shape=[], alpha=alpha, beta=alpha)
     
     img_h = tf.shape(x)[1]
     img_w = tf.shape(x)[2]
