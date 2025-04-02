@@ -4,7 +4,7 @@ import tensorflow as tf
 import os
 import matplotlib.pyplot as plt
 from utils import getClassLabels
-
+import tensorflow_probability as tfp
 def load_cifar100(output_classes: int) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar100.load_data()
     x_train, x_test = x_train / 255.0, x_test / 255.0
@@ -62,6 +62,49 @@ def mixup(x: tf.Tensor, y: tf.Tensor, alpha: float = 0.4, batch_size: int = 1024
         idx_list.append((tf.range(i, end), tf.gather(tf.range(i, end), idx)))
 
     return tf.concat(x_mix_list, axis=0), tf.concat(y_mix_list, axis=0), idx_list
+
+def cutmix_batch(x, y, alpha=1.0):
+    batch_size = tf.shape(x)[0]
+    indices = tf.random.shuffle(tf.range(batch_size))
+
+    shuffled_x = tf.gather(x, indices)
+    shuffled_y = tf.gather(y, indices)
+
+    lam = tfp.distributions.Beta(alpha, alpha).sample()
+    
+    img_h = tf.shape(x)[1]
+    img_w = tf.shape(x)[2]
+
+    r_x = tf.cast(tf.random.uniform([], 0, img_w), tf.float32)
+    r_y = tf.cast(tf.random.uniform([], 0, img_h), tf.float32)
+    r_w = tf.cast(img_w * tf.math.sqrt(1. - lam), tf.float32)
+    r_h = tf.cast(img_h * tf.math.sqrt(1. - lam), tf.float32)
+
+    x1 = tf.clip_by_value(r_x - r_w // 2, 0, img_w)
+    y1 = tf.clip_by_value(r_y - r_h // 2, 0, img_h)
+    x2 = tf.clip_by_value(r_x + r_w // 2, 0, img_w)
+    y2 = tf.clip_by_value(r_y + r_h // 2, 0, img_h)
+
+    # Replace region
+    patched_x = x
+    patched_x = tf.tensor_scatter_nd_update(
+        patched_x,
+        indices=tf.reshape(tf.range(batch_size), (-1, 1)),
+        updates=tf.tensor_scatter_nd_update(
+            x,
+            indices=tf.reshape(tf.range(batch_size), (-1, 1)),
+            updates=tf.tensor_scatter_nd_update(x, [[0]], [shuffled_x[0]])  # dummy to keep shapes
+        )
+    )
+
+    # But it's better to use slicing directly:
+    x_cutmix = tf.identity(x)
+    x_cutmix[:, y1:y2, x1:x2, :].assign(shuffled_x[:, y1:y2, x1:x2, :])
+
+    lam_adjusted = 1 - ((x2 - x1) * (y2 - y1)) / (img_w * img_h)
+    y_cutmix = lam_adjusted * y + (1 - lam_adjusted) * shuffled_y
+
+    return x_cutmix, y_cutmix
 
 
 def apply_pipeline(x: tf.Tensor, y: tf.Tensor, augmentation: tf.keras.Sequential) -> Tuple[tf.Tensor, tf.Tensor]:
@@ -123,6 +166,46 @@ def save_mixup_samples(x: tf.Tensor, y: tf.Tensor, x_mix: tf.Tensor, y_mix: tf.T
 
     print(f"✅ Saved mixup samples with class names to: {folder_path}")
 
+def save_cutmix_samples(x: tf.Tensor, y: tf.Tensor, x_cut: tf.Tensor, y_cut: tf.Tensor, shuffled_indices, root_folder: str):
+    """Save 5 CutMix samples with class names."""
+    fine_labels = getClassLabels.load_fine_labels_from_json()
+    folder_path = os.path.join(root_folder, "cutmix")
+    os.makedirs(folder_path, exist_ok=True)
+
+    for i in range(5):
+        idx_a = i
+        idx_b = shuffled_indices[i].numpy()
+
+        img_a = x[idx_a].numpy()
+        img_b = x[idx_b].numpy()
+        img_cut = x_cut[i].numpy()
+
+        label_mix = y_cut[i].numpy()
+        label_indices = np.argsort(label_mix)[-2:]
+        weights = label_mix[label_indices]
+
+        name_a = fine_labels[np.argmax(y[idx_a])]
+        name_b = fine_labels[np.argmax(y[idx_b])]
+
+        fig, axs = plt.subplots(1, 3, figsize=(9, 3))
+        axs[0].imshow(img_a)
+        axs[0].set_title(f"Image A:\n{name_a}")
+        axs[0].axis("off")
+
+        axs[1].imshow(img_b)
+        axs[1].set_title(f"Image B:\n{name_b}")
+        axs[1].axis("off")
+
+        axs[2].imshow(img_cut)
+        axs[2].set_title(f"CutMix\n{weights[0]:.2f}*{fine_labels[label_indices[0]]}, {weights[1]:.2f}*{fine_labels[label_indices[1]]}")
+        axs[2].axis("off")
+
+        plt.tight_layout()
+        save_path = os.path.join(folder_path, f"cutmix_sample_{i}.png")
+        plt.savefig(save_path)
+        plt.close()
+
+    print(f"✅ Saved CutMix samples with class names to: {folder_path}")
 
 
 def save_augmented_samples(x: tf.Tensor, y: tf.Tensor, root_folder: str, aug_type: str):
@@ -163,7 +246,8 @@ def create_augmented_dataset(
     apply_standard: bool = True,
     apply_color: bool = False,
     apply_geometric: bool = False,
-    apply_mixup: bool = False
+    apply_mixup: bool = False,
+    apply_cutmix: bool = False 
 ) -> Tuple[tf.Tensor, tf.Tensor]:
 
     aug_x_list = [x]
@@ -175,6 +259,15 @@ def create_augmented_dataset(
         aug_x_list.append(x_mix)
         aug_y_list.append(y_mix)
         save_mixup_samples(x, y, x_mix, y_mix, idx_list, root_folder="Samples")
+        print("✅\n")
+    
+    if apply_cutmix:
+        print("Applying CutMix Augmentation ....\n")
+        x_cut, y_cut = cutmix_batch(x, y)
+        aug_x_list.append(x_cut)
+        aug_y_list.append(y_cut)
+        shuffled_indices = tf.random.shuffle(tf.range(tf.shape(x)[0]))[:5]  # just for sample display
+        save_cutmix_samples(x, y, x_cut, y_cut, shuffled_indices, root_folder="Samples")
         print("✅\n")
 
     if apply_standard:
@@ -212,7 +305,8 @@ def get_dataset(
     apply_standard: bool = False,
     apply_color: bool = False,
     apply_geometric: bool = False,
-    apply_mixup: bool = False
+    apply_mixup: bool = False,
+    apply_cutmix: bool = False
 ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
 
     x_train, y_train, x_test, y_test = load_cifar100(output_classes)
@@ -223,7 +317,8 @@ def get_dataset(
             apply_standard=apply_standard,
             apply_color=apply_color,
             apply_geometric=apply_geometric,
-            apply_mixup=apply_mixup
+            apply_mixup=apply_mixup,
+            apply_cutmix=apply_cutmix
         )
         print(f"✅ Final Augmented Training Set Size: {x_train.shape[0]}")
     else:

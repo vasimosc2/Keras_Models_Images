@@ -63,13 +63,15 @@ def main(model_name: str = None):
     apply_standard: bool = False
     apply_color: bool = False
     apply_geometric: bool = False
-    apply_mixup: bool = True
+    apply_mixup: bool = False
+    apply_cutmix: bool = True
     x_train, y_train, x_test, y_test = data_processing.get_dataset(output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"],
                                                                    use_augmented_data=use_augmented_data,
                                                                    apply_standard=apply_standard,
                                                                    apply_color=apply_color,
                                                                    apply_geometric=apply_geometric,
-                                                                   apply_mixup=apply_mixup
+                                                                   apply_mixup=apply_mixup,
+                                                                   apply_cutmix=apply_cutmix
                                                                    )
 
     model = TakuNetModel(
