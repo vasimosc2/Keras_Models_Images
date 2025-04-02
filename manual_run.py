@@ -56,7 +56,7 @@ for i in range(1, number_of_models + 1):  # Train number_of_models with random h
     model_params = getSearchSpaceParameters.sample_from_search_space(config["model_search_space"])
     train_params = getTrainingParameters.sample_from_train_and_evaluate(config["train_and_evaluate"])
 
-    aug_type = random.choice(['standard', 'color', 'geometric', 'mixup'])
+    aug_type = random.choice(['standard', 'geometric', 'mixup'])
 
     apply_standard = aug_type == 'standard'
     apply_geometric = aug_type == 'geometric'
@@ -84,6 +84,7 @@ for i in range(1, number_of_models + 1):  # Train number_of_models with random h
                                             y_test=y_test)
     models_to_train.append(taku_model)
     compute_layer_ram_usage(taku_model.model, data_dtype_multiplier=1)
+    
     del taku_model, x_train, y_train, x_test, y_test
     tf.keras.backend.clear_session()
     import gc

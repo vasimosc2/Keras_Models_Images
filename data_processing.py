@@ -297,7 +297,11 @@ def create_augmented_dataset(
         save_augmented_samples(x, y, root_folder="Samples", aug_type="geometric")
         print("✅\n")
 
-    return tf.concat(aug_x_list, axis=0), tf.concat(aug_y_list, axis=0)
+    with tf.device('/CPU:0'):
+        x_train = tf.concat(aug_x_list, axis=0)
+        y_train = tf.concat(aug_y_list, axis=0)
+        
+    return x_train, y_train
 
 def get_dataset(
     output_classes: int,
