@@ -75,8 +75,18 @@ for i in range(1, number_of_models + 1):  # Train number_of_models with random h
                                                 )
     model_name = f"TakuNet_Random_{i}"
     print(f"\n🔍 Selected hyperparameters for {model_name}:\n{json.dumps(model_params, indent=4)}")
-    taku_model: TakuNetModel = TakuNetModel(model_name=model_name, input_shape=(32, 32, 3), model_params=model_params, train_params=train_params, x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test)
+    taku_model: TakuNetModel = TakuNetModel(model_name=model_name, 
+                                            input_shape=(32, 32, 3), 
+                                            model_params=model_params, 
+                                            train_params=train_params, 
+                                            x_train=x_train,
+                                            y_train=y_train, 
+                                            x_test=x_test, 
+                                            y_test=y_test)
     models_to_train.append(taku_model)
+    del x_train, y_train, x_test, y_test
+    import gc
+    gc.collect()
     compute_layer_ram_usage(taku_model.model, data_dtype_multiplier=1)
 
 results = []
