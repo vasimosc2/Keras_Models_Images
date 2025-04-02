@@ -49,7 +49,7 @@ def mixup(x: tf.Tensor, y: tf.Tensor, alpha: float = 0.4, batch_size: int = 1024
         shuffled_x = tf.gather(x_batch, idx)
         shuffled_y = tf.gather(y_batch, idx)
 
-        lambda_val = tf.cast(tf.random.uniform([], minval=0, maxval=alpha), tf.float32)
+        lambda_val = tf.random.uniform([], minval=0, maxval=alpha, dtype=tf.float32)
         x_mix = lambda_val * x_batch + (1 - lambda_val) * shuffled_x
         y_mix = lambda_val * y_batch + (1 - lambda_val) * shuffled_y
 
@@ -57,6 +57,7 @@ def mixup(x: tf.Tensor, y: tf.Tensor, alpha: float = 0.4, batch_size: int = 1024
         y_mix_list.append(y_mix)
 
     return tf.concat(x_mix_list, axis=0), tf.concat(y_mix_list, axis=0)
+
 
 
 
@@ -87,13 +88,13 @@ def create_augmented_dataset(
     aug_y_list = [y]
 
     if apply_mixup:
-        print("✅ Applying MixUp Augmentation ....\n")
+        print("Applying MixUp Augmentation ....\n")
         x_mix, y_mix = mixup(x, y)
         aug_x_list.append(x_mix)
         aug_y_list.append(y_mix)
         print("✅\n")
     if apply_standard:
-        print("✅ Applying Standard Augmentation ....\n")
+        print("Applying Standard Augmentation ....\n")
         aug = get_augmentation_pipeline("standard")
         aug_x, aug_y = apply_pipeline(x, y, aug)
         aug_x_list.append(aug_x)
@@ -101,7 +102,7 @@ def create_augmented_dataset(
         print("✅\n")
 
     if apply_color:
-        print("✅ Applying Color Augmentation ....\n")
+        print("Applying Color Augmentation ....\n")
         aug = get_augmentation_pipeline("color")
         aug_x, aug_y = apply_pipeline(x, y, aug)
         aug_x_list.append(aug_x)
