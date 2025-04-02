@@ -22,4 +22,3 @@ def save_fine_labels_to_json(save_path="cifar100_fine_labels.json"):
 def load_fine_labels_from_json(path="cifar100_fine_labels.json"):
     with open(path, "r") as f:
         return json.load(f)
-save_fine_labels_to_json()

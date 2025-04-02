@@ -61,10 +61,10 @@ def main(model_name: str = None):
     import data_processing
     use_augmented_data: bool = True
     apply_standard: bool = False
-    apply_color: bool = False
+    apply_color: bool = True
     apply_geometric: bool = False
     apply_mixup: bool = False
-    apply_cutmix: bool = True
+    apply_cutmix: bool = False
     x_train, y_train, x_test, y_test = data_processing.get_dataset(output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"],
                                                                    use_augmented_data=use_augmented_data,
                                                                    apply_standard=apply_standard,
