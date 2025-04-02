@@ -33,7 +33,7 @@ class TakuNetModel:
         self.is_trained:bool = False
         self.folderName:str = "."
         self.epochs:int = None
-        self.learningRate:Optional[float] = 0.0010 if given_model else None
+        self.learningRate:Optional[float] = 0.0005 if given_model else None
         self.results: TrainingResults = TrainingResults()
     
     def _stem_block(self, inputs:tuple):
@@ -391,7 +391,8 @@ class TakuNetModel:
         print("📌 Input Details:", input_details)
         print("📌 Output Details:", output_details)
         print("Expected Input Shape:", input_details[0]['shape'])
-        print("Actual Input Shape:", self.x_test[0].shape)
+        print("Actual Input Shape: \n", self.x_test[0].shape)
+        print()
 
         def preprocess_input(input_data):
             """Adjusts input data if the model uses uint8 quantization."""

@@ -101,7 +101,7 @@ def main(model_name: str = None):
     training_params:Dict = getTrainingParameters.sample_from_train_and_evaluate(config["train_and_evaluate"])
 
     import data_processing
-    x_train, y_train, x_test, y_test = data_processing.get_dataset(output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], use_augmented_data=False)
+    x_train, y_train, x_test, y_test = data_processing.get_dataset(output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], use_augmented_data=true)
 
     model = TakuNetModel(
     model_name=model_name,
