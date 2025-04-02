@@ -1,6 +1,7 @@
 import json
 import os
 import argparse
+import pandas as pd
 from typing import Dict
 import tensorflow as tf
 from TakuNet import TakuNetModel
@@ -117,6 +118,31 @@ def main(model_name: str = None):
     model.folderName = "continueTraining"
     model.epochs = 100
     model.train()
+
+    if model.results.train_accuracy is not None:
+    
+        os.makedirs("continueTraining/results", exist_ok=True)
+
+        results_df = pd.DataFrame([{
+            "Model": model.model_name,
+            "Best Train Accuracy": model.results.train_accuracy,
+            "Best Test Accuracy": model.results.test_accuracy,
+            "TFlite Test Accuracy": model.results.tflite_accuracy,
+            "Precision": model.results.precision,
+            "Recall": model.results.recall,
+            "F1 Score": model.results.f1_score,
+            "Max RAM Usage (KB)": model.results.max_ram_usage,
+            "TFlite Estimation size(KB)": model.results.tflite_size,
+            "Param Memory (KB)": model.results.param_memory,
+            "Total Memory (KB)": model.results.total_memory,
+            "Training Time (s)": model.results.training_time
+        }])
+
+        results_path = f"continueTraining/results/{model.model_name}_results.csv"
+        results_df.to_csv(results_path, index=False)
+        print(f"✅ Results saved to: {results_path}")
+    else:
+        print(f"⚠️ Model {model.model_name} was skipped due to memory constraints.")
 
 
 if __name__ == "__main__":

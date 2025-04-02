@@ -33,6 +33,7 @@ class TakuNetModel:
         self.is_trained:bool = False
         self.folderName:str = "."
         self.epochs:int = None
+        self.learningRate:Optional[float] = 0.0010 if given_model else None
         self.results: TrainingResults = TrainingResults()
     
     def _stem_block(self, inputs:tuple):
@@ -157,9 +158,8 @@ class TakuNetModel:
         # **Callbacks**
         checkpoint_path = f'{self.folderName}/saved_models/{self.model_name}.keras'
         checkpoint = ModelCheckpoint(filepath=checkpoint_path, monitor='val_accuracy', save_best_only=True, mode='max', verbose=0)
-        early_stopping_loss = EarlyStopping(monitor='val_loss',patience=self.train_params["early_stopping_patience"], restore_best_weights=True)
         early_stopping_acc = EarlyStopping(monitor='val_accuracy', patience=self.train_params["early_stopping_patience"], mode='max', restore_best_weights=True)
-        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=self.train_params["learning_rate_patience"], verbose=1)
+        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=self.train_params["learning_rate_patience"] if self.learningRate is None else self.learningRate , verbose=1)
         midway_callback = MidwayStopCallback(total_epochs=self.train_params["num_epochs"], divider=self.train_params["divider"], threshold=0.30)
 
         # **Train Model with Timing**
@@ -171,7 +171,7 @@ class TakuNetModel:
             batch_size=self.train_params["batch_size"],
             validation_data=(self.x_test, self.y_test),
             verbose=2,
-            callbacks=[midway_callback, early_stopping_acc, early_stopping_loss, reduce_lr, checkpoint]
+            callbacks=[midway_callback, early_stopping_acc, reduce_lr, checkpoint]
         )
 
         training_time = time.time() - start_time
