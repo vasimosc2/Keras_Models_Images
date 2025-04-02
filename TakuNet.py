@@ -10,7 +10,7 @@ from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop
 
 class TakuNetModel:
     def __init__(self, model_name:str, input_shape: Tuple[int, int, int], model_params: Dict, train_params:Dict, x_train, y_train, x_test, y_test):
-        self.model_name = model_name
+        self.model_name:str = model_name
         self.input_shape = input_shape
         self.model_params = model_params
         self.train_params = train_params
@@ -19,8 +19,10 @@ class TakuNetModel:
         self.y_train = y_train
         self.x_test = x_test
         self.y_test = y_test
-        self.is_trained = False
-        self.results = TrainingResults()
+        self.is_trained:bool = False
+        self.folderName:str = "."
+        self.epochs:int = None
+        self.results: TrainingResults = TrainingResults()
     
     def _stem_block(self, inputs:tuple):
         """
@@ -126,7 +128,7 @@ class TakuNetModel:
         print(f"Parameter Memory: {param_memory:.2f} KB")
         print(f"Total Memory Usage: {total_memory:.2f} KB")
 
-        if max_ram_usage * 1024 > self.train_params["max_ram_consumption"]:
+        if max_ram_usage * 1024 > 0.8 * self.train_params["max_ram_consumption"]:
             print(f"🚨 Training aborted: Estimated RAM usage ({max_ram_usage:.2f} KB) exceeds limit.") # See this as well
             print("\n The results will be None in this Model")
             return None
@@ -142,7 +144,7 @@ class TakuNetModel:
         self.model.compile(optimizer=optimizer, loss=self.train_params["loss"], metrics=['accuracy'])
 
         # **Callbacks**
-        checkpoint_path = f'saved_models/{self.model_name}.keras'
+        checkpoint_path = f'{self.folderName}/saved_models/{self.model_name}.keras'
         checkpoint = ModelCheckpoint(filepath=checkpoint_path, monitor='val_accuracy', save_best_only=True, mode='max', verbose=0)
         early_stopping_loss = EarlyStopping(monitor='val_loss',patience=self.train_params["early_stopping_patience"], restore_best_weights=True)
         early_stopping_acc = EarlyStopping(monitor='val_accuracy', patience=self.train_params["early_stopping_patience"], mode='max', restore_best_weights=True)
@@ -154,7 +156,7 @@ class TakuNetModel:
         print(f"✅Start training of {self.model_name}\n")
         history = self.model.fit(
             self.x_train, self.y_train,
-            epochs=self.train_params["num_epochs"],
+            epochs= self.epochs if self.epochs else self.train_params["num_epochs"],
             batch_size=self.train_params["batch_size"],
             validation_data=(self.x_test, self.y_test),
             verbose=2,
@@ -203,8 +205,8 @@ class TakuNetModel:
 
         # **File Size Reporting**
         keras_size_kb = os.path.getsize(checkpoint_path) / 1024
-        tflite_size_kb = os.path.getsize(f"TfLiteModels/{self.model_name}.tflite") / 1024
-        c_array_size_kb = os.path.getsize(f"HeaderFiles/{self.model_name}.h") / 1024
+        tflite_size_kb = os.path.getsize(f"{self.folderName}/TfLiteModels/{self.model_name}.tflite") / 1024
+        c_array_size_kb = os.path.getsize(f"{self.folderName}/HeaderFiles/{self.model_name}.h") / 1024
 
         self.results.tflite_size = tflite_size_kb
         
@@ -302,8 +304,8 @@ class TakuNetModel:
         tflite_model = converter.convert()
 
         # **Save TFLite model**
-        os.makedirs('TfLiteModels', exist_ok=True)
-        tflite_model_path = f"TfLiteModels/{self.model_name}.tflite"
+        os.makedirs(f'{self.folderName}/TfLiteModels', exist_ok=True)
+        tflite_model_path = f"{self.folderName}/TfLiteModels/{self.model_name}.tflite"
 
         try:
             with open( tflite_model_path, "wb") as f:
@@ -317,7 +319,7 @@ class TakuNetModel:
 
     def convert_tflite_to_c_array(self)->None:
         """Converts the TFLite model into a C array header file for Arduino integration."""
-        tflite_path = f"TfLiteModels/{self.model_name}.tflite"
+        tflite_path = f"{self.folderName}/TfLiteModels/{self.model_name}.tflite"
     
         try:
             with open(tflite_path, "rb") as f:
@@ -342,8 +344,8 @@ class TakuNetModel:
         #endif // {self.model_name.upper()}_H
         """
 
-        os.makedirs('HeaderFiles', exist_ok=True)
-        header_file_path = f"HeaderFiles/{self.model_name}.h"
+        os.makedirs(f'{self.folderName}/HeaderFiles', exist_ok=True)
+        header_file_path = f"{self.folderName}/HeaderFiles/{self.model_name}.h"
 
         try:
             with open(header_file_path, "w") as f:
@@ -359,7 +361,7 @@ class TakuNetModel:
         
     def evaluate_tflite_model(self)-> float:
         """Evaluates the TFLite model and returns the accuracy."""
-        tflite_path = f"TfLiteModels/{self.model_name}.tflite"
+        tflite_path = f"{self.folderName}/TfLiteModels/{self.model_name}.tflite"
 
         try:
             interpreter = tf.lite.Interpreter(model_path=tflite_path)
