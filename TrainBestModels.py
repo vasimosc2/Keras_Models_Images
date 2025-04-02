@@ -101,7 +101,18 @@ def main(model_name: str = None):
     training_params:Dict = getTrainingParameters.sample_from_train_and_evaluate(config["train_and_evaluate"])
 
     import data_processing
-    x_train, y_train, x_test, y_test = data_processing.get_dataset(output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], use_augmented_data=True)
+    use_augmented_data: bool = True
+    apply_standard: bool = True
+    apply_color: bool = True
+    apply_geometric: bool = True
+    apply_mixup: bool = True
+    x_train, y_train, x_test, y_test = data_processing.get_dataset(output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"],
+                                                                   use_augmented_data=use_augmented_data,
+                                                                   apply_standard=apply_standard,
+                                                                   apply_color=apply_color,
+                                                                   apply_geometric=apply_geometric,
+                                                                   apply_mixup=apply_mixup
+                                                                   )
 
     model = TakuNetModel(
     model_name=model_name,
