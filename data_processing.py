@@ -76,19 +76,21 @@ def apply_pipeline(x: tf.Tensor, y: tf.Tensor, augmentation: tf.keras.Sequential
     y_aug = tf.concat(y_aug_list, axis=0)
     return x_aug, y_aug
 
-def save_mixup_samples(x: tf.Tensor, y: tf.Tensor, x_mix: tf.Tensor, y_mix: tf.Tensor, root_folder: str):
-    """Save 5 MixUp samples under Samples/mixup/"""
+def save_mixup_samples(x, y, x_mix, y_mix, idx_list, root_folder: str):
     folder_path = os.path.join(root_folder, "mixup")
     os.makedirs(folder_path, exist_ok=True)
 
+    full_idx_A = tf.concat([pair[0] for pair in idx_list], axis=0).numpy()
+    full_idx_B = tf.concat([pair[1] for pair in idx_list], axis=0).numpy()
+
     for i in range(5):
+        img_a = x[full_idx_A[i]].numpy()
+        img_b = x[full_idx_B[i]].numpy()
+        img_mix = x_mix[i].numpy()
+
         label_mix = y_mix[i].numpy()
         label_indices = np.argsort(label_mix)[-2:]
         weights = label_mix[label_indices]
-
-        img_mix = x_mix[i].numpy()
-        img_a = x[i].numpy()
-        img_b = x[np.random.randint(0, len(x))].numpy()
 
         fig, axs = plt.subplots(1, 3, figsize=(9, 3))
         axs[0].imshow(img_a)
@@ -109,6 +111,7 @@ def save_mixup_samples(x: tf.Tensor, y: tf.Tensor, x_mix: tf.Tensor, y_mix: tf.T
         plt.close()
 
     print(f"✅ Saved mixup samples to: {folder_path}")
+
 
 
 def save_augmented_samples(x: tf.Tensor, y: tf.Tensor, root_folder: str, aug_type: str):
@@ -157,10 +160,10 @@ def create_augmented_dataset(
 
     if apply_mixup:
         print("Applying MixUp Augmentation ....\n")
-        x_mix, y_mix = mixup(x, y)
+        x_mix, y_mix, idx_list = mixup(x, y)
         aug_x_list.append(x_mix)
         aug_y_list.append(y_mix)
-        save_mixup_samples(x, y, x_mix, y_mix, root_folder="Samples")
+        save_mixup_samples(x, y, x_mix, y_mix, idx_list, root_folder="Samples")
         print("✅\n")
 
     if apply_standard:
