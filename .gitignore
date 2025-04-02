@@ -7,6 +7,7 @@ Counting/__pycache__/
 models/__pycache__/
 saved_models/*
 results/*
+continueTraining/*
 HeaderFiles/*
 TfLiteModels/*
 HeaderModels/*
