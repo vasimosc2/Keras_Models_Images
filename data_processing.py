@@ -52,6 +52,7 @@ def mixup(x: tf.Tensor, y: tf.Tensor, alpha: float = 0.4, batch_size: int = 1024
         shuffled_y = tf.gather(y_batch, idx)
 
         lambda_val = tf.random.uniform([], minval=0, maxval=alpha, dtype=tf.float32)
+        print (lambda_val)
         x_mix = lambda_val * x_batch + (1 - lambda_val) * shuffled_x
         y_mix = lambda_val * y_batch + (1 - lambda_val) * shuffled_y
 
@@ -76,7 +77,23 @@ def apply_pipeline(x: tf.Tensor, y: tf.Tensor, augmentation: tf.keras.Sequential
     y_aug = tf.concat(y_aug_list, axis=0)
     return x_aug, y_aug
 
-def save_mixup_samples(x, y, x_mix, y_mix, idx_list, root_folder: str):
+import pickle
+from tensorflow.keras.utils import get_file
+
+def save_mixup_samples(x: tf.Tensor, y: tf.Tensor, x_mix: tf.Tensor, y_mix: tf.Tensor, idx_list, root_folder: str):
+    """Save 5 MixUp samples under Samples/mixup/ with class names loaded from CIFAR meta file."""
+
+    # Load fine label names from CIFAR-100 meta file
+    meta_path = get_file(
+        "meta",
+        origin="https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz",
+        untar=True
+    )
+
+    with open(os.path.join(meta_path, "cifar-100-python/meta"), 'rb') as f:
+        labels = pickle.load(f, encoding='latin1')
+        fine_labels = labels['fine_label_names']
+
     folder_path = os.path.join(root_folder, "mixup")
     os.makedirs(folder_path, exist_ok=True)
 
@@ -84,25 +101,31 @@ def save_mixup_samples(x, y, x_mix, y_mix, idx_list, root_folder: str):
     full_idx_B = tf.concat([pair[1] for pair in idx_list], axis=0).numpy()
 
     for i in range(5):
-        img_a = x[full_idx_A[i]].numpy()
-        img_b = x[full_idx_B[i]].numpy()
+        idx_a = full_idx_A[i]
+        idx_b = full_idx_B[i]
+
+        img_a = x[idx_a].numpy()
+        img_b = x[idx_b].numpy()
         img_mix = x_mix[i].numpy()
 
         label_mix = y_mix[i].numpy()
         label_indices = np.argsort(label_mix)[-2:]
         weights = label_mix[label_indices]
 
+        name_a = fine_labels[np.argmax(y[idx_a].numpy())]
+        name_b = fine_labels[np.argmax(y[idx_b].numpy())]
+
         fig, axs = plt.subplots(1, 3, figsize=(9, 3))
         axs[0].imshow(img_a)
-        axs[0].set_title("Image A")
+        axs[0].set_title(f"Image A:\n{name_a}")
         axs[0].axis("off")
 
         axs[1].imshow(img_b)
-        axs[1].set_title("Image B")
+        axs[1].set_title(f"Image B:\n{name_b}")
         axs[1].axis("off")
 
         axs[2].imshow(img_mix)
-        axs[2].set_title(f"MixUp\n{weights[0]:.2f}*{label_indices[0]}, {weights[1]:.2f}*{label_indices[1]}")
+        axs[2].set_title(f"MixUp\n{weights[0]:.2f}*{fine_labels[label_indices[0]]}, {weights[1]:.2f}*{fine_labels[label_indices[1]]}")
         axs[2].axis("off")
 
         plt.tight_layout()
@@ -110,7 +133,7 @@ def save_mixup_samples(x, y, x_mix, y_mix, idx_list, root_folder: str):
         plt.savefig(save_path)
         plt.close()
 
-    print(f"✅ Saved mixup samples to: {folder_path}")
+    print(f"✅ Saved mixup samples with class names to: {folder_path}")
 
 
 
