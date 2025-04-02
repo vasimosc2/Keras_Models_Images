@@ -84,7 +84,8 @@ for i in range(1, number_of_models + 1):  # Train number_of_models with random h
                                             x_test=x_test, 
                                             y_test=y_test)
     models_to_train.append(taku_model)
-    del x_train, y_train, x_test, y_test
+    del taku_model, x_train, y_train, x_test, y_test
+    tf.keras.backend.clear_session()
     import gc
     gc.collect()
     compute_layer_ram_usage(taku_model.model, data_dtype_multiplier=1)
