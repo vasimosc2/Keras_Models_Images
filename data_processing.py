@@ -34,17 +34,30 @@ def get_augmentation_pipeline(aug_type: str) -> tf.keras.Sequential:
     else:
         raise ValueError(f"Unknown augmentation type: {aug_type}")
 
-def mixup(x: tf.Tensor, y: tf.Tensor, alpha: float = 0.4) -> Tuple[tf.Tensor, tf.Tensor]:
-    batch_size = tf.shape(x)[0]
-    idx = tf.random.shuffle(tf.range(batch_size))
-    shuffled_x = tf.gather(x, idx)
-    shuffled_y = tf.gather(y, idx)
+def mixup(x: tf.Tensor, y: tf.Tensor, alpha: float = 0.4, batch_size: int = 1024) -> Tuple[tf.Tensor, tf.Tensor]:
+    """Applies MixUp in memory-efficient batches."""
+    num_samples = tf.shape(x)[0]
+    x_mix_list = []
+    y_mix_list = []
 
-    lambda_val = tf.random.uniform([], minval=0, maxval=alpha)
-    x_mix = lambda_val * x + (1 - lambda_val) * shuffled_x
-    y_mix = lambda_val * y + (1 - lambda_val) * shuffled_y
+    for i in range(0, num_samples, batch_size):
+        end = tf.minimum(i + batch_size, num_samples)
+        x_batch = x[i:end]
+        y_batch = y[i:end]
 
-    return x_mix, y_mix
+        idx = tf.random.shuffle(tf.range(tf.shape(x_batch)[0]))
+        shuffled_x = tf.gather(x_batch, idx)
+        shuffled_y = tf.gather(y_batch, idx)
+
+        lambda_val = tf.random.uniform([], minval=0, maxval=alpha)
+        x_mix = lambda_val * x_batch + (1 - lambda_val) * shuffled_x
+        y_mix = lambda_val * y_batch + (1 - lambda_val) * shuffled_y
+
+        x_mix_list.append(x_mix)
+        y_mix_list.append(y_mix)
+
+    return tf.concat(x_mix_list, axis=0), tf.concat(y_mix_list, axis=0)
+
 
 
 def apply_pipeline(x: tf.Tensor, y: tf.Tensor, augmentation: tf.keras.Sequential) -> Tuple[tf.Tensor, tf.Tensor]:
