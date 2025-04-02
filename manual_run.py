@@ -88,7 +88,6 @@ for i in range(1, number_of_models + 1):  # Train number_of_models with random h
     tf.keras.backend.clear_session()
     import gc
     gc.collect()
-    compute_layer_ram_usage(taku_model.model, data_dtype_multiplier=1)
 
 results = []
 print("🚀 Starting model training...\n")
