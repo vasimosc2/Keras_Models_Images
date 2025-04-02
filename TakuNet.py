@@ -152,14 +152,14 @@ class TakuNetModel:
         print("✅ Memory check passed! Starting training...")
 
         # **Compile Model**
-        optimizer = get_optimizer(self.train_params["optimizer"], self.train_params["learning_rate"])
+        optimizer = get_optimizer(self.train_params["optimizer"], self.train_params["learning_rate"] if self.learningRate is None else self.learningRate )
         self.model.compile(optimizer=optimizer, loss=self.train_params["loss"], metrics=['accuracy'])
 
         # **Callbacks**
         checkpoint_path = f'{self.folderName}/saved_models/{self.model_name}.keras'
         checkpoint = ModelCheckpoint(filepath=checkpoint_path, monitor='val_accuracy', save_best_only=True, mode='max', verbose=0)
         early_stopping_acc = EarlyStopping(monitor='val_accuracy', patience=self.train_params["early_stopping_patience"], mode='max', restore_best_weights=True)
-        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=self.train_params["learning_rate_patience"] if self.learningRate is None else self.learningRate , verbose=1)
+        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=self.train_params["learning_rate_patience"], verbose=1)
         midway_callback = MidwayStopCallback(total_epochs=self.train_params["num_epochs"], divider=self.train_params["divider"], threshold=0.30)
 
         # **Train Model with Timing**
