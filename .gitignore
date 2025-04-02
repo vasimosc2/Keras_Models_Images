@@ -11,5 +11,6 @@ continueTraining/*
 HeaderFiles/*
 TfLiteModels/*
 HeaderModels/*
+Samples/*
 *.txt
 test/*

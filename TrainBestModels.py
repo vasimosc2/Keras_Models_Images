@@ -9,48 +9,6 @@ from tensorflow.keras.models import load_model
 
 from utils import getTrainingParameters
 
-# def save_tflite_model(model, x_train_sample, model_name):
-#     converter = tf.lite.TFLiteConverter.from_keras_model(model)
-#     converter.optimizations = [tf.lite.Optimize.DEFAULT]
-
-#     def representative_data_gen():
-#         for i in range(100):
-#             yield [tf.cast(x_train_sample[i:i+1], tf.float32)]
-    
-#     converter.representative_dataset = representative_data_gen
-#     converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-#     converter.inference_input_type = tf.uint8
-#     converter.inference_output_type = tf.uint8
-
-#     tflite_model = converter.convert()
-#     os.makedirs("continueTraining/tFlite", exist_ok=True)
-#     tflite_path = f"continueTraining/tFlite/{model_name}.tflite"
-#     with open(tflite_path, "wb") as f:
-#         f.write(tflite_model)
-#     print(f"✅ Saved quantized TFLite model to: {tflite_path}")
-#     return tflite_model, tflite_path
-
-
-# def tflite_to_c_array(tflite_model, model_name):
-#     os.makedirs("continueTraining/headerModels", exist_ok=True)
-#     header_path = f"continueTraining/headerModels/{model_name}.h"
-#     c_array = ", ".join(f"0x{byte:02x}" for byte in tflite_model)
-#     header = f"""#ifndef {model_name.upper()}_H
-# #define {model_name.upper()}_H
-
-# const unsigned char {model_name}_data[] = {{
-#     {c_array}
-# }};
-
-# unsigned int {model_name}_len = {len(tflite_model)};
-
-# #endif // {model_name.upper()}_H
-# """
-#     with open(header_path, "w") as f:
-#         f.write(header)
-#     print(f"✅ Saved C header file to: {header_path}")
-
-
 def main(model_name: str = None):
     os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
