@@ -59,7 +59,6 @@ for i in range(1, number_of_models + 1):  # Train number_of_models with random h
     aug_type = random.choice(['standard', 'color', 'geometric', 'mixup'])
 
     apply_standard = aug_type == 'standard'
-    apply_color = aug_type == 'color'
     apply_geometric = aug_type == 'geometric'
     apply_mixup = aug_type == 'mixup'
     
@@ -68,7 +67,7 @@ for i in range(1, number_of_models + 1):  # Train number_of_models with random h
     x_train, y_train, x_test, y_test = get_dataset(output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], 
                                                     use_augmented_data=True,
                                                     apply_standard = apply_standard,
-                                                    apply_color = apply_color,
+                                                    apply_color = False,
                                                     apply_geometric = apply_geometric,
                                                     apply_mixup = apply_mixup,
                                                     apply_cutmix = False
@@ -84,6 +83,7 @@ for i in range(1, number_of_models + 1):  # Train number_of_models with random h
                                             x_test=x_test, 
                                             y_test=y_test)
     models_to_train.append(taku_model)
+    compute_layer_ram_usage(taku_model.model, data_dtype_multiplier=1)
     del taku_model, x_train, y_train, x_test, y_test
     tf.keras.backend.clear_session()
     import gc
