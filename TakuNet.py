@@ -3,22 +3,33 @@ import time
 import os
 import tensorflow as tf
 from tensorflow.keras import layers, Model
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 from sklearn.metrics import precision_score, recall_score, f1_score
 from tensorflow.keras.callbacks import Callback, EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop
 
 class TakuNetModel:
-    def __init__(self, model_name:str, input_shape: Tuple[int, int, int], model_params: Dict, train_params:Dict, x_train, y_train, x_test, y_test):
+    def __init__(self, 
+                model_name:str, 
+                input_shape: Tuple[int, int, int] = (32, 32, 3), 
+                model_params: Optional[Dict] = None, 
+                train_params: Optional[Dict] = None,
+                x_train: Optional[tf.Tensor]= None, 
+                y_train: Optional[tf.Tensor]= None, 
+                x_test: Optional[tf.Tensor] = None, 
+                y_test: Optional[tf.Tensor] = None,
+                given_model:Optional[tf.keras.Model] = None
+                ):
+        
         self.model_name:str = model_name
-        self.input_shape = input_shape
-        self.model_params = model_params
-        self.train_params = train_params
-        self.model = self._build_model()
-        self.x_train = x_train
-        self.y_train = y_train
-        self.x_test = x_test
-        self.y_test = y_test
+        self.input_shape: Tuple[int, int, int] = input_shape
+        self.model_params: Optional[Dict] = model_params
+        self.train_params: Optional[Dict] = train_params
+        self.model:tf.keras.Model = given_model if given_model else self._build_model()
+        self.x_train: Optional[tf.Tensor] = x_train
+        self.y_train: Optional[tf.Tensor] = y_train
+        self.x_test: Optional[tf.Tensor] = x_test
+        self.y_test: Optional[tf.Tensor] = y_test
         self.is_trained:bool = False
         self.folderName:str = "."
         self.epochs:int = None

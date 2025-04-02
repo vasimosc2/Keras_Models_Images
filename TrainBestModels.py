@@ -1,5 +1,9 @@
+import json
 import os
 import argparse
+from typing import Dict
+import data_processing
+import manual_run
 import tensorflow as tf
 from TakuNet import TakuNetModel
 from tensorflow.keras.models import load_model
@@ -87,8 +91,25 @@ def main(model_name: str = None):
     if not os.path.exists(model_path):
         print(f"❌ Model file not found at {model_path}")
         return
+    
+    with open("config.json", "r") as config_file:
+        config = json.load(config_file)
 
-    model:TakuNetModel = load_model(model_path)
+
+    loaded_model:tf.keras.Model = load_model(model_path)
+    training_params:Dict = manual_run.sample_from_train_and_evaluate(config["train_and_evaluate"])
+    x_train, y_train, x_test, y_test = data_processing.get_dataset(output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], use_augmented_data=False)
+
+    model = TakuNetModel(
+    model_name=model_name,
+    model_params=None,
+    train_params=training_params,
+    x_train=x_train,
+    y_train=y_train,
+    x_test=x_test,
+    y_test=y_test,
+    given_model=loaded_model
+)
 
     print("🚀 Continuing training...")
     model.folderName = "continueTraining"

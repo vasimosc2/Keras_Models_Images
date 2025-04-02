@@ -1,7 +1,7 @@
 import json
 import os
 import random
-from typing import List
+from typing import Dict, List
 import psutil  # type: ignore # For measuring memory usage
 import tensorflow as tf
 import pandas as pd
@@ -87,7 +87,7 @@ def sample_from_search_space(model_search_space):
         }
     }
 
-def sample_from_train_and_evaluate(train_and_evaluate):
+def sample_from_train_and_evaluate(train_and_evaluate)->Dict:
     """Randomly selects training hyperparameters."""
     return {
         "optimizer": random.choice(train_and_evaluate["model_config"]["optimizer"]),
