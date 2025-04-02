@@ -112,8 +112,9 @@ def save_mixup_samples(x: tf.Tensor, y: tf.Tensor, x_mix: tf.Tensor, y_mix: tf.T
         label_indices = np.argsort(label_mix)[-2:]
         weights = label_mix[label_indices]
 
-        name_a = fine_labels[np.argmax(y[idx_a].numpy())]
-        name_b = fine_labels[np.argmax(y[idx_b].numpy())]
+        name_a = fine_labels[np.argmax(y[idx_a])]
+        name_b = fine_labels[np.argmax(y[idx_b])]
+
 
         fig, axs = plt.subplots(1, 3, figsize=(9, 3))
         axs[0].imshow(img_a)
