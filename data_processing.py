@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Dict, Tuple
 import numpy as np
 import tensorflow as tf
 import os
@@ -305,24 +305,25 @@ def create_augmented_dataset(
 
 def get_dataset(
     output_classes: int,
-    use_augmented_data: bool = False,
-    apply_standard: bool = False,
-    apply_color: bool = False,
-    apply_geometric: bool = False,
-    apply_mixup: bool = False,
-    apply_cutmix: bool = False
+    augementation_technique:Dict = {"apply_standard":False,
+                                    "apply_color":False,
+                                    "apply_geometric":False,
+                                    "apply_mixup": False,
+                                    "apply_cutmix": False
+                                    }
+
 ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
 
     x_train, y_train, x_test, y_test = load_cifar100(output_classes)
 
-    if use_augmented_data:
+    if augementation_technique.get("apply_standard") | augementation_technique.get("apply_color") | augementation_technique.get("apply_geometric") | augementation_technique.get("apply_mixup") | augementation_technique.get(" apply_cutmix ") :
         x_train, y_train = create_augmented_dataset(
             x_train, y_train,
-            apply_standard=apply_standard,
-            apply_color=apply_color,
-            apply_geometric=apply_geometric,
-            apply_mixup=apply_mixup,
-            apply_cutmix=apply_cutmix
+            apply_standard=augementation_technique.get("apply_standard"),
+            apply_color=augementation_technique.get("apply_color"),
+            apply_geometric=augementation_technique.get("apply_geometric"),
+            apply_mixup=augementation_technique.get("apply_mixup"),
+            apply_cutmix=augementation_technique.get("apply_cutmix")
         )
         print(f"✅ Final Augmented Training Set Size: {x_train.shape[0]}")
     else:

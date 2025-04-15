@@ -29,6 +29,7 @@ from search_strategy import EvolutionarySearch
 CONFIG_PATH = "config.json"
 
 # Set evolutionary search parameters
+
 POPULATION_SIZE:int = 10  # Number of models per generation
 TIME:float = 3.0  # Number of hours to run
 MUTATION_RATE:float = 0.2  # Probability of mutation per model
@@ -38,8 +39,11 @@ CROSSOVER_RATE:float = 0.3  # Probability of crossover between two models
 os.makedirs('saved_models', exist_ok=True)
 os.makedirs('results', exist_ok=True)
 
+
+augmentation_techique = False
+
 # Initialize evolutionary search
-evo_search = EvolutionarySearch(CONFIG_PATH, POPULATION_SIZE, TIME, MUTATION_RATE, CROSSOVER_RATE)
+evo_search = EvolutionarySearch(config_path=CONFIG_PATH, population_size=POPULATION_SIZE, time=TIME, mutation_rate=MUTATION_RATE, crossover_rate=CROSSOVER_RATE, augmentation_techinque=False)
 
 # Run evolutionary search
 best_models_data = []

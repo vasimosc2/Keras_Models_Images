@@ -61,17 +61,19 @@ for i in range(1, number_of_models + 1):  # Train number_of_models with random h
     apply_standard = aug_type == 'standard'
     apply_geometric = aug_type == 'geometric'
     apply_mixup = aug_type == 'mixup'
+
+    augmentation_technique = {  "apply_standard":apply_standard,
+                                "apply_color":False,
+                                "apply_geometric":apply_geometric,
+                                "apply_mixup": apply_mixup,
+                                "apply_cutmix": False
+                                    }
     
     print(f"\n🎲 Randomly selected augmentation for model {i}: {aug_type}\n")
 
-    x_train, y_train, x_test, y_test = get_dataset(output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], 
-                                                    use_augmented_data=True,
-                                                    apply_standard = apply_standard,
-                                                    apply_color = False,
-                                                    apply_geometric = apply_geometric,
-                                                    apply_mixup = apply_mixup,
-                                                    apply_cutmix = False
-                                                )
+    x_train, y_train, x_test, y_test = get_dataset( output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], 
+                                                    augementation_technique=augmentation_technique)
+    
     model_name = f"TakuNet_Random_{i}"
     print(f"\n🔍 Selected hyperparameters for {model_name}:\n{json.dumps(model_params, indent=4)}")
     taku_model: TakuNetModel = TakuNetModel(model_name=model_name, 

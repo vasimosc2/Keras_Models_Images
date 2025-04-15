@@ -7,7 +7,7 @@ from data_processing import get_dataset
 import time
 
 class EvolutionarySearch:
-    def __init__(self, config_path: str, population_size: int, time: float, mutation_rate: float, crossover_rate: float):
+    def __init__(self, config_path: str, population_size: int, time: float, mutation_rate: float, crossover_rate: float, augmentation_techinque:Dict | bool):
         with open(config_path, "r") as file:
             self.config = json.load(file)
         
@@ -16,15 +16,21 @@ class EvolutionarySearch:
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
         self.population: List[TakuNetModel] = []
-        self.x_train, self.y_train, self.x_test, self.y_test = self._load_data()
+        self.x_train, self.y_train, self.x_test, self.y_test = self._load_data(augmentation_technique=augmentation_techinque)
     
-    def _load_data(self):
+    def _load_data(self,augmentation_technique: Dict | bool):
         """Loads the dataset using the get_dataset function from data_processing.py"""
+        if augmentation_technique is False:
+            augmentation_techique = {"apply_standard":False,
+                                    "apply_color":False,
+                                    "apply_geometric":False,
+                                    "apply_mixup": False,
+                                    "apply_cutmix": False
+                                    }
         num_classes = self.config["model_search_space"]["refiner_block"]["num_output_classes"]
-        use_augmented_data = False  # Change to True if you want data augmentation
-        return get_dataset(output_classes=num_classes, use_augmented_data=use_augmented_data)
+        return get_dataset(output_classes=num_classes, augementation_technique=augmentation_techique)
     
-    def _random_hyperparameters(self) -> Dict:
+    def _random_model_parameters(self) -> Dict:
         """Generates a random set of hyperparameters from the search space."""
         model_search_space = self.config["model_search_space"]
         return {
@@ -59,13 +65,19 @@ class EvolutionarySearch:
                     "num_output_classes": model_search_space["refiner_block"]["num_output_classes"]
                 }
         }
+    def _random_training_parameters(self) ->Dict:
+        " This creates the training parameters for the TakuModel"
+        train_params = {key: random.choice(values) if isinstance(values, list) else values for key, values in self.config["train_and_evaluate"]["model_config"].items()}
+        train_params.update(self.config["train_and_evaluate"]["evaluation_config"]) 
+        return train_params
     
     def _initialize_population(self):
         """Creates the initial population of models."""
         for i in range(self.population_size):
-            model_params = self._random_hyperparameters()
-            train_params = {key: random.choice(values) if isinstance(values, list) else values for key, values in self.config["train_and_evaluate"]["model_config"].items()}
-            train_params.update(self.config["train_and_evaluate"]["evaluation_config"])
+
+            model_params = self._random_model_parameters() # Here we randomly select params for "model_search_space"
+            train_params = self._random_training_parameters() # Here we randomly select params for "train_and_evaluate"
+
             model = TakuNetModel(f"TakuNet_Init_{i}", (32, 32, 3), model_params, train_params, self.x_train, self.y_train, self.x_test, self.y_test)
             self.population.append(model)
     
@@ -82,7 +94,7 @@ class EvolutionarySearch:
         selected_parents = []
         tournament_size = max(2, self.population_size // 5)  # Ensure at least 2 competitors per tournament
         
-        for _ in range(self.population_size // 2):
+        for _ in range(self.population_size // 2): # x//y returns the integer part of the diviation
             tournament = random.sample(self.population, tournament_size)
             best_model = max(tournament, key=self._evaluate_fitness)
             selected_parents.append(best_model)
@@ -90,51 +102,103 @@ class EvolutionarySearch:
         return selected_parents
     
     def _mutate(self, model_params: Dict) -> Dict:
-        """Applies random mutations to a model's hyperparameters."""
-        if random.random() < self.mutation_rate:
-            block = random.choice(list(model_params.keys())) # This returns the block that the mutation is goind to happen
-            
-            if type(model_params[block]) is dict:
-                subBlock = random.choice(list(model_params[block].keys()))
-
-                potentialFilter = self.config["model_search_space"][block][subBlock]
-
-                if type(potentialFilter) is dict:
-                    filter = random.choice(list(model_params[block][subBlock].keys()))
-                    model_params[block][subBlock][filter] = random.choice(self.config["model_search_space"][block][subBlock][filter])
-                if type(potentialFilter) is list:
-                    model_params[block][subBlock] = random.choice(potentialFilter)
-            
+        """
+        In this mutation we go over each Model Search Parameter and based on this : random.random() < self.mutation_rate
+        We either change it or not. The higher the self.mutation_rate, the more parameters will change !
+        """
+        for block in model_params:
+            if isinstance(model_params[block], dict):
+                for subBlock in model_params[block]:
+                    if isinstance(model_params[block][subBlock], dict):
+                        for param in model_params[block][subBlock]:
+                            if random.random() < self.mutation_rate:
+                                choices = self.config["model_search_space"][block][subBlock][param]
+                                model_params[block][subBlock][param] = random.choice(choices)
+                    else:
+                        if random.random() < self.mutation_rate:
+                            choices = self.config["model_search_space"][block][subBlock]
+                            model_params[block][subBlock] = random.choice(choices)
             else:
-                raise Exception(f"Very weird models_params[block] {model_params[block]}")
-        
+                raise Exception(f"Unexpected non-dict block at top-level: {block}")
         return model_params
-    
-    def _crossover(self, parent1: TakuNetModel, parent2: TakuNetModel, model_number:int) -> TakuNetModel:
-        """Performs crossover between two parent models."""
+
+    def _crossover(self, parent1: TakuNetModel, parent2: TakuNetModel, model_number: int) -> TakuNetModel:
+        """ In this crossover, the child is a deep copy of the first parent and based on the probabilistic,
+            random.random() < self.crossover_rate, it will get the parent's 2 parameter
+            For all possible Model Search Parameters"""
         child_params = copy.deepcopy(parent1.model_params)
-        if random.random() < self.crossover_rate:
-            key = random.choice(list(child_params.keys()))
-            if isinstance(child_params[key], dict):
-                subkey = random.choice(list(child_params[key].keys()))
-                child_params[key][subkey] = parent2.model_params[key][subkey]
-            else:
-                child_params[key] = parent2.model_params[key]
         
+        for block in child_params:
+            if isinstance(child_params[block], dict):
+                for subBlock in child_params[block]:
+                    if isinstance(child_params[block][subBlock], dict):
+                        for param in child_params[block][subBlock]:
+                            if random.random() < self.crossover_rate:
+                                child_params[block][subBlock][param] = parent2.model_params[block][subBlock][param]
+                    else:
+                        if random.random() < self.crossover_rate:
+                            child_params[block][subBlock] = parent2.model_params[block][subBlock]
+            else:
+                if random.random() < self.crossover_rate:
+                    child_params[block] = parent2.model_params[block]
+
         train_params = copy.deepcopy(parent1.train_params)
         model_name = f"TakuNet_Crossover_{model_number}"
         return TakuNetModel(model_name, (32, 32, 3), child_params, train_params, self.x_train, self.y_train, self.x_test, self.y_test)
+
+    
+    # def _mutate(self, model_params: Dict) -> Dict:
+    #     """Applies random mutations to a model's hyperparameters."""
+    #     if random.random() < self.mutation_rate:
+    #         block = random.choice(list(model_params.keys())) # This returns the block/parameter that the mutation is going to happen
+            
+    #         if type(model_params[block]) is dict:
+    #             subBlock = random.choice(list(model_params[block].keys()))
+
+    #             potentialFilter = self.config["model_search_space"][block][subBlock]
+
+    #             if type(potentialFilter) is dict:
+    #                 filter = random.choice(list(model_params[block][subBlock].keys()))
+    #                 model_params[block][subBlock][filter] = random.choice(self.config["model_search_space"][block][subBlock][filter])
+    #             if type(potentialFilter) is list:
+    #                 model_params[block][subBlock] = random.choice(potentialFilter)
+            
+    #         else:
+    #             raise Exception(f"Very weird models_params[block] {model_params[block]}")
+        
+    #     return model_params
+    
+    # def _crossover(self, parent1: TakuNetModel, parent2: TakuNetModel, model_number:int) -> TakuNetModel:
+    #     """Performs crossover between two parent models."""
+    #     child_params = copy.deepcopy(parent1.model_params) # Here the child is a copy of the parent1
+    #     if random.random() < self.crossover_rate:
+    #         key = random.choice(list(child_params.keys()))
+    #         if isinstance(child_params[key], dict):
+    #             subkey = random.choice(list(child_params[key].keys()))
+    #             child_params[key][subkey] = parent2.model_params[key][subkey]
+    #         else:
+    #             child_params[key] = parent2.model_params[key]
+        
+    #     train_params = copy.deepcopy(parent1.train_params)
+    #     model_name = f"TakuNet_Crossover_{model_number}"
+    #     return TakuNetModel(model_name, (32, 32, 3), child_params, train_params, self.x_train, self.y_train, self.x_test, self.y_test)
     
     def evolve(self)->Iterator[TakuNetModel]:
         """Runs the evolutionary search process."""
         start_time = time.time()
         max_duration_seconds = self.time * 3600
-        self._initialize_population()
+        self._initialize_population() # Here we create 10 un-trained Models
         model_number = 0
         while time.time() - start_time < max_duration_seconds:
             
             print(f"\n⏳ Evolving new population (elapsed: {(time.time() - start_time)/60:.2f} min)...")
-            parents:List[TakuNetModel] = self._select_parents()
+
+            parents:List[TakuNetModel] = self._select_parents() 
+            """
+            Here we try to Select the Parents with Tournament Selection, we train them and they compete with each other
+            Return half of the Population as Parents
+            """
+
             new_population = parents.copy()
             
             while len(new_population) < self.population_size:
