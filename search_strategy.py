@@ -145,7 +145,8 @@ class EvolutionarySearch:
                     else:
                         if random.random() < self.mutation_rate:
                             choices = self.config["model_search_space"][block][subBlock]
-                            model_params[block][subBlock] = random.choice(choices)
+                            if isinstance(choices, list):
+                                model_params[block][subBlock] = random.choice(choices)
             else:
                 raise Exception(f"Unexpected non-dict block at top-level: {block}")
         return model_params
