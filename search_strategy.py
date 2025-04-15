@@ -71,15 +71,43 @@ class EvolutionarySearch:
         train_params.update(self.config["train_and_evaluate"]["evaluation_config"]) 
         return train_params
     
+    # def _initialize_population(self):
+    #     """Creates the initial population of models."""
+    #     for i in range(self.population_size):
+
+    #         model_params = self._random_model_parameters() # Here we randomly select params for "model_search_space"
+    #         train_params = self._random_training_parameters() # Here we randomly select params for "train_and_evaluate"
+
+    #         model = TakuNetModel(f"TakuNet_Init_{i}", (32, 32, 3), model_params, train_params, self.x_train, self.y_train, self.x_test, self.y_test)
+    #         self.population.append(model)
+
     def _initialize_population(self):
-        """Creates the initial population of models."""
-        for i in range(self.population_size):
+        """ Creates the initial population of models, 
+            skipping untrainable ones,
+            Train trainable ones!"""
+        print("🚀 Initializing population...")
+        created = 0
+        attempts = 0
+        max_attempts = self.population_size * 10  # Prevent infinite loop in rare cases
 
-            model_params = self._random_model_parameters() # Here we randomly select params for "model_search_space"
-            train_params = self._random_training_parameters() # Here we randomly select params for "train_and_evaluate"
+        while created < self.population_size and attempts < max_attempts:
+            attempts += 1
+            model_params = self._random_model_parameters()
+            train_params = self._random_training_parameters()
 
-            model = TakuNetModel(f"TakuNet_Init_{i}", (32, 32, 3), model_params, train_params, self.x_train, self.y_train, self.x_test, self.y_test)
-            self.population.append(model)
+            model = TakuNetModel(f"TakuNet_Init_{created}", (32, 32, 3), model_params, train_params, self.x_train, self.y_train, self.x_test, self.y_test)
+            model.train()
+
+            if model.results.train_accuracy is not None:
+                self.population.append(model)
+                created += 1
+                print(f"✅ Added model {model.model_name} to population (total: {created})")
+            else:
+                print(f"❌ Skipping model {model.model_name} due to memory limits")
+
+        if created < self.population_size:
+            print(f"⚠️ Only {created}/{self.population_size} models were valid after {attempts} attempts.")
+
     
     def _evaluate_fitness(self, model: TakuNetModel) -> float:
         """Evaluates a model's performance based on accuracy, precision, recall, and memory constraints."""

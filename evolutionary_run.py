@@ -37,7 +37,7 @@ CROSSOVER_RATE:float = 0.3  # Probability of crossover between two models
 
 # Ensure directories exist
 os.makedirs('saved_models', exist_ok=True)
-os.makedirs('results', exist_ok=True)
+os.makedirs('NAS/results', exist_ok=True)
 
 
 augmentation_techique = False
@@ -73,5 +73,5 @@ print("✅ Evolutionary search complete!")
 
 # Convert best models data to DataFrame and save to CSV
 df_results = pd.DataFrame(best_models_data)
-df_results.to_csv('results/Best_Models_Results.csv', index=False)
-print(f"✅ All best models from each generation saved to CSV: results/Best_Models_Results.csv")
+df_results.to_csv('NAS/results/Best_Models_Results_NAS.csv', index=False)
+print(f"✅ All best models from each generation saved to CSV: results/Best_Models_Results_NAS.csv")
