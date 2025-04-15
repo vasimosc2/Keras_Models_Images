@@ -1,13 +1,13 @@
 import random
 import copy
 import json
-from typing import Iterator, List, Dict
+from typing import Iterator, List, Dict, Union
 from TakuNet import TakuNetModel
 from data_processing import get_dataset
 import time
 
 class EvolutionarySearch:
-    def __init__(self, config_path: str, population_size: int, time: float, mutation_rate: float, crossover_rate: float, augmentation_techinque:Dict | bool):
+    def __init__(self, config_path: str, population_size: int, time: float, mutation_rate: float, crossover_rate: float, augmentation_techinque: Union[Dict, bool]):
         with open(config_path, "r") as file:
             self.config = json.load(file)
         
@@ -18,7 +18,7 @@ class EvolutionarySearch:
         self.population: List[TakuNetModel] = []
         self.x_train, self.y_train, self.x_test, self.y_test = self._load_data(augmentation_technique=augmentation_techinque)
     
-    def _load_data(self,augmentation_technique: Dict | bool):
+    def _load_data(self,augmentation_technique: Union[Dict, bool]):
         """Loads the dataset using the get_dataset function from data_processing.py"""
         if augmentation_technique is False:
             augmentation_techique = {"apply_standard":False,

@@ -316,7 +316,7 @@ def get_dataset(
 
     x_train, y_train, x_test, y_test = load_cifar100(output_classes)
 
-    if augementation_technique.get("apply_standard") | augementation_technique.get("apply_color") | augementation_technique.get("apply_geometric") | augementation_technique.get("apply_mixup") | augementation_technique.get(" apply_cutmix ") :
+    if augementation_technique.get("apply_standard") or augementation_technique.get("apply_color") or augementation_technique.get("apply_geometric") or augementation_technique.get("apply_mixup") or augementation_technique.get(" apply_cutmix ") :
         x_train, y_train = create_augmented_dataset(
             x_train, y_train,
             apply_standard=augementation_technique.get("apply_standard"),
