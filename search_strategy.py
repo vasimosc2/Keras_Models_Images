@@ -115,19 +115,40 @@ class EvolutionarySearch:
             model.train() # This stops the re-training of models that have been trained already
         if model.results.train_accuracy is None:
             return -1  # Discard models that exceed memory limits
-        return model.results.test_accuracy + model.results.precision + model.results.recall # This must be changed in order to evaluate better the models
+        return model.results.test_accuracy # This must be changed in order to evaluate better the models
     
     def _select_parents(self) -> List[TakuNetModel]:
-        """Tournament selection: pick random groups and choose the best."""
+        """Selects parents using 1v1 tournament style; last 3 form a mini-tournament if population is odd."""
+        shuffled = random.sample(self.population, len(self.population))  # Random order
         selected_parents = []
-        tournament_size = max(2, self.population_size // 5)  # Ensure at least 2 competitors per tournament
-        
-        for _ in range(self.population_size // 2): # x//y returns the integer part of the diviation
-            tournament = random.sample(self.population, tournament_size)
-            best_model = max(tournament, key=self._evaluate_fitness)
-            selected_parents.append(best_model)
+        i = 0
+        while i < len(shuffled) - 1:
+            # If 3 models left at the end, do a 3-way match
+            if i + 2 == len(shuffled):
+                trio = shuffled[i:i+3]
+                best = max(trio, key=self._evaluate_fitness)
+                selected_parents.append(best)
+                break
+            else:
+                model1, model2 = shuffled[i], shuffled[i+1]
+                fitness1 = self._evaluate_fitness(model1)
+                fitness2 = self._evaluate_fitness(model2)
+                winner = model1 if fitness1 >= fitness2 else model2
+                selected_parents.append(winner)
+                i += 2
 
         return selected_parents
+    # def _select_parents(self) -> List[TakuNetModel]:
+    #     """Tournament selection: pick random groups and choose the best."""
+    #     selected_parents = []
+    #     tournament_size = max(2, self.population_size // 5)  # Ensure at least 2 competitors per tournament
+        
+    #     for _ in range(self.population_size // 2): # x//y returns the integer part of the diviation
+    #         tournament = random.sample(self.population, tournament_size)
+    #         best_model = max(tournament, key=self._evaluate_fitness)
+    #         selected_parents.append(best_model)
+
+    #     return selected_parents
     
     def _mutate(self, model_params: Dict) -> Dict:
         """
@@ -219,7 +240,13 @@ class EvolutionarySearch:
         self._initialize_population() # Here we create 10 un-trained Models
         model_number = 0
         while time.time() - start_time < max_duration_seconds:
-            
+            # TODO , I have to do something with the Pareto Front, to add only the models that do not have another model explicitly better
+            current_best_model:TakuNetModel = max(
+                                    self.population, 
+                                    key=lambda model: model.results.test_accuracy if model.results.test_accuracy is not None else -1)
+            print(f"🔥 Yielding best model after population evolution: {current_best_model.model_name}")
+            yield current_best_model
+
             print(f"\n⏳ Evolving new population (elapsed: {(time.time() - start_time)/60:.2f} min)...")
 
             parents:List[TakuNetModel] = self._select_parents() 
@@ -230,6 +257,7 @@ class EvolutionarySearch:
 
             new_population = parents.copy()
             
+
             while len(new_population) < self.population_size:
                 if random.random() < 0.5:
                     model_number = model_number + 1
@@ -242,12 +270,6 @@ class EvolutionarySearch:
                     model_name = f"TakuNet_Mutant_{model_number}"
                     new_population.append(TakuNetModel(model_name, (32, 32, 3), mutant_params, train_params, self.x_train, self.y_train, self.x_test, self.y_test))
 
-            # Here the initial Population of the loop (of the generation) is trained and I yield the best 
-            # TODO , I have to do something with the Pareto Front, to add only the models that do not have another model explicitly better
-            current_best_model:TakuNetModel = max(
-                                    self.population, 
-                                    key=lambda model: model.results.test_accuracy if model.results.test_accuracy is not None else -1)
-            print(f"🔥 Yielding best model after population evolution: {current_best_model.model_name}")
-            yield current_best_model
+
             # update the population
             self.population = new_population
