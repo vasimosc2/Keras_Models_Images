@@ -34,9 +34,9 @@ class TakuNetModel:
         self.is_trained:bool = False
         self.folderName:str = folder if folder is not None else "."
         self.epochs:int = None
-        self.is_trainable: bool = self.check_trainability()
         self.learningRate:Optional[float] = 0.0005 if given_model else None
         self.results: TrainingResults = TrainingResults()
+        self.is_trainable: bool = self.check_trainability()
     
     def _stem_block(self, inputs:tuple):
         """
