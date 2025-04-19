@@ -154,7 +154,7 @@ class TakuNetModel:
         if self.model_params["stages_block"]["taku_block"]["dropout"] > 0:
 
             self.adaptive_dropout_taku = AdaptiveDropout(initial_rate=self.model_params["stages_block"]["taku_block"]["dropout"],
-                                                         name=f"adaptive_dropout_taku")
+                                                         name=f"adaptive_dropout_taku_{taku_block_number}")
             x = self.adaptive_dropout_taku(x)
 
             #x = layers.Dropout(self.model_params["stages_block"]["taku_block"]["dropout"])(x)
