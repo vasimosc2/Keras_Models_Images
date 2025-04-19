@@ -9,6 +9,49 @@ from tensorflow.keras.callbacks import Callback, EarlyStopping, ReduceLROnPlatea
 from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop
 from tensorflow.keras import regularizers
 
+class AdaptiveDropout(tf.keras.layers.Layer):
+    def __init__(self, initial_rate=0.1, **kwargs):
+        super().__init__(**kwargs)
+        self.initial_rate = initial_rate
+        self.rate = tf.Variable(initial_value=initial_rate, trainable=False, dtype=tf.float32)
+
+    def call(self, inputs, training=False):
+        return tf.nn.dropout(inputs, rate=self.rate) if training else inputs
+
+
+class AdjustDropoutCallback(tf.keras.callbacks.Callback):
+    def __init__(self, threshold=0.05, max_dropout=0.5, increment=0.05):
+        super().__init__()
+        self.threshold = threshold
+        self.max_dropout = max_dropout
+        self.increment = increment
+
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs or {}
+        train_acc = logs.get("accuracy")
+        val_acc = logs.get("val_accuracy")
+        if train_acc is not None and val_acc is not None:
+            gap = train_acc - val_acc
+            if gap > self.threshold:
+                print(f"\n⚠️ Overfitting detected (gap = {gap:.4f}). Increasing dropout rates.")
+                for name in [
+                    "adaptive_dropout_stem",
+                    "adaptive_dropout_taku",
+                    "adaptive_dropout_downsampler",
+                    "adaptive_dropout_refiner"
+                ]:
+                    try:
+                        layer = self.model.get_layer(name=name)
+                        old = float(layer.rate.numpy())
+                        new = min(old + self.increment, self.max_dropout)
+                        layer.rate.assign(new)
+                        print(f"🔧 {name}: dropout rate increased from {old:.2f} → {new:.2f}")
+                    except ValueError:
+                        continue
+
+
+
+
 class TakuNetModel:
     def __init__(self, 
                 model_name:str, 
@@ -38,6 +81,11 @@ class TakuNetModel:
         self.learningRate:Optional[float] = 0.0005 if given_model else None
         self.results: TrainingResults = TrainingResults()
         self.is_trainable: bool = self.check_trainability()
+
+        self.adaptive_dropout_stem = None
+        self.adaptive_dropout_taku = None
+        self.adaptive_dropout_refiner = None
+
     
     def _stem_block(self, inputs:tuple):
         """
@@ -55,7 +103,12 @@ class TakuNetModel:
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
         if self.model_params["stem_block"]["dropout"] > 0:
-            x = layers.Dropout(self.model_params["stem_block"]["dropout"])(x)
+
+            self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=self.model_params["stem_block"]["dropout"],
+                                                         name=f"adaptive_dropout_stem")
+            x = self.adaptive_dropout_stem(x)
+
+            #x = layers.Dropout(self.model_params["stem_block"]["dropout"])(x)
 
         x = layers.DepthwiseConv2D(kernel_size=self.model_params["stem_block"]["DWConv_kernel"],
                                    strides=self.model_params["stem_block"]["DWConv_strides"],
@@ -99,7 +152,12 @@ class TakuNetModel:
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
         if self.model_params["stages_block"]["taku_block"]["dropout"] > 0:
-            x = layers.Dropout(self.model_params["stages_block"]["taku_block"]["dropout"])(x)
+
+            self.adaptive_dropout_taku = AdaptiveDropout(initial_rate=self.model_params["stages_block"]["taku_block"]["dropout"],
+                                                         name=f"adaptive_dropout_taku")
+            x = self.adaptive_dropout_taku(x)
+
+            #x = layers.Dropout(self.model_params["stages_block"]["taku_block"]["dropout"])(x)
         return layers.Add()([x, inputs])
     
     def _downsampler_block(self, inputs:tuple, curr_stage_number:int):
@@ -119,8 +177,13 @@ class TakuNetModel:
         #print(f"DownSampler of Stage {curr_stage_number}, second shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
+
         if self.model_params["stages_block"]["downsampler"]["dropout"] > 0:
-            x = layers.Dropout(self.model_params["stages_block"]["downsampler"]["dropout"])(x)
+            self.adaptive_dropout_downsampler = AdaptiveDropout(initial_rate=self.model_params["stages_block"]["downsampler"]["dropout"],
+                                                         name=f"adaptive_dropout_downsampler")
+            x = self.adaptive_dropout_downsampler(x)
+            #x = layers.Dropout(self.model_params["stages_block"]["downsampler"]["dropout"])(x)
+
         pool_layer = layers.MaxPooling2D if curr_stage_number < self.model_params["stages_block"]["stages_number"] else layers.AveragePooling2D
         x = pool_layer(pool_size=self.model_params["stages_block"]["downsampler"]["pool_size"], 
                        strides=self.model_params["stages_block"]["downsampler"]["strides"], 
@@ -161,8 +224,14 @@ class TakuNetModel:
         x = layers.Dropout(0.3)(x)
         x = layers.GlobalAveragePooling2D()(x)
         #print(f"Refiner Block: Output shape {x.shape}\n")
+
         if self.model_params["refiner_block"]["dropout"] > 0:
-            x = layers.Dropout(self.model_params["refiner_block"]["dropout"])(x)
+
+            self.adaptive_dropout_refiner = AdaptiveDropout(initial_rate=self.model_params["refiner_block"]["dropout"],
+                                                                name=f"adaptive_dropout_refiner")
+            x = self.adaptive_dropout_refiner(x)
+
+            #x = layers.Dropout(self.model_params["refiner_block"]["dropout"])(x)
 
         return layers.Dense(self.model_params["refiner_block"]["num_output_classes"], 
                             activation='softmax',
@@ -218,7 +287,7 @@ class TakuNetModel:
         early_stopping_acc = EarlyStopping(monitor='val_accuracy', patience=self.train_params["early_stopping_patience"], mode='max', restore_best_weights=True)
         reduce_lr = ReduceLROnPlateau(monitor='val_accuracy', factor=0.5, patience=self.train_params["learning_rate_patience"], verbose=1) # Check which is better, the val_accuracy or val_loss
         midway_callback = MidwayStopCallback(total_epochs=self.train_params["num_epochs"], divider=self.train_params["divider"], threshold=0.30)
-
+        adjust_dropout = AdjustDropoutCallback()
         # **Train Model with Timing**
         start_time = time.time()
         print(f"✅Start training of {self.model_name}\n")
@@ -228,7 +297,7 @@ class TakuNetModel:
             batch_size=self.train_params["batch_size"],
             validation_data=(self.x_test, self.y_test),
             verbose=2,
-            callbacks=[midway_callback, early_stopping_acc, reduce_lr, checkpoint]
+            callbacks=[midway_callback, early_stopping_acc, reduce_lr, checkpoint, adjust_dropout]
         )
 
         training_time = time.time() - start_time
