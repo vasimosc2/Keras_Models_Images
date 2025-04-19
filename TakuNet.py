@@ -130,7 +130,7 @@ class TakuNetModel:
         x = layers.ReLU(6.0)(x)
         return x
     
-    def _taku_block(self, inputs:tuple, taku_block_number:int):
+    def _taku_block(self, inputs:tuple, taku_block_number:int, stage_number:int):
         #print(f"TakuBlock {taku_block_number}: input shape {inputs.shape}\n")
 
         x = layers.DepthwiseConv2D( kernel_size=self.model_params["stages_block"]["taku_block"]["DWConv_kernel"], 
@@ -154,7 +154,7 @@ class TakuNetModel:
         if self.model_params["stages_block"]["taku_block"]["dropout"] > 0:
 
             self.adaptive_dropout_taku = AdaptiveDropout(initial_rate=self.model_params["stages_block"]["taku_block"]["dropout"],
-                                                         name=f"adaptive_dropout_taku_{taku_block_number}")
+                                                         name=f"adaptive_dropout_taku_stage{stage_number}_block{taku_block_number}")
             x = self.adaptive_dropout_taku(x)
 
             #x = layers.Dropout(self.model_params["stages_block"]["taku_block"]["dropout"])(x)
@@ -195,7 +195,8 @@ class TakuNetModel:
         x = inputs
         for i in range(self.model_params["stages_block"]["taku_block"]["taku_block_number"]):
             #print(f" Start assembling Taku block {i}\n")
-            x = self._taku_block(inputs=x, taku_block_number=i )
+            x = self._taku_block(inputs=x, taku_block_number=i, stage_number=curr_stage_number)
+            #x = self._taku_block(inputs=x, taku_block_number=i )
         concat = layers.Concatenate()([inputs, x])
         return self._downsampler_block(inputs=concat, curr_stage_number=curr_stage_number)
     
