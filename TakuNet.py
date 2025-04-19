@@ -180,7 +180,7 @@ class TakuNetModel:
 
         if self.model_params["stages_block"]["downsampler"]["dropout"] > 0:
             self.adaptive_dropout_downsampler = AdaptiveDropout(initial_rate=self.model_params["stages_block"]["downsampler"]["dropout"],
-                                                         name=f"adaptive_dropout_downsampler")
+                                                         name=f"adaptive_dropout_downsampler_stage{curr_stage_number}")
             x = self.adaptive_dropout_downsampler(x)
             #x = layers.Dropout(self.model_params["stages_block"]["downsampler"]["dropout"])(x)
 
