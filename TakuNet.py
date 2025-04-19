@@ -20,34 +20,32 @@ class AdaptiveDropout(tf.keras.layers.Layer):
 
 
 class AdjustDropoutCallback(tf.keras.callbacks.Callback):
-    def __init__(self, threshold=0.05, max_dropout=0.5, increment=0.05):
+    def __init__(self, threshold=0.05, max_dropout=0.6, increment=0.05, apply_after_epoch=10):
         super().__init__()
         self.threshold = threshold
         self.max_dropout = max_dropout
         self.increment = increment
+        self.apply_after_epoch = apply_after_epoch
 
     def on_epoch_end(self, epoch, logs=None):
+        if epoch < self.apply_after_epoch:
+            return  # Skip until target epoch
+
         logs = logs or {}
         train_acc = logs.get("accuracy")
         val_acc = logs.get("val_accuracy")
+
         if train_acc is not None and val_acc is not None:
             gap = train_acc - val_acc
             if gap > self.threshold:
                 print(f"\n⚠️ Overfitting detected (gap = {gap:.4f}). Increasing dropout rates.")
-                for name in [
-                    "adaptive_dropout_stem",
-                    "adaptive_dropout_taku",
-                    "adaptive_dropout_downsampler",
-                    "adaptive_dropout_refiner"
-                ]:
-                    try:
-                        layer = self.model.get_layer(name=name)
+                for layer in self.model.layers:
+                    if isinstance(layer, AdaptiveDropout):
                         old = float(layer.rate.numpy())
                         new = min(old + self.increment, self.max_dropout)
                         layer.rate.assign(new)
-                        print(f"🔧 {name}: dropout rate increased from {old:.2f} → {new:.2f}")
-                    except ValueError:
-                        continue
+                        print(f"🔧 {layer.name}: dropout rate increased from {old:.2f} → {new:.2f}")
+
 
 
 
@@ -131,6 +129,7 @@ class TakuNetModel:
         return x
     
     def _taku_block(self, inputs:tuple, taku_block_number:int, stage_number:int):
+
         #print(f"TakuBlock {taku_block_number}: input shape {inputs.shape}\n")
 
         x = layers.DepthwiseConv2D( kernel_size=self.model_params["stages_block"]["taku_block"]["DWConv_kernel"], 
@@ -151,6 +150,7 @@ class TakuNetModel:
         #print(f"TakuBlock {taku_block_number}: output shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
+
         if self.model_params["stages_block"]["taku_block"]["dropout"] > 0:
 
             self.adaptive_dropout_taku = AdaptiveDropout(initial_rate=self.model_params["stages_block"]["taku_block"]["dropout"],
@@ -158,6 +158,7 @@ class TakuNetModel:
             x = self.adaptive_dropout_taku(x)
 
             #x = layers.Dropout(self.model_params["stages_block"]["taku_block"]["dropout"])(x)
+
         return layers.Add()([x, inputs])
     
     def _downsampler_block(self, inputs:tuple, curr_stage_number:int):
@@ -582,9 +583,9 @@ class MidwayStopCallback(Callback):
         if epoch == self.mid_epoch:
             train_acc = logs.get('accuracy')
             val_acc = logs.get('val_accuracy')
-            print(f"\nMidway Epoch {epoch+1}: Training Acc = {train_acc}, Validation Acc = {val_acc}")
-            if train_acc < self.threshold:  
-                print(f"\n🚨 Stopping early: Training accuracy is below {self.threshold} at epoch {epoch+1}")
+            print(f"\nMidway Epoch {epoch}: Training Acc = {train_acc}, Validation Acc = {val_acc}")
+            if val_acc < self.threshold:  
+                print(f"\n🚨 Stopping early: Training accuracy is below {self.threshold} at epoch {epoch}")
                 self.model.stop_training = True
 
 
