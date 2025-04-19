@@ -100,7 +100,7 @@ while trainable_models_count < number_of_models:  # Train number_of_models with 
                                             folder=Folder)
     if taku_model.is_trainable:
         models_to_train.append(taku_model)
-        trained_models_count += 1
+        trainable_models_count += 1
         compute_layer_ram_usage(taku_model.model, data_dtype_multiplier=1)
         print(f"✅ Model {model_name} accepted for training")
     else:
