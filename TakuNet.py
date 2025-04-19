@@ -9,42 +9,7 @@ from tensorflow.keras.callbacks import Callback, EarlyStopping, ReduceLROnPlatea
 from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop
 from tensorflow.keras import regularizers
 
-class AdaptiveDropout(tf.keras.layers.Layer):
-    def __init__(self, initial_rate=0.1, **kwargs):
-        super().__init__(**kwargs)
-        self.initial_rate = initial_rate
-        self.rate = tf.Variable(initial_value=initial_rate, trainable=False, dtype=tf.float32)
 
-    def call(self, inputs, training=False):
-        return tf.nn.dropout(inputs, rate=self.rate) if training else inputs
-
-
-class AdjustDropoutCallback(tf.keras.callbacks.Callback):
-    def __init__(self, threshold=0.05, max_dropout=0.6, increment=0.05, apply_after_epoch=10):
-        super().__init__()
-        self.threshold = threshold
-        self.max_dropout = max_dropout
-        self.increment = increment
-        self.apply_after_epoch = apply_after_epoch
-
-    def on_epoch_end(self, epoch, logs=None):
-        if epoch < self.apply_after_epoch:
-            return  # Skip until target epoch
-
-        logs = logs or {}
-        train_acc = logs.get("accuracy")
-        val_acc = logs.get("val_accuracy")
-
-        if train_acc is not None and val_acc is not None:
-            gap = train_acc - val_acc
-            if gap > self.threshold:
-                print(f"\n⚠️ Overfitting detected (gap = {gap:.4f}). Increasing dropout rates.")
-                for layer in self.model.layers:
-                    if isinstance(layer, AdaptiveDropout):
-                        old = float(layer.rate.numpy())
-                        new = min(old + self.increment, self.max_dropout)
-                        layer.rate.assign(new)
-                        print(f"🔧 {layer.name}: dropout rate increased from {old:.2f} → {new:.2f}")
 
 
 
@@ -289,7 +254,7 @@ class TakuNetModel:
         early_stopping_acc = EarlyStopping(monitor='val_accuracy', patience=self.train_params["early_stopping_patience"], mode='max', restore_best_weights=True)
         reduce_lr = ReduceLROnPlateau(monitor='val_accuracy', factor=0.5, patience=self.train_params["learning_rate_patience"], verbose=1) # Check which is better, the val_accuracy or val_loss
         midway_callback = MidwayStopCallback(total_epochs=self.train_params["num_epochs"], divider=self.train_params["divider"], threshold=0.30)
-        adjust_dropout = AdjustDropoutCallback()
+        adjust_dropout = AdjustDropoutCallback(threshold=0.05, max_dropout=0.6, increment=0.05, total_epochs = self.train_params["num_epochs"], divider = self.train_params["divider"])
         # **Train Model with Timing**
         start_time = time.time()
         print(f"✅Start training of {self.model_name}\n")
@@ -571,6 +536,52 @@ def get_optimizer(name, learning_rate, weight_decay=1e-4):
         "rmsprop": RMSprop(learning_rate=learning_rate)
     }
     return optimizers.get(name.lower(), Adam(learning_rate=learning_rate))  # If the name is not found return Adam by default
+
+
+
+# Helper Classes
+
+
+
+
+class AdaptiveDropout(tf.keras.layers.Layer):
+    def __init__(self, initial_rate=0.1, **kwargs):
+        super().__init__(**kwargs)
+        self.initial_rate = initial_rate
+        self.rate = tf.Variable(initial_value=initial_rate, trainable=False, dtype=tf.float32)
+
+    def call(self, inputs, training=False):
+        return tf.nn.dropout(inputs, rate=self.rate) if training else inputs
+
+
+class AdjustDropoutCallback(Callback):
+    def __init__(self, threshold:float=0.05, max_dropout:float=0.6, increment:float=0.05, total_epochs:int = 50, divider:int = 5):
+        super().__init__()
+        self.threshold = threshold
+        self.max_dropout = max_dropout
+        self.increment = increment
+        self.apply_after_epoch = total_epochs // divider
+
+    def on_epoch_end(self, epoch, logs=None):
+        if epoch < self.apply_after_epoch:
+            return  # Skip until target epoch
+
+        logs = logs or {}
+        train_acc = logs.get("accuracy")
+        val_acc = logs.get("val_accuracy")
+
+        if train_acc is not None and val_acc is not None:
+            gap = train_acc - val_acc
+            if gap > self.threshold:
+                print(f"\n⚠️ Overfitting detected (gap = {gap:.4f}). Increasing dropout rates.")
+                for layer in self.model.layers:
+                    if isinstance(layer, AdaptiveDropout):
+                        old = float(layer.rate.numpy())
+                        new = min(old + self.increment, self.max_dropout)
+                        layer.rate.assign(new)
+                        print(f"🔧 {layer.name}: dropout rate increased from {old:.2f} → {new:.2f}")
+
+
 
 
 class MidwayStopCallback(Callback):
