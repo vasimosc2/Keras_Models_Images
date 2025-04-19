@@ -18,6 +18,7 @@ class TakuNetModel:
                 y_train: Optional[tf.Tensor]= None, 
                 x_test: Optional[tf.Tensor] = None, 
                 y_test: Optional[tf.Tensor] = None,
+                folder:Optional[str] = None,
                 given_model:Optional[tf.keras.Model] = None
                 ):
         
@@ -31,8 +32,9 @@ class TakuNetModel:
         self.x_test: Optional[tf.Tensor] = x_test
         self.y_test: Optional[tf.Tensor] = y_test
         self.is_trained:bool = False
-        self.folderName:str = "."
+        self.folderName:str = folder if folder is not None else "."
         self.epochs:int = None
+        self.is_trainable: bool = self.check_trainability()
         self.learningRate:Optional[float] = 0.0005 if given_model else None
         self.results: TrainingResults = TrainingResults()
     
@@ -131,22 +133,31 @@ class TakuNetModel:
         outputs = self._refiner_block(x)
         return Model(inputs, outputs)
     
+    def check_trainability(self) -> bool:
+        """Check if the model fits within the memory constraints."""
+        if self.train_params is None:
+            print("⚠️ Cannot check trainability: `train_params` is None.")
+            return False
+        
+        self.results.max_ram_usage, self.results.param_memory, self.results.total_memory = self.memoryEstimation(data_dtype_multiplier=self.train_params["data_dtype_multiplier"])
+
+        print(f"Max RAM Usage: {self.results.max_ram_usage:.2f} KB\n")
+        print(f"Parameter Memory: {self.results.param_memory:.2f} KB\n")
+        print(f"Total Memory Usage: {self.results.total_memory:.2f} KB\n")
+
+        if self.results.max_ram_usage * 1024 > 0.8 * self.train_params["max_ram_consumption"]:
+            print(f"🚨 Model not trainable: RAM usage ({self.results.max_ram_usage:.2f} KB) exceeds limit.")
+            return False
+        if  self.results.param_memory * 1024 > 0.9 * self.train_params["max_flash_consumption"]:
+            print(f"🚨 Model not trainable: Flash usage ({ self.results.param_memory:.2f} KB) exceeds limit.")
+            return False
+        return True
+
+    
     def train(self):
         """Train the model, evaluate metrics, and store results."""
         
-        # **Memory Estimation Before Training**
-        max_ram_usage, param_memory, total_memory = self.memoryEstimation(data_dtype_multiplier=self.train_params["data_dtype_multiplier"])
-        print(f"Max RAM Usage: {max_ram_usage:.2f} KB")
-        print(f"Parameter Memory: {param_memory:.2f} KB")
-        print(f"Total Memory Usage: {total_memory:.2f} KB")
-
-        if max_ram_usage * 1024 > 0.8 * self.train_params["max_ram_consumption"]:
-            print(f"🚨 Training aborted: Estimated RAM usage ({max_ram_usage:.2f} KB) exceeds limit.") # See this as well
-            print("\n The results will be None in this Model")
-            return None
-        if param_memory * 1024 > 0.9 * self.train_params["max_flash_consumption"]: # The parameters size is relatively close to the TFlite size, so a good estimation is to keep that 
-            print(f"🚨 Training aborted: Estimated Flash usage ({param_memory:.2f} KB) exceeds limit.")
-            print("\n The results will be None in this Model")
+        if self.check_trainability is False:
             return None
 
         print("✅ Memory check passed! Starting training...")
@@ -192,14 +203,12 @@ class TakuNetModel:
         y_true_classes = np.argmax(self.y_test, axis=1)
 
         self.results.history = history
+        self.results.epochs_trained = len(history.history['loss'])
         self.results.train_accuracy = best_train_acc
         self.results.test_accuracy = best_test_acc
         self.results.precision = precision_score(y_true_classes, y_test_pred_classes, average='macro')
         self.results.recall = recall_score(y_true_classes, y_test_pred_classes, average='macro')
         self.results.f1_score = f1_score(y_true_classes, y_test_pred_classes, average='macro')
-        self.results.max_ram_usage = max_ram_usage
-        self.results.param_memory = param_memory
-        self.results.total_memory = total_memory
         self.results.training_time = training_time 
 
         # ** Declare that this model is trained.
@@ -479,6 +488,7 @@ class TrainingResults:
         self.fitness_score = None
         self.tflite_accuracy = None
         self.tflite_size = None
+        self.epochs_trained = None
 
     def __repr__(self):
         return (f"TrainingResults(\n"

@@ -17,6 +17,9 @@ args = parser.parse_args()
 number_of_models = args.num_models
 
 
+Folder="Manual_Run"
+
+
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -47,12 +50,17 @@ from compute_ram_show import compute_layer_ram_usage
 
 
 
-os.makedirs('saved_models', exist_ok=True)
-os.makedirs('results', exist_ok=True)
+os.makedirs(f'{Folder}/saved_models', exist_ok=True)
+os.makedirs(f'{Folder}/results', exist_ok=True)
 
-models_to_train:List[TakuNetModel] = []
 
-for i in range(1, number_of_models + 1):  # Train number_of_models with random hyperparameters
+
+
+models_to_train: List[TakuNetModel] = []
+trainable_models_count = 0
+
+
+while trainable_models_count < number_of_models:  # Train number_of_models with random hyperparameters
     model_params = getSearchSpaceParameters.sample_from_search_space(config["model_search_space"])
     train_params = getTrainingParameters.sample_from_train_and_evaluate(config["train_and_evaluate"])
 
@@ -68,14 +76,19 @@ for i in range(1, number_of_models + 1):  # Train number_of_models with random h
                                 "apply_mixup": apply_mixup,
                                 "apply_cutmix": False
                                     }
+    default_augementaion_technique ={ "apply_standard":False,
+                                "apply_color":False,
+                                "apply_geometric":False,
+                                "apply_mixup": False,
+                                "apply_cutmix": False}
     
-    print(f"\n🎲 Randomly selected augmentation for model {i}: {aug_type}\n")
+    print(f"\n🎲 Randomly selected augmentation for model {trainable_models_count}: {aug_type}\n")
 
     x_train, y_train, x_test, y_test = get_dataset( output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], 
-                                                    augementation_technique=augmentation_technique)
+                                                    augementation_technique=default_augementaion_technique)
     
-    model_name = f"TakuNet_Random_{i}"
-    print(f"\n🔍 Selected hyperparameters for {model_name}:\n{json.dumps(model_params, indent=4)}")
+    model_name = f"TakuNet_Random_{trainable_models_count}"
+    #print(f"\n🔍 Selected hyperparameters for {model_name}:\n{json.dumps(model_params, indent=4)}")
     taku_model: TakuNetModel = TakuNetModel(model_name=model_name, 
                                             input_shape=(32, 32, 3), 
                                             model_params=model_params, 
@@ -83,14 +96,25 @@ for i in range(1, number_of_models + 1):  # Train number_of_models with random h
                                             x_train=x_train,
                                             y_train=y_train, 
                                             x_test=x_test, 
-                                            y_test=y_test)
-    models_to_train.append(taku_model)
-    compute_layer_ram_usage(taku_model.model, data_dtype_multiplier=1)
+                                            y_test=y_test,
+                                            folder=Folder)
+    if taku_model.is_trainable:
+        models_to_train.append(taku_model)
+        trained_models_count += 1
+        compute_layer_ram_usage(taku_model.model, data_dtype_multiplier=1)
+        print(f"✅ Model {model_name} accepted for training")
+    else:
+        print(f"❌ Model {model_name} rejected due to memory constraints")
+    
     
     del taku_model, x_train, y_train, x_test, y_test
     tf.keras.backend.clear_session()
     import gc
     gc.collect()
+
+
+
+
 
 results = []
 print("🚀 Starting model training...\n")
@@ -114,7 +138,8 @@ for model in models_to_train:
             "TFlite Estimation size(KB)": model.results.tflite_size,
             "Param Memory (KB)": model.results.param_memory,
             "Total Memory (KB)": model.results.total_memory,
-            "Training Time (s)": model.results.training_time
+            "Training Time (s)": model.results.training_time,
+            "Epochs Trained": model.results.epochs_trained
         })
         K.clear_session()
     else:
@@ -129,8 +154,8 @@ print(f"\n⏳ Total Training Time: {total_time:.2f} seconds ({total_time/60:.2f}
 # **Save Results**
 if results:
     df_results = pd.DataFrame(results)
-    df_results.to_csv('results/Training_Results.csv', index=False)
-    print("✅ Results saved to CSV: results/Training_Results.csv")
+    df_results.to_csv(f'{Folder}/results/Training_Results.csv', index=False)
+    print(f"✅ Results saved to CSV: {Folder}/results/Training_Results.csv")
 else:
     print("⚠️ No models were trained due to memory constraints.")
 
