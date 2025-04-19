@@ -3,11 +3,11 @@
         "stem_block":{
             "filters": [32, 64, 128],
             "Conv_kernel": [3, 5],
+            "l2_weight_decay": [0.0001, 0.001, 0.01],
             "Conv_strides": [1, 2],
             "dropout": [0, 0.1, 0.2, 0.3, 0.5],
             "dilation_rate": [1],
             "DWConv_kernel": [3, 5],
-            "l2_weight_decay": [0.0001, 0.001, 0.01],
             "DWConv_strides": [1, 2]
         },
         "stages_block":{
@@ -16,7 +16,6 @@
                 "taku_block_number": [4,5,6],
                 "dropout": [0, 0.1, 0.2, 0.3],
                 "DWConv_kernel": [3,5],
-                "l2_weight_decay": [0.0001, 0.001, 0.01],
                 "DWConv_strides": [1]
             },
             "downsampler":{

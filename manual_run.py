@@ -139,6 +139,7 @@ for model in models_to_train:
             "Param Memory (KB)": model.results.param_memory,
             "Total Memory (KB)": model.results.total_memory,
             "Training Time (s)": model.results.training_time,
+            "Flop Number": model.results.flops,
             "Epochs Trained": model.results.epochs_trained
         })
 

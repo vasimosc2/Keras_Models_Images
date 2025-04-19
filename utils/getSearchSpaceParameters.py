@@ -8,11 +8,11 @@ def sample_from_search_space(model_search_space)->Dict:
         "stem_block": {
             "filters": random.choice(model_search_space["stem_block"]["filters"]),
             "Conv_kernel": random.choice(model_search_space["stem_block"]["Conv_kernel"]),
+            "l2_weight_decay": random.choice(model_search_space["stem_block"]["l2_weight_decay"]),
             "Conv_strides": random.choice(model_search_space["stem_block"]["Conv_strides"]),
             "dropout": random.choice(model_search_space["stem_block"]["dropout"]),
             "dilation_rate": random.choice(model_search_space["stem_block"]["dilation_rate"]),
             "DWConv_kernel": random.choice(model_search_space["stem_block"]["DWConv_kernel"]),
-            "l2_weight_decay": random.choice(model_search_space["stem_block"]["l2_weight_decay"]),
             "DWConv_strides": random.choice(model_search_space["stem_block"]["DWConv_strides"])
         },
         "stages_block": {
@@ -21,7 +21,6 @@ def sample_from_search_space(model_search_space)->Dict:
                 "taku_block_number": random.choice(model_search_space["stages_block"]["taku_block"]["taku_block_number"]),
                 "dropout": random.choice(model_search_space["stages_block"]["taku_block"]["dropout"]),
                 "DWConv_kernel": random.choice(model_search_space["stages_block"]["taku_block"]["DWConv_kernel"]),
-                "l2_weight_decay": random.choice(model_search_space["stages_block"]["taku_block"]["l2_weight_decay"]),
                 "DWConv_strides": random.choice(model_search_space["stages_block"]["taku_block"]["DWConv_strides"])
             },
             "downsampler": {

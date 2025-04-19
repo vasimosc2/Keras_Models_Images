@@ -9,12 +9,6 @@ from tensorflow.keras.callbacks import Callback, EarlyStopping, ReduceLROnPlatea
 from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop
 from tensorflow.keras import regularizers
 
-
-
-
-
-
-
 class TakuNetModel:
     def __init__(self, 
                 model_name:str, 
@@ -38,6 +32,7 @@ class TakuNetModel:
         self.y_train: Optional[tf.Tensor] = y_train
         self.x_test: Optional[tf.Tensor] = x_test
         self.y_test: Optional[tf.Tensor] = y_test
+        
         self.is_trained:bool = False
         self.folderName:str = folder if folder is not None else "."
         self.epochs:int = None
@@ -56,15 +51,19 @@ class TakuNetModel:
         The output shape is: (None, 32 / (Conv_strides * DWConv_kernel), 32 / (Conv_strides * DWConv_kernel), filters,)
         """
         #print(f"Stem 1 block shape {inputs.shape}\n")
+
         x = layers.Conv2D(filters=self.model_params["stem_block"]["filters"], 
                           kernel_size=self.model_params["stem_block"]["Conv_kernel"],
                           strides=self.model_params["stem_block"]["Conv_strides"], 
                           padding='same', 
                           use_bias=False,
                           kernel_regularizer = regularizers.l2(self.model_params["stem_block"]["l2_weight_decay"]) )(inputs)
+        
         #print(f"Stem 2 block shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
+
         x = layers.ReLU(6.0)(x)
+
         if self.model_params["stem_block"]["dropout"] > 0:
 
             self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=self.model_params["stem_block"]["dropout"],
@@ -213,112 +212,9 @@ class TakuNetModel:
         outputs = self._refiner_block(x)
         return Model(inputs, outputs)
     
-    def check_trainability(self) -> bool:
-        """Check if the model fits within the memory constraints."""
-        if self.train_params is None:
-            print("⚠️ Cannot check trainability: `train_params` is None.")
-            return False
-        
-        self.results.max_ram_usage, self.results.param_memory, self.results.total_memory = self.memoryEstimation(data_dtype_multiplier=self.train_params["data_dtype_multiplier"])
 
-        print(f"Max RAM Usage: {self.results.max_ram_usage:.2f} KB\n")
-        print(f"Parameter Memory: {self.results.param_memory:.2f} KB\n")
-        print(f"Total Memory Usage: {self.results.total_memory:.2f} KB\n")
-
-        if self.results.max_ram_usage * 1024 > 0.8 * self.train_params["max_ram_consumption"]:
-            print(f"🚨 Model not trainable: RAM usage ({self.results.max_ram_usage:.2f} KB) exceeds limit.")
-            return False
-        if  self.results.param_memory * 1024 > 0.9 * self.train_params["max_flash_consumption"]:
-            print(f"🚨 Model not trainable: Flash usage ({ self.results.param_memory:.2f} KB) exceeds limit.")
-            return False
-        return True
-
-    
-    def train(self):
-        """Train the model, evaluate metrics, and store results."""
-        
-        if self.check_trainability is False:
-            return None
-
-        print("✅ Memory check passed! Starting training...")
-
-        # **Compile Model**
-        optimizer = get_optimizer(self.train_params["optimizer"], self.train_params["learning_rate"] if self.learningRate is None else self.learningRate )
-        self.model.compile(optimizer = optimizer, 
-                           loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),#self.train_params["loss"], 
-                           metrics = ['accuracy'])
-
-        # **Callbacks**
-        checkpoint_path = f'{self.folderName}/saved_models/{self.model_name}.keras'
-        checkpoint = ModelCheckpoint(filepath=checkpoint_path, monitor='val_accuracy', save_best_only=True, mode='max', verbose=0)
-        early_stopping_acc = EarlyStopping(monitor='val_accuracy', patience=self.train_params["early_stopping_patience"], mode='max', restore_best_weights=True)
-        reduce_lr = ReduceLROnPlateau(monitor='val_accuracy', factor=0.5, patience=self.train_params["learning_rate_patience"], verbose=1) # Check which is better, the val_accuracy or val_loss
-        midway_callback = MidwayStopCallback(total_epochs=self.train_params["num_epochs"], divider=self.train_params["divider"], threshold=0.30)
-        adjust_dropout = AdjustDropoutCallback(threshold=0.05, max_dropout=0.6, increment=0.05, total_epochs = self.train_params["num_epochs"], divider = self.train_params["divider"])
-        # **Train Model with Timing**
-        start_time = time.time()
-        print(f"✅Start training of {self.model_name}\n")
-        history = self.model.fit(
-            self.x_train, self.y_train,
-            epochs= self.epochs if self.epochs else self.train_params["num_epochs"],
-            batch_size=self.train_params["batch_size"],
-            validation_data=(self.x_test, self.y_test),
-            verbose=2,
-            callbacks=[midway_callback, early_stopping_acc, reduce_lr, checkpoint, adjust_dropout]
-        )
-
-        training_time = time.time() - start_time
-
-        # **Load Best Model**
-        self.model.load_weights(checkpoint_path)
-        print(f"✅ Best model restored from {checkpoint_path}\n")
-
-        # **Compute Accuracy Metrics**
-        best_train_acc = max(history.history['accuracy'])   # training accuracy
-        best_test_acc = max(history.history['val_accuracy'])  # test accuracy
-
-        print(f"✅ Best Test Accuracy (Best Model): {best_test_acc:.4f}\n")
-
-        # **Predictions & Metrics**
-        y_test_pred = self.model.predict(self.x_test)
-        y_test_pred_classes = np.argmax(y_test_pred, axis=1)
-        y_true_classes = np.argmax(self.y_test, axis=1)
-
-        self.results.history = history
-        self.results.epochs_trained = len(history.history['loss'])
-        self.results.train_accuracy = best_train_acc
-        self.results.test_accuracy = best_test_acc
-        self.results.precision = precision_score(y_true_classes, y_test_pred_classes, average='macro')
-        self.results.recall = recall_score(y_true_classes, y_test_pred_classes, average='macro')
-        self.results.f1_score = f1_score(y_true_classes, y_test_pred_classes, average='macro')
-        self.results.training_time = training_time 
-
-        # ** Declare that this model is trained.
-        self.is_trained = True
-
-        # **Save Model in Multiple Formats**
-        self.convert_to_tflite()
-        self.convert_tflite_to_c_array()
-
-        # **Evaluate the TFLite Model**
-        tflite_acc = self.evaluate_tflite_model()
-        self.results.tflite_accuracy = tflite_acc
-        print(f"Test Accuracy (TFLite): {tflite_acc:.4f}")
-
-        # **File Size Reporting**
-        keras_size_kb = os.path.getsize(checkpoint_path) / 1024
-        tflite_size_kb = os.path.getsize(f"{self.folderName}/TfLiteModels/{self.model_name}.tflite") / 1024
-        c_array_size_kb = os.path.getsize(f"{self.folderName}/HeaderFiles/{self.model_name}.h") / 1024
-
-        self.results.tflite_size = tflite_size_kb
-        
-        print(f"Keras Model Size: {keras_size_kb:.2f} KB")
-        print(f"TFLite Model Size: {tflite_size_kb:.2f} KB")
-        print(f"C Array File Size: {c_array_size_kb:.2f} KB")
-
-        print("\n✅ Training complete. Best model and metrics stored in `self.results`.\n")
-    
-    def memoryEstimation(self,data_dtype_multiplier: int = 1)-> Tuple[float, float, float]:
+    # Measurements
+    def _memoryEstimation(self,data_dtype_multiplier: int = 1)-> Tuple[float, float, float]:
         """
         ROM (Read-Only Memory) → Memory used to store layer parameters (weights & biases).
         RAM (Random-Access Memory) → Memory used to store activations (input & output tensors).
@@ -354,7 +250,7 @@ class TakuNetModel:
 
         return max_ram_usage, param_memory, total_memory
     
-    def count_flops(self, batch_size=1)-> int:
+    def _count_flops(self, batch_size=1)-> int:
         """
         Count FLOPs of a TensorFlow 2.x model.
         
@@ -383,7 +279,7 @@ class TakuNetModel:
 
         return flops
     
-    def convert_to_tflite(self)->None:
+    def _convert_to_tflite(self)->None:
         """Converts a trained model to TFLite with full-integer quantization."""
         converter = tf.lite.TFLiteConverter.from_keras_model(self.model)
 
@@ -419,7 +315,7 @@ class TakuNetModel:
             else:
                 print(f"❌ Unexpected error while writing header file: {e}")
 
-    def convert_tflite_to_c_array(self)->None:
+    def _convert_tflite_to_c_array(self)->None:
         """Converts the TFLite model into a C array header file for Arduino integration."""
         tflite_path = f"{self.folderName}/TfLiteModels/{self.model_name}.tflite"
     
@@ -461,7 +357,7 @@ class TakuNetModel:
     
     
         
-    def evaluate_tflite_model(self)-> float:
+    def _evaluate_tflite_model(self)-> float:
         """Evaluates the TFLite model and returns the accuracy."""
         tflite_path = f"{self.folderName}/TfLiteModels/{self.model_name}.tflite"
 
@@ -516,13 +412,128 @@ class TakuNetModel:
         accuracy = np.mean(y_pred_classes == y_true_classes)
         return accuracy
 
+    
+    def check_trainability(self) -> bool:
+        """Check if the model fits within the memory constraints."""
+        if self.train_params is None:
+            print("⚠️ Cannot check trainability: `train_params` is None.")
+            return False
+        
+        self.results.max_ram_usage, self.results.param_memory, self.results.total_memory = self._memoryEstimation(data_dtype_multiplier=self.train_params["data_dtype_multiplier"])
 
+        print(f"Max RAM Usage: {self.results.max_ram_usage:.2f} KB\n")
+        print(f"Parameter Memory: {self.results.param_memory:.2f} KB\n")
+        print(f"Total Memory Usage: {self.results.total_memory:.2f} KB\n")
+
+        if self.results.max_ram_usage * 1024 > 0.8 * self.train_params["max_ram_consumption"]:
+            print(f"🚨 Model not trainable: RAM usage ({self.results.max_ram_usage:.2f} KB) exceeds limit.")
+            return False
+        if  self.results.param_memory * 1024 > 0.9 * self.train_params["max_flash_consumption"]:
+            print(f"🚨 Model not trainable: Flash usage ({ self.results.param_memory:.2f} KB) exceeds limit.")
+            return False
+        return True
+    
+
+
+
+    
+    def train(self):
+        """Train the model, evaluate metrics, and store results."""
+        
+        if self.check_trainability is False:
+            return None
+
+        print("✅ Memory check passed! Starting training...")
+
+        # **Compile Model**
+        optimizer = get_optimizer(self.train_params["optimizer"], self.train_params["learning_rate"] if self.learningRate is None else self.learningRate )
+        self.model.compile(optimizer = optimizer, 
+                           loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),#self.train_params["loss"], 
+                           metrics = ['accuracy'])
+
+        # **Callbacks**
+        checkpoint_path = f'{self.folderName}/saved_models/{self.model_name}.keras'
+        checkpoint = ModelCheckpoint(filepath=checkpoint_path, monitor='val_accuracy', save_best_only=True, mode='max', verbose=0)
+        early_stopping_acc = EarlyStopping(monitor='val_accuracy', patience=self.train_params["early_stopping_patience"], mode='max', restore_best_weights=True)
+        reduce_lr = ReduceLROnPlateau(monitor='val_accuracy', factor=0.5, patience=self.train_params["learning_rate_patience"], verbose=1) # Check which is better, the val_accuracy or val_loss
+        midway_callback = MidwayStopCallback(total_epochs=self.train_params["num_epochs"], divider=self.train_params["divider"], threshold=0.30)
+        adjust_dropout = AdjustDropoutCallback(threshold=0.15, max_dropout=0.5, increment=0.05, total_epochs = self.train_params["num_epochs"], divider = self.train_params["divider"])
+        # **Train Model with Timing**
+        start_time = time.time()
+        print(f"✅Start training of {self.model_name}\n")
+        history = self.model.fit(
+            self.x_train, self.y_train,
+            epochs= self.epochs if self.epochs else self.train_params["num_epochs"],
+            batch_size=self.train_params["batch_size"],
+            validation_data=(self.x_test, self.y_test),
+            verbose=2,
+            callbacks=[midway_callback, early_stopping_acc, reduce_lr, checkpoint, adjust_dropout]
+        )
+
+        training_time = time.time() - start_time
+
+        # **Load Best Model**
+        self.model.load_weights(checkpoint_path)
+        print(f"✅ Best model restored from {checkpoint_path}\n")
+
+        # **Compute Accuracy Metrics**
+        best_train_acc = max(history.history['accuracy'])   # training accuracy
+        best_test_acc = max(history.history['val_accuracy'])  # test accuracy
+
+        print(f"✅ Best Test Accuracy (Best Model): {best_test_acc:.4f}\n")
+
+        # **Predictions & Metrics**
+        y_test_pred = self.model.predict(self.x_test)
+        y_test_pred_classes = np.argmax(y_test_pred, axis=1)
+        y_true_classes = np.argmax(self.y_test, axis=1)
+
+        self.results.history = history
+        self.results.epochs_trained = len(history.history['loss'])
+        self.results.train_accuracy = best_train_acc
+        self.results.test_accuracy = best_test_acc
+        self.results.precision = precision_score(y_true_classes, y_test_pred_classes, average='macro')
+        self.results.recall = recall_score(y_true_classes, y_test_pred_classes, average='macro')
+        self.results.f1_score = f1_score(y_true_classes, y_test_pred_classes, average='macro')
+        self.results.training_time = training_time 
+
+        # ** Declare that this model is trained.
+        self.is_trained = True
+
+        # **Save Model in Multiple Formats**
+        self._convert_to_tflite()
+        self._convert_tflite_to_c_array()
+        self.results.flops = self._count_flops()
+        print(f"📊 Estimated FLOPs: {self.results.flops:,}")
+
+        # **Evaluate the TFLite Model**
+        tflite_acc = self._evaluate_tflite_model()
+        self.results.tflite_accuracy = tflite_acc
+        print(f"Test Accuracy (TFLite): {tflite_acc:.4f}")
+
+        # **File Size Reporting**
+        keras_size_kb = os.path.getsize(checkpoint_path) / 1024
+        tflite_size_kb = os.path.getsize(f"{self.folderName}/TfLiteModels/{self.model_name}.tflite") / 1024
+        c_array_size_kb = os.path.getsize(f"{self.folderName}/HeaderFiles/{self.model_name}.h") / 1024
+
+        self.results.tflite_size = tflite_size_kb
+        
+        print(f"Keras Model Size: {keras_size_kb:.2f} KB")
+        print(f"TFLite Model Size: {tflite_size_kb:.2f} KB")
+        print(f"C Array File Size: {c_array_size_kb:.2f} KB")
+
+
+        print("\n✅ Training complete. Best model and metrics stored in `self.results`.\n")
+    
 
     def summary(self):
         self.model.summary()
     
     def get_model(self):
         return self.model
+
+
+
+
 
 
 # Helpers
@@ -617,6 +628,7 @@ class TrainingResults:
         self.tflite_accuracy = None
         self.tflite_size = None
         self.epochs_trained = None
+        self.flops = None
 
     def __repr__(self):
         return (f"TrainingResults(\n"
@@ -630,4 +642,5 @@ class TrainingResults:
                 f"  Max Param Memory Use: {self.param_memory:.4f}\n"
                 f"  Total_memory Use: {self.total_memory:.4f}\n"
                 f"  TFlite Memory Use: {self.tflite_size:.4f}\n"
-                f"  Training Time: {self.training_time}\n)")
+                f"  Training Time: {self.training_time}\n)"
+                f"  FLOPs: {self.flops:,}\n)")  

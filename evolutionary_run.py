@@ -6,7 +6,7 @@ import tensorflow as tf
 from tensorflow.keras import backend as K # type: ignore
 
 
-
+Folder ='NAS'
 
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
@@ -36,8 +36,8 @@ MUTATION_RATE:float = 0.2  # Probability of mutation per model
 CROSSOVER_RATE:float = 0.3  # Probability of crossover between two models
 
 # Ensure directories exist
-os.makedirs('saved_models', exist_ok=True)
-os.makedirs('NAS/results', exist_ok=True)
+os.makedirs(f'{Folder}/saved_models', exist_ok=True)
+os.makedirs(f'{Folder}/results', exist_ok=True)
 
 
 augmentation_techique = False
@@ -66,12 +66,19 @@ for generation, best_model in enumerate(evo_search.evolve(), start=1):
         "TFlite Estimation size(KB)": best_model.results.tflite_size,
         "Param Memory (KB)": best_model.results.param_memory,
         "Total Memory (KB)": best_model.results.total_memory,
-        "Training Time (s)": best_model.results.training_time
+        "Flop Number": best_model.results.flops,
+        "Training Time (s)": best_model.results.training_time,
+        "Epochs Trained": best_model.results.epochs_trained
     })
+
+    hist_df = pd.DataFrame(best_model.results.history.history)
+    hist_path = f'{Folder}/results/{best_model.model_name}_history.csv'
+    hist_df.to_csv(hist_path, index=False)
+    print(f"📊 Training history saved to: {hist_path}")
 
 print("✅ Evolutionary search complete!")
 
 # Convert best models data to DataFrame and save to CSV
 df_results = pd.DataFrame(best_models_data)
-df_results.to_csv('NAS/results/Best_Models_Results_NAS.csv', index=False)
-print(f"✅ All best models from each generation saved to CSV: results/Best_Models_Results_NAS.csv")
+df_results.to_csv(f'{Folder}/results/Best_Models_Results_NAS.csv', index=False)
+print(f"✅ All best models from each generation saved to CSV: {Folder}/results/Best_Models_Results_NAS.csv")

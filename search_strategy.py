@@ -99,7 +99,15 @@ class EvolutionarySearch:
             #model_params = self._random_model_parameters()
             #train_params = self._random_training_parameters()
 
-            model = TakuNetModel(f"TakuNet_Init_{created}", (32, 32, 3), model_params, train_params, self.x_train, self.y_train, self.x_test, self.y_test)
+            model = TakuNetModel(model_name=f"TakuNet_Init_{created}", 
+                                 input_shape=(32, 32, 3), 
+                                 model_params=model_params, 
+                                 train_params=train_params, 
+                                 x_train=self.x_train, 
+                                 y_train=self.y_train, 
+                                 x_test=self.x_test, 
+                                 y_test=self.y_test,
+                                 folder="NAS")
             model.train()
 
             if model.results.train_accuracy is not None:
@@ -198,7 +206,15 @@ class EvolutionarySearch:
 
         train_params = copy.deepcopy(parent1.train_params)
         model_name = f"TakuNet_Crossover_{model_number}"
-        return TakuNetModel(model_name, (32, 32, 3), child_params, train_params, self.x_train, self.y_train, self.x_test, self.y_test)
+        return TakuNetModel(model_name=model_name, 
+                            input_shape=(32, 32, 3), 
+                            model_params=child_params, 
+                            train_params=train_params, 
+                            x_train=self.x_train, 
+                            y_train=self.y_train, 
+                            x_test=self.x_test, 
+                            y_test=self.y_test,
+                            folder="NAS")
 
     
     # def _mutate(self, model_params: Dict) -> Dict:
@@ -272,7 +288,16 @@ class EvolutionarySearch:
                     mutant_params = self._mutate(copy.deepcopy(random.choice(parents).model_params))
                     train_params = copy.deepcopy(parents[0].train_params)
                     model_name = f"TakuNet_Mutant_{model_number}"
-                    new_population.append(TakuNetModel(model_name, (32, 32, 3), mutant_params, train_params, self.x_train, self.y_train, self.x_test, self.y_test))
+                    taku_model:TakuNetModel = TakuNetModel(model_name=model_name,
+                                                           input_shape=(32, 32, 3),
+                                                           model_params=mutant_params,
+                                                           train_params=train_params,
+                                                           x_train=self.x_train,
+                                                           y_train=self.y_train,
+                                                           x_test=self.x_test,
+                                                           y_test=self.y_test,
+                                                           folder="NAS")
+                    new_population.append(taku_model)
 
 
             # update the population
