@@ -57,20 +57,20 @@ class TakuNetModel:
         if self.model_params["stem_block"]["dropout"] > 0:
             x = layers.Dropout(self.model_params["stem_block"]["dropout"])(x)
 
-        # x = layers.DepthwiseConv2D(kernel_size=self.model_params["stem_block"]["DWConv_kernel"],
-        #                            strides=self.model_params["stem_block"]["DWConv_strides"],
-        #                            padding='same', 
-        #                            use_bias=False)(x)
+        x = layers.DepthwiseConv2D(kernel_size=self.model_params["stem_block"]["DWConv_kernel"],
+                                   strides=self.model_params["stem_block"]["DWConv_strides"],
+                                   padding='same', 
+                                   use_bias=False)(x)
 
-        x = layers.SeparableConv2D(
-            filters=self.model_params["stem_block"]["filters"],
-            kernel_size=self.model_params["stem_block"]["DWConv_kernel"],
-            strides=self.model_params["stem_block"]["DWConv_strides"],
-            padding='same',
-            use_bias=False,
-            depthwise_regularizer=regularizers.l2(self.model_params["stem_block"]["l2_weight_decay"]),
-            pointwise_regularizer=regularizers.l2(self.model_params["stem_block"]["l2_weight_decay"])
-        )(x)
+        # x = layers.SeparableConv2D(
+        #     filters=self.model_params["stem_block"]["filters"],
+        #     kernel_size=self.model_params["stem_block"]["DWConv_kernel"],
+        #     strides=self.model_params["stem_block"]["DWConv_strides"],
+        #     padding='same',
+        #     use_bias=False,
+        #     depthwise_regularizer=regularizers.l2(self.model_params["stem_block"]["l2_weight_decay"]),
+        #     pointwise_regularizer=regularizers.l2(self.model_params["stem_block"]["l2_weight_decay"])
+        # )(x)
 
         #print(f"Stem 3 block shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
@@ -80,21 +80,20 @@ class TakuNetModel:
     def _taku_block(self, inputs:tuple, taku_block_number:int):
         #print(f"TakuBlock {taku_block_number}: input shape {inputs.shape}\n")
 
-        # x = layers.DepthwiseConv2D( kernel_size=self.model_params["stages_block"]["taku_block"]["DWConv_kernel"], 
-        #                             strides=self.model_params["stages_block"]["taku_block"]["DWConv_strides"], 
-        #                             padding='same', 
-        #                             use_bias=False,
-        #                             kernel_regularizer=regularizers.l2(self.model_params["stages_block"]["taku_block"]["l2_weight_decay"]))(inputs)
+        x = layers.DepthwiseConv2D( kernel_size=self.model_params["stages_block"]["taku_block"]["DWConv_kernel"], 
+                                    strides=self.model_params["stages_block"]["taku_block"]["DWConv_strides"], 
+                                    padding='same', 
+                                    use_bias=False)(inputs)
 
-        x = layers.SeparableConv2D(
-            filters=inputs.shape[-1],  # maintain channel dimension
-            kernel_size=self.model_params["stages_block"]["taku_block"]["DWConv_kernel"],
-            strides=self.model_params["stages_block"]["taku_block"]["DWConv_strides"],
-            padding='same',
-            use_bias=False,
-            depthwise_regularizer=regularizers.l2(self.model_params["stages_block"]["taku_block"]["l2_weight_decay"]),
-            pointwise_regularizer=regularizers.l2(self.model_params["stages_block"]["taku_block"]["l2_weight_decay"])
-        )(inputs)
+        # x = layers.SeparableConv2D(
+        #     filters=inputs.shape[-1],  # maintain channel dimension
+        #     kernel_size=self.model_params["stages_block"]["taku_block"]["DWConv_kernel"],
+        #     strides=self.model_params["stages_block"]["taku_block"]["DWConv_strides"],
+        #     padding='same',
+        #     use_bias=False,
+        #     depthwise_regularizer=regularizers.l2(self.model_params["stages_block"]["taku_block"]["l2_weight_decay"]),
+        #     pointwise_regularizer=regularizers.l2(self.model_params["stages_block"]["taku_block"]["l2_weight_decay"])
+        # )(inputs)
         
         #print(f"TakuBlock {taku_block_number}: output shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
@@ -140,21 +139,20 @@ class TakuNetModel:
     def _refiner_block(self, inputs):
         #print(f"Refiner Block: input shape {inputs.shape}\n")
 
-        # x = layers.DepthwiseConv2D( kernel_size=self.model_params["refiner_block"]["DWConv_kernel"], 
-        #                             strides = self.model_params["refiner_block"]["DWConv_strides"], 
-        #                             padding='same', 
-        #                             use_bias=False,
-        #                             kernel_regularizer=regularizers.l2(self.model_params["refiner_block"]["l2_weight_decay"]))(inputs)
+        x = layers.DepthwiseConv2D( kernel_size=self.model_params["refiner_block"]["DWConv_kernel"], 
+                                    strides = self.model_params["refiner_block"]["DWConv_strides"], 
+                                    padding='same', 
+                                    use_bias=False)(inputs)
 
-        x = layers.SeparableConv2D(
-            filters=inputs.shape[-1],  # maintain depth
-            kernel_size=self.model_params["refiner_block"]["DWConv_kernel"],
-            strides=self.model_params["refiner_block"]["DWConv_strides"],
-            padding='same',
-            use_bias=False,
-            depthwise_regularizer=regularizers.l2(self.model_params["refiner_block"]["l2_weight_decay"]),
-            pointwise_regularizer=regularizers.l2(self.model_params["refiner_block"]["l2_weight_decay"])
-        )(inputs)
+        # x = layers.SeparableConv2D(
+        #     filters=inputs.shape[-1],  # maintain depth
+        #     kernel_size=self.model_params["refiner_block"]["DWConv_kernel"],
+        #     strides=self.model_params["refiner_block"]["DWConv_strides"],
+        #     padding='same',
+        #     use_bias=False,
+        #     depthwise_regularizer=regularizers.l2(self.model_params["refiner_block"]["l2_weight_decay"]),
+        #     pointwise_regularizer=regularizers.l2(self.model_params["refiner_block"]["l2_weight_decay"])
+        # )(inputs)
 
 
         
