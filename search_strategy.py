@@ -5,6 +5,7 @@ from typing import Iterator, List, Dict, Union
 from TakuNet import TakuNetModel
 from data_processing import get_dataset
 import time
+from utils import getSearchSpaceParameters, getTrainingParameters
 
 class EvolutionarySearch:
     def __init__(self, config_path: str, population_size: int, time: float, mutation_rate: float, crossover_rate: float, augmentation_techinque: Union[Dict, bool]):
@@ -92,8 +93,11 @@ class EvolutionarySearch:
 
         while created < self.population_size and attempts < max_attempts:
             attempts += 1
-            model_params = self._random_model_parameters()
-            train_params = self._random_training_parameters()
+            model_params = getSearchSpaceParameters.sample_from_search_space(self.config["model_search_space"])
+            train_params = getTrainingParameters.sample_from_train_and_evaluate(self.config["train_and_evaluate"])
+            
+            #model_params = self._random_model_parameters()
+            #train_params = self._random_training_parameters()
 
             model = TakuNetModel(f"TakuNet_Init_{created}", (32, 32, 3), model_params, train_params, self.x_train, self.y_train, self.x_test, self.y_test)
             model.train()

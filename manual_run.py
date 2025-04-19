@@ -141,6 +141,13 @@ for model in models_to_train:
             "Training Time (s)": model.results.training_time,
             "Epochs Trained": model.results.epochs_trained
         })
+
+        # ✅ Save training history to CSV
+        
+        hist_df = pd.DataFrame(model.results.history.history)
+        hist_path = f'{Folder}/results/{model.model_name}_history.csv'
+        hist_df.to_csv(hist_path, index=False)
+        print(f"📊 Training history saved to: {hist_path}")
         K.clear_session()
     else:
         print(f"⚠️ Model {model.model_name} was skipped due to excessive memory usage.")

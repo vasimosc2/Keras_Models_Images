@@ -7,6 +7,7 @@ from typing import Dict, Optional, Tuple
 from sklearn.metrics import precision_score, recall_score, f1_score
 from tensorflow.keras.callbacks import Callback, EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop
+from tensorflow.keras import regularizers
 
 class TakuNetModel:
     def __init__(self, 
@@ -48,7 +49,8 @@ class TakuNetModel:
                           kernel_size=self.model_params["stem_block"]["Conv_kernel"],
                           strides=self.model_params["stem_block"]["Conv_strides"], 
                           padding='same', 
-                          use_bias=False)(inputs)
+                          use_bias=False,
+                          kernel_regularizer = regularizers.l2(self.model_params["stem_block"]["l2_weight_decay"]) )(inputs)
         #print(f"Stem 2 block shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
@@ -65,10 +67,11 @@ class TakuNetModel:
     
     def _taku_block(self, inputs:tuple, taku_block_number:int):
         #print(f"TakuBlock {taku_block_number}: input shape {inputs.shape}\n")
-        x = layers.DepthwiseConv2D(kernel_size=self.model_params["stages_block"]["taku_block"]["DWConv_kernel"], 
-                                   strides=self.model_params["stages_block"]["taku_block"]["DWConv_strides"], 
-                                   padding='same', 
-                                   use_bias=False)(inputs)
+        x = layers.DepthwiseConv2D( kernel_size=self.model_params["stages_block"]["taku_block"]["DWConv_kernel"], 
+                                    strides=self.model_params["stages_block"]["taku_block"]["DWConv_strides"], 
+                                    padding='same', 
+                                    use_bias=False,
+                                    kernel_regularizer=regularizers.l2(self.model_params["stages_block"]["taku_block"]["l2_weight_decay"]))(inputs)
         
         #print(f"TakuBlock {taku_block_number}: output shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
@@ -85,10 +88,12 @@ class TakuNetModel:
             num_groups = 1  
         kernel_size = min(self.model_params["stages_block"]["downsampler"]["Conv_kernel"], inputs.shape[1], inputs.shape[2])
         
-        x = layers.Conv2D(filters=filters, 
-                          kernel_size=kernel_size, 
-                          groups=num_groups, 
-                          use_bias=False)(inputs)
+        x = layers.Conv2D(  filters=filters, 
+                            kernel_size=kernel_size, 
+                            groups=num_groups, 
+                            use_bias=False,
+                            kernel_regularizer=regularizers.l2(self.model_params["stages_block"]["downsampler"]["l2_weight_decay"]))(inputs)
+        
         #print(f"DownSampler of Stage {curr_stage_number}, second shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
@@ -111,10 +116,13 @@ class TakuNetModel:
     
     def _refiner_block(self, inputs):
         #print(f"Refiner Block: input shape {inputs.shape}\n")
-        x = layers.DepthwiseConv2D(kernel_size=self.model_params["refiner_block"]["DWConv_kernel"], 
-                                   strides = self.model_params["refiner_block"]["DWConv_strides"], 
-                                   padding='same', 
-                                   use_bias=False)(inputs)
+
+        x = layers.DepthwiseConv2D( kernel_size=self.model_params["refiner_block"]["DWConv_kernel"], 
+                                    strides = self.model_params["refiner_block"]["DWConv_strides"], 
+                                    padding='same', 
+                                    use_bias=False,
+                                    kernel_regularizer=regularizers.l2(self.model_params["refiner_block"]["l2_weight_decay"]))(inputs)
+        
         #print(f"Refiner Block: Second shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
         x = layers.Dropout(0.3)(x)
@@ -122,7 +130,10 @@ class TakuNetModel:
         #print(f"Refiner Block: Output shape {x.shape}\n")
         if self.model_params["refiner_block"]["dropout"] > 0:
             x = layers.Dropout(self.model_params["refiner_block"]["dropout"])(x)
-        return layers.Dense(self.model_params["refiner_block"]["num_output_classes"], activation='softmax')(x)
+
+        return layers.Dense(self.model_params["refiner_block"]["num_output_classes"], 
+                            activation='softmax',
+                            kernel_regularizer=regularizers.l2(self.model_params["refiner_block"]["l2_weight_decay"]))(x)
     
     def _build_model(self) -> tf.keras.Model:
         inputs = tf.keras.Input(shape=self.input_shape)
@@ -164,7 +175,9 @@ class TakuNetModel:
 
         # **Compile Model**
         optimizer = get_optimizer(self.train_params["optimizer"], self.train_params["learning_rate"] if self.learningRate is None else self.learningRate )
-        self.model.compile(optimizer=optimizer, loss=self.train_params["loss"], metrics=['accuracy'])
+        self.model.compile(optimizer = optimizer, 
+                           loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),#self.train_params["loss"], 
+                           metrics = ['accuracy'])
 
         # **Callbacks**
         checkpoint_path = f'{self.folderName}/saved_models/{self.model_name}.keras'
@@ -213,8 +226,8 @@ class TakuNetModel:
 
         # ** Declare that this model is trained.
         self.is_trained = True
-        # **Save Model in Multiple Formats**
 
+        # **Save Model in Multiple Formats**
         self.convert_to_tflite()
         self.convert_tflite_to_c_array()
 

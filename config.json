@@ -7,6 +7,7 @@
             "dropout": [0, 0.1, 0.2, 0.3, 0.5],
             "dilation_rate": [1],
             "DWConv_kernel": [3, 5],
+            "l2_weight_decay": [0.0001, 0.001, 0.01],
             "DWConv_strides": [1, 2]
         },
         "stages_block":{
@@ -15,17 +16,20 @@
                 "taku_block_number": [4,5,6],
                 "dropout": [0, 0.1, 0.2, 0.3],
                 "DWConv_kernel": [3,5],
+                "l2_weight_decay": [0.0001, 0.001, 0.01],
                 "DWConv_strides": [1]
             },
             "downsampler":{
                 "dropout": [0, 0.1, 0.2, 0.3, 0.5],
                 "pool_size": [2],
                 "Conv_kernel": [1,3,5],
+                "l2_weight_decay": [0.0001, 0.001, 0.01],
                 "strides": [1, 2]
             }
         },
         "refiner_block":{
             "DWConv_kernel": [3,5],
+            "l2_weight_decay": [0.0001, 0.001, 0.01],
             "DWConv_strides": [1, 2],
             "dropout": [0, 0.1, 0.2, 0.3, 0.5],
             "num_output_classes": 100
@@ -36,9 +40,9 @@
             "optimizer": ["adamw","adam"],
             "loss": "categorical_crossentropy",
             "learning_rate": [0.0020,0.0010],
-            "divider" : [5],
             "learning_rate_patience" : [5],
-            "early_stopping_patience"  : [8, 10]
+            "early_stopping_patience"  : [8, 10],
+            "divider" : [5]
             },
     
         "evaluation_config": {
