@@ -60,7 +60,9 @@
             "num_epochs": 50,
             "batch_size": 32,
             "max_ram_consumption": 262144,
-            "max_flash_consumption": 1048576, 
+            "additional_ram_consumption": 59720,
+            "max_flash_consumption": 983040,
+            "additional_flash_consumption": 210000, 
             "data_dtype_multiplier": 1,
             "model_dtype_multiplier": 1
         }

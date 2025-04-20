@@ -21,8 +21,13 @@ def sample_from_train_and_evaluate(train_and_evaluate)->Dict:
         
         "num_epochs": train_and_evaluate["evaluation_config"]["num_epochs"],
         "batch_size": train_and_evaluate["evaluation_config"]["batch_size"],
+
         "max_ram_consumption": train_and_evaluate["evaluation_config"]["max_ram_consumption"],
+        "additional_ram_consumption": train_and_evaluate["evaluation_config"]["additional_ram_consumption"],
+
         "max_flash_consumption": train_and_evaluate["evaluation_config"]["max_flash_consumption"],
+        "additional_flash_consumption": train_and_evaluate["evaluation_config"]["additional_flash_consumption"], 
+        
         "data_dtype_multiplier": train_and_evaluate["evaluation_config"]["data_dtype_multiplier"],
         "model_dtype_multiplier": train_and_evaluate["evaluation_config"]["model_dtype_multiplier"],
     }

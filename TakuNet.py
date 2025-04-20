@@ -430,10 +430,10 @@ class TakuNetModel:
         print(f"Parameter Memory: {self.results.param_memory:.2f} KB\n")
         print(f"Total Memory Usage: {self.results.total_memory:.2f} KB\n")
 
-        if self.results.max_ram_usage * 1024 > 0.8 * self.train_params["max_ram_consumption"]:
+        if self.results.max_ram_usage * 1024 > self.train_params["max_ram_consumption"] - self.train_params["additional_ram_consumption"]:
             print(f"🚨 Model not trainable: RAM usage ({self.results.max_ram_usage:.2f} KB) exceeds limit.")
             return False
-        if  self.results.param_memory * 1024 > 0.9 * self.train_params["max_flash_consumption"]:
+        if  self.results.param_memory * 1024 > self.train_params["max_flash_consumption"] - self.train_params["additional_ram_consumption"]:
             print(f"🚨 Model not trainable: Flash usage ({ self.results.param_memory:.2f} KB) exceeds limit.")
             return False
         return True
