@@ -17,7 +17,7 @@ else:
 
 
 
-from tensorflow.keras.applications import ResNet50
+from tensorflow.keras.applications import ResNet20
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Input
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
@@ -39,7 +39,7 @@ num_classes = 100
 # --- ResNet50 Training ---
 print("\n\n🔧 Training ResNet50")
 resnet_input = Input(shape=input_shape)
-base_model = ResNet50(include_top=False, weights=None, input_tensor=resnet_input)
+base_model = ResNet20(include_top=False, weights=None, input_tensor=resnet_input)
 x = GlobalAveragePooling2D()(base_model.output)
 x = Dense(num_classes, activation='softmax')(x)
 resnet_model = Model(inputs=resnet_input, outputs=x)
@@ -49,8 +49,8 @@ batch_size = 64
 max_ram_usage, flash_memory, total_memory = memoryEstimator.memoryEstimation(model=resnet_model, 
                                                                              data_dtype_multiplier=4)
 
-print(f"🧠 Estimated RAM memory usage for ResNet50: {max_ram_usage:.2f} MB")
-print(f"🧠 Estimated FLASH memory usage for ResNet50: {flash_memory:.2f} MB")
+print(f"🧠 Estimated RAM memory usage for ResNet20: {max_ram_usage:.2f} MB")
+print(f"🧠 Estimated FLASH memory usage for ResNet20: {flash_memory:.2f} MB")
 
 resnet_model.compile(optimizer=Adam(learning_rate=0.001),
                      loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.05),
@@ -70,4 +70,4 @@ resnet_model.fit(
 )
 
 resnet_eval = resnet_model.evaluate(x_test, y_test, verbose=2)
-print(f"✅ ResNet50 Test Accuracy: {resnet_eval[1] * 100:.2f}%")
+print(f"✅ ResNet20 Test Accuracy: {resnet_eval[1] * 100:.2f}%")
