@@ -47,7 +47,7 @@ resnet_model = Model(inputs=resnet_input, outputs=x)
 # Estimate memory usage for ResNet
 batch_size = 64
 max_ram_usage, flash_memory, total_memory = memoryEstimator.memoryEstimation(model=resnet_model, 
-                                                                             data_dtype_multiplier=tf.float32)
+                                                                             data_dtype_multiplier=4)
 
 print(f"🧠 Estimated RAM memory usage for ResNet50: {max_ram_usage:.2f} MB")
 print(f"🧠 Estimated FLASH memory usage for ResNet50: {flash_memory:.2f} MB")
