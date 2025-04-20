@@ -419,22 +419,21 @@ class TakuNetModel:
         if self.train_params is None:
             print("⚠️ Cannot check trainability: `train_params` is None.")
             return False
-        
-        #self.results.max_ram_usage, self.results.param_memory, self.results.total_memory = self._memoryEstimation(data_dtype_multiplier=self.train_params["data_dtype_multiplier"])
 
         self.results.max_ram_usage, self.results.param_memory, self.results.total_memory = memoryEstimator.memoryEstimation(model= self.model, 
                                                                                                                             data_dtype_multiplier=self.train_params["data_dtype_multiplier"])
-
-
         print(f"Max RAM Usage: {self.results.max_ram_usage:.2f} KB\n")
         print(f"Parameter Memory: {self.results.param_memory:.2f} KB\n")
         print(f"Total Memory Usage: {self.results.total_memory:.2f} KB\n")
 
-        if self.results.max_ram_usage * 1024 > self.train_params["max_ram_consumption"] - self.train_params["additional_ram_consumption"]:
-            print(f"🚨 Model not trainable: RAM usage ({self.results.max_ram_usage:.2f} KB) exceeds limit.")
+        ram_limit = self.train_params["max_ram_consumption"] - self.train_params["additional_ram_consumption"]
+        flash_limit = self.train_params["max_flash_consumption"] - self.train_params["additional_flash_consumption"]
+
+        if self.results.max_ram_usage * 1024 > ram_limit:
+            print(f"🚨 Model not trainable: RAM usage ({self.results.max_ram_usage:.2f} KB) exceeds limit ({ram_limit / 1024:.2f} KB).")
             return False
-        if  self.results.param_memory * 1024 > self.train_params["max_flash_consumption"] - self.train_params["additional_flash_consumption"]:
-            print(f"🚨 Model not trainable: Flash usage ({ self.results.param_memory:.2f} KB) exceeds limit.")
+        if  self.results.param_memory * 1024 > flash_limit:
+            print(f"🚨 Model not trainable: Flash usage ({ self.results.param_memory:.2f} KB) exceeds limit ({flash_limit / 1024:.2f} KB).")
             return False
         return True
     
