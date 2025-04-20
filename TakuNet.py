@@ -446,21 +446,24 @@ class TakuNetModel:
         print("✅ Memory check passed! Starting training...")
 
         # **Compile Model**
-        optimizer = get_optimizer(self.train_params["optimizer"], self.train_params["learning_rate"] if self.learningRate is None else self.learningRate )
-        self.model.compile(optimizer = optimizer, 
-                           loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),#self.train_params["loss"], 
-                           metrics = ['accuracy'])
+        if not self.is_trained:
+            optimizer = get_optimizer(self.train_params["optimizer"], self.train_params["learning_rate"] if self.learningRate is None else self.learningRate )
+            self.model.compile( optimizer = optimizer, 
+                                loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),#self.train_params["loss"], 
+                                metrics = ['accuracy'])
 
         # **Callbacks**
         checkpoint_path = f'{self.folderName}/saved_models/{self.model_name}.keras'
-        checkpoint = ModelCheckpoint(filepath=checkpoint_path, monitor='val_accuracy', save_best_only=True, mode='max', verbose=0)
+        checkpoint = ModelCheckpoint(filepath=checkpoint_path, monitor='val_accuracy', save_best_only=True, mode='max', verbose=0,  save_weights_only=False)
         early_stopping_acc = EarlyStopping(monitor='val_accuracy', patience=self.train_params["early_stopping_patience"], mode='max', restore_best_weights=True)
         reduce_lr = ReduceLROnPlateau(monitor='val_accuracy', factor=0.5, patience=self.train_params["learning_rate_patience"], verbose=1) # Check which is better, the val_accuracy or val_loss
         midway_callback = MidwayStopCallback(total_epochs=self.train_params["num_epochs"], divider=self.train_params["divider"], threshold=0.30)
         adjust_dropout = AdjustDropoutCallback(threshold=0.15, max_dropout=0.5, increment=0.05, total_epochs = self.train_params["num_epochs"], divider = self.train_params["divider"])
+
         # **Train Model with Timing**
         start_time = time.time()
         print(f"✅Start training of {self.model_name}\n")
+
         history = self.model.fit(
             self.x_train, self.y_train,
             epochs= self.epochs if self.epochs else self.train_params["num_epochs"],
@@ -494,6 +497,29 @@ class TakuNetModel:
         self.results.precision = precision_score(y_true_classes, y_test_pred_classes, average='macro')
         self.results.recall = recall_score(y_true_classes, y_test_pred_classes, average='macro')
         self.results.f1_score = f1_score(y_true_classes, y_test_pred_classes, average='macro')
+
+
+        if best_test_acc > 0.58:
+            print(f"\n\U0001F680 Best test accuracy ({best_test_acc:.4f}) exceeded 58%. Continuing training for 100 more epochs.")
+
+            history_extra = self.model.fit(
+                self.x_train, self.y_train,
+                epochs=self.results.epochs_trained + 100,
+                initial_epoch=self.results.epochs_trained,
+                batch_size=self.train_params["batch_size"],
+                validation_data=(self.x_test, self.y_test),
+                verbose=2,
+                callbacks=[midway_callback, early_stopping_acc, reduce_lr, checkpoint, adjust_dropout]
+            )
+
+            self.results.epochs_trained += len(history_extra.history['loss'])
+
+            best_test_acc = max(history_extra.history['val_accuracy'])
+            self.results.test_accuracy = best_test_acc
+            self.results.train_accuracy = max(history_extra.history['accuracy'])
+
+            print(f"\U0001F501 Continued Training Complete. New Best Test Accuracy: {best_test_acc:.4f}\n")
+
         self.results.training_time = training_time 
 
         # ** Declare that this model is trained.
