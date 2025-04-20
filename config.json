@@ -37,11 +37,23 @@
     "train_and_evaluate":{
         "model_config": {
             "optimizer": ["adamw","adam"],
-            "loss": "categorical_crossentropy",
-            "learning_rate": [0.0020,0.0010],
-            "learning_rate_patience" : [5],
-            "early_stopping_patience"  : [8, 10],
-            "divider" : [5]
+            "label_smothing": 0.005,
+
+            "divider" : 5,
+
+            "early_stop": {
+                "stop_patience": [8, 10]
+            },
+            "learning":{
+                "rate": [0.0020,0.0010],
+                "factor": 0.5,
+                "patience": 5
+            },
+            "adaptive_dropout": {
+                "max": 0.4,
+                "increment": 0.03,
+                "threshold": 0.10
+                }
             },
     
         "evaluation_config": {

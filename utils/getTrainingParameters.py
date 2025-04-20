@@ -6,11 +6,19 @@ def sample_from_train_and_evaluate(train_and_evaluate)->Dict:
     """Randomly selects training hyperparameters."""
     return {
         "optimizer": random.choice(train_and_evaluate["model_config"]["optimizer"]),
-        "loss": train_and_evaluate["model_config"]["loss"],
-        "learning_rate": random.choice(train_and_evaluate["model_config"]["learning_rate"]),
-        "learning_rate_patience": random.choice(train_and_evaluate["model_config"]["learning_rate_patience"]),
-        "early_stopping_patience": random.choice(train_and_evaluate["model_config"]["early_stopping_patience"]),
-        "divider": random.choice(train_and_evaluate["model_config"]["divider"]),
+        "label_smothing": train_and_evaluate["model_config"]["label_smothing"],
+        "divider": train_and_evaluate["model_config"]["divider"],
+
+        "stop_patience": random.choice(train_and_evaluate["model_config"]["early_stop"]["stop_patience"]),
+
+        "learning_rate": random.choice(train_and_evaluate["model_config"]["learning"]["rate"]),
+        "learning_factor": train_and_evaluate["model_config"]["learning"]["factor"],
+        "learning_rate_patience": train_and_evaluate["model_config"]["learning"]["patience"],
+        
+        "max_dropout": train_and_evaluate["model_config"]["adaptive_dropout"]["max"],
+        "increment": train_and_evaluate["model_config"]["adaptive_dropout"]["increment"],
+        "threshold_dropout": train_and_evaluate["model_config"]["adaptive_dropout"]["threshold_dropout"],
+        
         "num_epochs": train_and_evaluate["evaluation_config"]["num_epochs"],
         "batch_size": train_and_evaluate["evaluation_config"]["batch_size"],
         "max_ram_consumption": train_and_evaluate["evaluation_config"]["max_ram_consumption"],

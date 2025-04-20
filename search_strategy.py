@@ -31,46 +31,46 @@ class EvolutionarySearch:
         num_classes = self.config["model_search_space"]["refiner_block"]["num_output_classes"]
         return get_dataset(output_classes=num_classes, augementation_technique=augmentation_techique)
     
-    def _random_model_parameters(self) -> Dict:
-        """Generates a random set of hyperparameters from the search space."""
-        model_search_space = self.config["model_search_space"]
-        return {
-                "stem_block": {
-                    "filters": random.choice(model_search_space["stem_block"]["filters"]),
-                    "Conv_kernel": random.choice(model_search_space["stem_block"]["Conv_kernel"]),
-                    "Conv_strides": random.choice(model_search_space["stem_block"]["Conv_strides"]),
-                    "dropout": random.choice(model_search_space["stem_block"]["dropout"]),
-                    "dilation_rate": random.choice(model_search_space["stem_block"]["dilation_rate"]),
-                    "DWConv_kernel": random.choice(model_search_space["stem_block"]["DWConv_kernel"]),
-                    "DWConv_strides": random.choice(model_search_space["stem_block"]["DWConv_strides"])
-                    },
-                "stages_block": {
-                    "stages_number": random.choice(model_search_space["stages_block"]["stages_number"]),
-                    "taku_block": {
-                        "taku_block_number": random.choice(model_search_space["stages_block"]["taku_block"]["taku_block_number"]),
-                        "dropout": random.choice(model_search_space["stages_block"]["taku_block"]["dropout"]),
-                        "DWConv_kernel": random.choice(model_search_space["stages_block"]["taku_block"]["DWConv_kernel"]),
-                        "DWConv_strides": random.choice(model_search_space["stages_block"]["taku_block"]["DWConv_strides"])
-                    },
-                    "downsampler": {
-                        "dropout": random.choice(model_search_space["stages_block"]["downsampler"]["dropout"]),
-                        "pool_size": random.choice(model_search_space["stages_block"]["downsampler"]["pool_size"]),
-                        "Conv_kernel": random.choice(model_search_space["stages_block"]["downsampler"]["Conv_kernel"]),
-                        "strides": random.choice(model_search_space["stages_block"]["downsampler"]["strides"]),
-                    }
-                },
-                "refiner_block": {
-                    "DWConv_kernel": random.choice(model_search_space["refiner_block"]["DWConv_kernel"]),
-                    "DWConv_strides": random.choice(model_search_space["refiner_block"]["DWConv_strides"]),
-                    "dropout": random.choice(model_search_space["refiner_block"]["dropout"]),
-                    "num_output_classes": model_search_space["refiner_block"]["num_output_classes"]
-                }
-        }
-    def _random_training_parameters(self) ->Dict:
-        " This creates the training parameters for the TakuModel"
-        train_params = {key: random.choice(values) if isinstance(values, list) else values for key, values in self.config["train_and_evaluate"]["model_config"].items()}
-        train_params.update(self.config["train_and_evaluate"]["evaluation_config"]) 
-        return train_params
+    # def _random_model_parameters(self) -> Dict:
+    #     """Generates a random set of hyperparameters from the search space."""
+    #     model_search_space = self.config["model_search_space"]
+    #     return {
+    #             "stem_block": {
+    #                 "filters": random.choice(model_search_space["stem_block"]["filters"]),
+    #                 "Conv_kernel": random.choice(model_search_space["stem_block"]["Conv_kernel"]),
+    #                 "Conv_strides": random.choice(model_search_space["stem_block"]["Conv_strides"]),
+    #                 "dropout": random.choice(model_search_space["stem_block"]["dropout"]),
+    #                 "dilation_rate": random.choice(model_search_space["stem_block"]["dilation_rate"]),
+    #                 "DWConv_kernel": random.choice(model_search_space["stem_block"]["DWConv_kernel"]),
+    #                 "DWConv_strides": random.choice(model_search_space["stem_block"]["DWConv_strides"])
+    #                 },
+    #             "stages_block": {
+    #                 "stages_number": random.choice(model_search_space["stages_block"]["stages_number"]),
+    #                 "taku_block": {
+    #                     "taku_block_number": random.choice(model_search_space["stages_block"]["taku_block"]["taku_block_number"]),
+    #                     "dropout": random.choice(model_search_space["stages_block"]["taku_block"]["dropout"]),
+    #                     "DWConv_kernel": random.choice(model_search_space["stages_block"]["taku_block"]["DWConv_kernel"]),
+    #                     "DWConv_strides": random.choice(model_search_space["stages_block"]["taku_block"]["DWConv_strides"])
+    #                 },
+    #                 "downsampler": {
+    #                     "dropout": random.choice(model_search_space["stages_block"]["downsampler"]["dropout"]),
+    #                     "pool_size": random.choice(model_search_space["stages_block"]["downsampler"]["pool_size"]),
+    #                     "Conv_kernel": random.choice(model_search_space["stages_block"]["downsampler"]["Conv_kernel"]),
+    #                     "strides": random.choice(model_search_space["stages_block"]["downsampler"]["strides"]),
+    #                 }
+    #             },
+    #             "refiner_block": {
+    #                 "DWConv_kernel": random.choice(model_search_space["refiner_block"]["DWConv_kernel"]),
+    #                 "DWConv_strides": random.choice(model_search_space["refiner_block"]["DWConv_strides"]),
+    #                 "dropout": random.choice(model_search_space["refiner_block"]["dropout"]),
+    #                 "num_output_classes": model_search_space["refiner_block"]["num_output_classes"]
+    #             }
+    #     }
+    # def _random_training_parameters(self) ->Dict:
+    #     " This creates the training parameters for the TakuModel"
+    #     train_params = {key: random.choice(values) if isinstance(values, list) else values for key, values in self.config["train_and_evaluate"]["model_config"].items()}
+    #     train_params.update(self.config["train_and_evaluate"]["evaluation_config"]) 
+    #     return train_params
     
     # def _initialize_population(self):
     #     """Creates the initial population of models."""
@@ -81,6 +81,8 @@ class EvolutionarySearch:
 
     #         model = TakuNetModel(f"TakuNet_Init_{i}", (32, 32, 3), model_params, train_params, self.x_train, self.y_train, self.x_test, self.y_test)
     #         self.population.append(model)
+
+
 
     def _initialize_population(self):
         """ Creates the initial population of models, 
@@ -206,15 +208,23 @@ class EvolutionarySearch:
 
         train_params = copy.deepcopy(parent1.train_params)
         model_name = f"TakuNet_Crossover_{model_number}"
-        return TakuNetModel(model_name=model_name, 
-                            input_shape=(32, 32, 3), 
-                            model_params=child_params, 
-                            train_params=train_params, 
-                            x_train=self.x_train, 
-                            y_train=self.y_train, 
-                            x_test=self.x_test, 
-                            y_test=self.y_test,
-                            folder="NAS")
+
+        while True:
+            child = TakuNetModel(model_name=model_name, 
+                                 input_shape=(32, 32, 3), 
+                                 model_params=child_params, 
+                                 train_params=train_params, 
+                                 x_train=self.x_train, 
+                                 y_train=self.y_train, 
+                                 x_test=self.x_test, 
+                                 y_test=self.y_test,
+                                 folder="NAS")
+            if child.is_trainable:
+                return child
+            else:
+                print(f"❌ Crossover {model_name} failed due to memory limits. Retrying...")
+                child_params = self._crossover(child_params)
+
 
     
     # def _mutate(self, model_params: Dict) -> Dict:
@@ -288,16 +298,24 @@ class EvolutionarySearch:
                     mutant_params = self._mutate(copy.deepcopy(random.choice(parents).model_params))
                     train_params = copy.deepcopy(parents[0].train_params)
                     model_name = f"TakuNet_Mutant_{model_number}"
-                    taku_model:TakuNetModel = TakuNetModel(model_name=model_name,
-                                                           input_shape=(32, 32, 3),
-                                                           model_params=mutant_params,
-                                                           train_params=train_params,
-                                                           x_train=self.x_train,
-                                                           y_train=self.y_train,
-                                                           x_test=self.x_test,
-                                                           y_test=self.y_test,
-                                                           folder="NAS")
-                    new_population.append(taku_model)
+                    while True:
+                        mutant = TakuNetModel(model_name=model_name,
+                                              input_shape=(32, 32, 3),
+                                              model_params=mutant_params,
+                                              train_params=train_params,
+                                              x_train=self.x_train,
+                                              y_train=self.y_train,
+                                              x_test=self.x_test,
+                                              y_test=self.y_test,
+                                              folder="NAS")
+                        if mutant.is_trainable:
+                            child:TakuNetModel = mutant
+                            break
+                        else:
+                            print(f"❌ Mutation {model_name} failed due to memory limits. Retrying...")
+                            mutant_params = self._mutate(mutant_params)
+
+                    new_population.append(child)
 
 
             # update the population
