@@ -8,6 +8,7 @@ from sklearn.metrics import precision_score, recall_score, f1_score
 from tensorflow.keras.callbacks import Callback, EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop
 from tensorflow.keras import regularizers
+from utils import memoryEstimator
 
 class TakuNetModel:
     def __init__(self, 
@@ -194,7 +195,7 @@ class TakuNetModel:
         if self.model_params["refiner_block"]["dropout"] > 0:
 
             self.adaptive_dropout_refiner = AdaptiveDropout(initial_rate=self.model_params["refiner_block"]["dropout"],
-                                                                name=f"adaptive_dropout_refiner")
+                                                            name=f"adaptive_dropout_refiner")
             x = self.adaptive_dropout_refiner(x)
 
             #x = layers.Dropout(self.model_params["refiner_block"]["dropout"])(x)
@@ -419,7 +420,11 @@ class TakuNetModel:
             print("⚠️ Cannot check trainability: `train_params` is None.")
             return False
         
-        self.results.max_ram_usage, self.results.param_memory, self.results.total_memory = self._memoryEstimation(data_dtype_multiplier=self.train_params["data_dtype_multiplier"])
+        #self.results.max_ram_usage, self.results.param_memory, self.results.total_memory = self._memoryEstimation(data_dtype_multiplier=self.train_params["data_dtype_multiplier"])
+
+        self.results.max_ram_usage, self.results.param_memory, self.results.total_memory = memoryEstimator.memoryEstimation(model= self.model, 
+                                                                                                                            data_dtype_multiplier=self.train_params["data_dtype_multiplier"])
+
 
         print(f"Max RAM Usage: {self.results.max_ram_usage:.2f} KB\n")
         print(f"Parameter Memory: {self.results.param_memory:.2f} KB\n")
