@@ -447,7 +447,7 @@ class TakuNetModel:
 
         # **Compile Model**
         if not self.is_trained:
-            
+
             optimizer = get_optimizer(self.train_params["optimizer"], 
                                       self.train_params["learning_rate"] if self.learningRate is None else self.learningRate)
             
@@ -505,7 +505,6 @@ class TakuNetModel:
         print(f"✅ Best model restored from {checkpoint_path}\n")
 
         # **Compute Accuracy Metrics**
-        best_train_acc = max(history.history['accuracy'])   # training accuracy
         best_test_acc = max(history.history['val_accuracy'])  # test accuracy
 
         print(f"✅ Best Test Accuracy (Best Model): {best_test_acc:.4f}\n")
@@ -541,7 +540,7 @@ class TakuNetModel:
 
         self.results.history = history
         self.results.epochs_trained = len(history.history['loss'])
-        self.results.train_accuracy = best_train_acc
+        self.results.train_accuracy = max(history.history['accuracy']) 
         self.results.test_accuracy = best_test_acc
         self.results.precision = precision_score(y_true_classes, y_test_pred_classes, average='macro')
         self.results.recall = recall_score(y_true_classes, y_test_pred_classes, average='macro')

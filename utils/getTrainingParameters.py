@@ -17,7 +17,7 @@ def sample_from_train_and_evaluate(train_and_evaluate)->Dict:
         
         "max_dropout": train_and_evaluate["model_config"]["adaptive_dropout"]["max"],
         "increment": train_and_evaluate["model_config"]["adaptive_dropout"]["increment"],
-        "threshold_dropout": train_and_evaluate["model_config"]["adaptive_dropout"]["threshold_dropout"],
+        "threshold_dropout": train_and_evaluate["model_config"]["adaptive_dropout"]["threshold"],
         
         "num_epochs": train_and_evaluate["evaluation_config"]["num_epochs"],
         "batch_size": train_and_evaluate["evaluation_config"]["batch_size"],
