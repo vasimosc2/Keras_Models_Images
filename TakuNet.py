@@ -214,43 +214,49 @@ class TakuNetModel:
         return Model(inputs, outputs)
     
 
-    # Measurements
-    def _memoryEstimation(self,data_dtype_multiplier: int = 1)-> Tuple[float, float, float]:
-        """
-        ROM (Read-Only Memory) → Memory used to store layer parameters (weights & biases).
-        RAM (Random-Access Memory) → Memory used to store activations (input & output tensors).
-        """
-        max_activation_memory: int = 0  # Peak RAM usage
-        total_param_memory: int = 0      # ROM for storing weights
+    # # Measurements
+    # def _memoryEstimation(self,data_dtype_multiplier: int = 1)-> Tuple[float, float, float]:
+    #     """
+    #     ROM (Read-Only Memory) → Memory used to store layer parameters (weights & biases).
+    #     RAM (Random-Access Memory) → Memory used to store activations (input & output tensors).
+    #     """
+    #     max_activation_memory: int = 0  # Peak RAM usage
+    #     total_param_memory: int = 0      # ROM for storing weights
 
-        for layer in self.model.layers:
+    #     for layer in self.model.layers:
             
-            layer_params: int = layer.count_params() #  Number of parameters in the layer (weights & biases).
-            layer_param_memory: int = layer_params * data_dtype_multiplier#  Converts the number of parameters into bytes.
-            total_param_memory += layer_param_memory # Adds up all the layer_param_memory of each layer
+    #         layer_params: int = layer.count_params() #  Number of parameters in the layer (weights & biases).
+    #         layer_param_memory: int = layer_params * data_dtype_multiplier#  Converts the number of parameters into bytes.
+    #         total_param_memory += layer_param_memory # Adds up all the layer_param_memory of each layer
 
-            # Compute activation memory (RAM)
-            if isinstance(layer.output, list):
-                output_memory: int = sum(np.prod(out.shape[1:]) * data_dtype_multiplier for out in layer.output) # I wont be inside there are layer.output is  <class 'keras.src.backend.common.keras_tensor.KerasTensor'>
-            else:
-                output_memory: int = np.prod(layer.output.shape[1:]) * data_dtype_multiplier # If the output shape is 30 x 30 x 32 , the output memmory is  28800 * data_size
+    #         # Compute activation memory (RAM)
+    #         if isinstance(layer.output, list):
+    #             output_memory: int = sum(np.prod(out.shape[1:]) * data_dtype_multiplier for out in layer.output) # I wont be inside there are layer.output is  <class 'keras.src.backend.common.keras_tensor.KerasTensor'>
+    #         else:
+    #             output_memory: int = np.prod(layer.output.shape[1:]) * data_dtype_multiplier # If the output shape is 30 x 30 x 32 , the output memmory is  28800 * data_size
 
-            if isinstance(layer.input, list):
-                input_memory: int = sum(np.prod(inp.shape[1:]) * data_dtype_multiplier for inp in layer.input)
-            else:
-                input_memory: int = np.prod(layer.input.shape[1:]) * data_dtype_multiplier
+    #         if isinstance(layer.input, list):
+    #             input_memory: int = sum(np.prod(inp.shape[1:]) * data_dtype_multiplier for inp in layer.input)
+    #         else:
+    #             input_memory: int = np.prod(layer.input.shape[1:]) * data_dtype_multiplier
 
-            # Track peak RAM usage
-            layer_ram_usage: int = input_memory + output_memory
-            max_activation_memory = max(max_activation_memory, layer_ram_usage) # Here we keep the the maximum use of RAM of each layer
+    #         # Track peak RAM usage
+    #         layer_ram_usage: int = input_memory + output_memory
+    #         max_activation_memory = max(max_activation_memory, layer_ram_usage) # Here we keep the the maximum use of RAM of each layer
 
-        # Convert bytes to KB
-        max_ram_usage: float = max_activation_memory / 1024
-        param_memory: float = total_param_memory / 1024
-        total_memory: float = (max_activation_memory + total_param_memory) / 1024
+    #     # Convert bytes to KB
+    #     max_ram_usage: float = max_activation_memory / 1024
+    #     param_memory: float = total_param_memory / 1024
+    #     total_memory: float = (max_activation_memory + total_param_memory) / 1024
 
-        return max_ram_usage, param_memory, total_memory
+    #     return max_ram_usage, param_memory, total_memory
     
+
+
+
+
+
+
     def _count_flops(self, batch_size=1)-> int:
         """
         Count FLOPs of a TensorFlow 2.x model.
@@ -280,6 +286,10 @@ class TakuNetModel:
 
         return flops
     
+
+
+
+
     def _convert_to_tflite(self)->None:
         """Converts a trained model to TFLite with full-integer quantization."""
         converter = tf.lite.TFLiteConverter.from_keras_model(self.model)
@@ -288,9 +298,24 @@ class TakuNetModel:
         converter.optimizations = [tf.lite.Optimize.DEFAULT]
 
         # **Use a representative dataset to optimize quantization**
+        """
+        You give the converter a small sample of real inputs (x_train[:100]).
+
+        TensorFlow runs the model (silently) with those inputs.
+
+        It records the ranges (min/max) of each activation tensor.
+
+        Then it uses those stats to compute:
+
+        A scale (how many float values each int8 step represents)
+
+        A zero-point (what int8 value maps to 0.0 in float)
+
+        This mapping is then used to quantize the entire model.
+        """
         def representative_dataset():
             for i in range(100):
-                data:tf.Tensor = tf.cast(self.x_train[i:i+1], tf.float32)  # ✅ FIXED HERE
+                data:tf.Tensor = tf.cast(self.x_train[i:i+1], tf.float32)
                 yield [data]
 
         converter.representative_dataset = representative_dataset
@@ -315,6 +340,9 @@ class TakuNetModel:
                 print("⚠️ Skipping header file generation: No space left on device.")
             else:
                 print(f"❌ Unexpected error while writing header file: {e}")
+
+
+
 
     def _convert_tflite_to_c_array(self)->None:
         """Converts the TFLite model into a C array header file for Arduino integration."""
@@ -426,7 +454,7 @@ class TakuNetModel:
         print(f"Parameter Memory: {self.results.param_memory:.2f} KB\n")
         print(f"Total Memory Usage: {self.results.total_memory:.2f} KB\n")
 
-        ram_limit = self.train_params["max_ram_consumption"] - self.train_params["additional_ram_consumption"]
+        ram_limit = self.train_params["max_ram_consumption"] #- self.train_params["additional_ram_consumption"]
         flash_limit = self.train_params["max_flash_consumption"] - self.train_params["additional_flash_consumption"]
 
         if self.results.max_ram_usage * 1024 > ram_limit:
