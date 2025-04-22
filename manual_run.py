@@ -60,6 +60,19 @@ models_to_train: List[TakuNetModel] = []
 trainable_models_count = 0
 
 
+
+default_augementaion_technique ={ "apply_standard":False,
+                            "apply_color":False,
+                            "apply_geometric":False,
+                            "apply_mixup": False,
+                            "apply_cutmix": False}
+
+
+
+x_train, y_train, x_test, y_test = get_dataset( output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], 
+                                                augementation_technique=default_augementaion_technique)
+    
+
 while trainable_models_count < number_of_models:  # Train number_of_models with random hyperparameters
     model_params = getSearchSpaceParameters.sample_from_search_space(config["model_search_space"])
     train_params = getTrainingParameters.sample_from_train_and_evaluate(config["train_and_evaluate"])
@@ -78,17 +91,7 @@ while trainable_models_count < number_of_models:  # Train number_of_models with 
     #                                 }
     # print(f"\n🎲 Randomly selected augmentation for model {trainable_models_count}: {aug_type}\n")
 
-    default_augementaion_technique ={ "apply_standard":False,
-                                "apply_color":False,
-                                "apply_geometric":False,
-                                "apply_mixup": False,
-                                "apply_cutmix": False}
-    
 
-
-    x_train, y_train, x_test, y_test = get_dataset( output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], 
-                                                    augementation_technique=default_augementaion_technique)
-    
     model_name = f"TakuNet_Random_{trainable_models_count}"
     #print(f"\n🔍 Selected hyperparameters for {model_name}:\n{json.dumps(model_params, indent=4)}")
     taku_model: TakuNetModel = TakuNetModel(model_name=model_name, 
@@ -136,10 +139,9 @@ for model in models_to_train:
             "Precision": model.results.precision,
             "Recall": model.results.recall,
             "F1 Score": model.results.f1_score,
-            "Max RAM Usage (KB)": model.results.max_ram_usage,
+            "Estimated Max RAM Usage (KB)": model.results.estimatedMaxRam,
             "TFlite Estimation size(KB)": model.results.tflite_size,
-            "Param Memory (KB)": model.results.param_memory,
-            "Total Memory (KB)": model.results.total_memory,
+            "Estimated Flash Memory (KB)": model.results.estimatedFlash,
             "Training Time (s)": model.results.training_time,
             "Flop Number": model.results.flops,
             "Epochs Trained": model.results.epochs_trained

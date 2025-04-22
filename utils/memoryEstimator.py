@@ -34,8 +34,7 @@ def memoryEstimation(model:tf.keras.Model,data_dtype_multiplier: int = 1)-> Tupl
         max_activation_memory = max(max_activation_memory, layer_ram_usage) # Here we keep the the maximum use of RAM of each layer
 
     # Convert bytes to KB
-    max_ram_usage: float = max_activation_memory / 1024
-    param_memory: float = total_param_memory / 1024
-    total_memory: float = (max_activation_memory + total_param_memory) / 1024
+    estimatedMaxRam: float = max_activation_memory / 1024
+    estimatedFlash: float = total_param_memory / 1024
 
-    return max_ram_usage, param_memory, total_memory
+    return estimatedMaxRam, estimatedFlash
