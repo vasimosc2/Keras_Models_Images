@@ -64,25 +64,27 @@ while trainable_models_count < number_of_models:  # Train number_of_models with 
     model_params = getSearchSpaceParameters.sample_from_search_space(config["model_search_space"])
     train_params = getTrainingParameters.sample_from_train_and_evaluate(config["train_and_evaluate"])
 
-    aug_type = random.choice(['standard', 'geometric', 'mixup'])
+    # aug_type = random.choice(['standard', 'geometric', 'mixup'])
 
-    apply_standard = aug_type == 'standard'
-    apply_geometric = aug_type == 'geometric'
-    apply_mixup = aug_type == 'mixup'
+    # apply_standard = aug_type == 'standard'
+    # apply_geometric = aug_type == 'geometric'
+    # apply_mixup = aug_type == 'mixup'
 
-    augmentation_technique = {  "apply_standard":apply_standard,
-                                "apply_color":False,
-                                "apply_geometric":apply_geometric,
-                                "apply_mixup": apply_mixup,
-                                "apply_cutmix": False
-                                    }
+    # augmentation_technique = {  "apply_standard":apply_standard,
+    #                             "apply_color":False,
+    #                             "apply_geometric":apply_geometric,
+    #                             "apply_mixup": apply_mixup,
+    #                             "apply_cutmix": False
+    #                                 }
+    # print(f"\n🎲 Randomly selected augmentation for model {trainable_models_count}: {aug_type}\n")
+
     default_augementaion_technique ={ "apply_standard":False,
                                 "apply_color":False,
                                 "apply_geometric":False,
                                 "apply_mixup": False,
                                 "apply_cutmix": False}
     
-    print(f"\n🎲 Randomly selected augmentation for model {trainable_models_count}: {aug_type}\n")
+
 
     x_train, y_train, x_test, y_test = get_dataset( output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], 
                                                     augementation_technique=default_augementaion_technique)
