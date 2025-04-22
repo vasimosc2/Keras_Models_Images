@@ -8,7 +8,7 @@ from tensorflow.keras import backend as K
 import os
 import time
 import argparse
-
+import gc
 from utils import getSearchSpaceParameters, getTrainingParameters
 
 parser = argparse.ArgumentParser(description="Train TakuNet models with sampled hyperparameters.")
@@ -69,8 +69,7 @@ default_augementaion_technique ={ "apply_standard":False,
 
 
 
-x_train, y_train, x_test, y_test = get_dataset( output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], 
-                                                augementation_technique=default_augementaion_technique)
+
     
 
 while trainable_models_count < number_of_models:  # Train number_of_models with random hyperparameters
@@ -91,7 +90,9 @@ while trainable_models_count < number_of_models:  # Train number_of_models with 
     #                                 }
     # print(f"\n🎲 Randomly selected augmentation for model {trainable_models_count}: {aug_type}\n")
 
-
+    x_train, y_train, x_test, y_test = get_dataset( output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], 
+                                                augementation_technique=default_augementaion_technique)
+    
     model_name = f"TakuNet_Random_{trainable_models_count}"
     #print(f"\n🔍 Selected hyperparameters for {model_name}:\n{json.dumps(model_params, indent=4)}")
     taku_model: TakuNetModel = TakuNetModel(model_name=model_name, 
@@ -112,10 +113,14 @@ while trainable_models_count < number_of_models:  # Train number_of_models with 
         print(f"❌ Model {model_name} rejected due to memory constraints")
     
     
-    #del taku_model, x_train, y_train, x_test, y_test
+    del taku_model, x_train, y_train, x_test, y_test
     tf.keras.backend.clear_session()
-    import gc
+
     gc.collect()
+    gc.collect()
+    for obj in gc.get_objects():
+        if isinstance(obj, tf.Tensor):
+            print(f"🧠 Tensor still in memory: {obj}")
 
 
 
@@ -140,8 +145,8 @@ for model in models_to_train:
             "Recall": model.results.recall,
             "F1 Score": model.results.f1_score,
             "Estimated Max RAM Usage (KB)": model.results.estimatedMaxRam,
-            "TFlite Estimation size(KB)": model.results.tflite_size,
             "Estimated Flash Memory (KB)": model.results.estimatedFlash,
+            "TFlite size (KB)": model.results.tflite_size,
             "Training Time (s)": model.results.training_time,
             "Flop Number": model.results.flops,
             "Epochs Trained": model.results.epochs_trained

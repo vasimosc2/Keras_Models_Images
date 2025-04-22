@@ -63,8 +63,8 @@ for generation, best_model in enumerate(evo_search.evolve(), start=1):
         "Recall": best_model.results.recall,
         "F1 Score": best_model.results.f1_score,
         "Estimated Max RAM Usage (KB)": best_model.results.estimatedMaxRam,
-        "TFlite Estimation size(KB)": best_model.results.tflite_size,
-        "Estimated Flash Memory (KB)": best_model.results.estimatedFlash,
+        "Estimated Flash Memory (KB)": best_model.results.estimatedFlash,        
+        "TFlite size(KB)": best_model.results.tflite_size,
         "Flop Number": best_model.results.flops,
         "Training Time (s)": best_model.results.training_time,
         "Epochs Trained": best_model.results.epochs_trained
