@@ -112,7 +112,7 @@ while trainable_models_count < number_of_models:  # Train number_of_models with 
         print(f"❌ Model {model_name} rejected due to memory constraints")
     
     
-    del taku_model, x_train, y_train, x_test, y_test
+    #del taku_model, x_train, y_train, x_test, y_test
     tf.keras.backend.clear_session()
     import gc
     gc.collect()
