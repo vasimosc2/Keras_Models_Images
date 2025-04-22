@@ -115,12 +115,7 @@ while trainable_models_count < number_of_models:  # Train number_of_models with 
     
     del taku_model, x_train, y_train, x_test, y_test
     tf.keras.backend.clear_session()
-
     gc.collect()
-    gc.collect()
-    for obj in gc.get_objects():
-        if isinstance(obj, tf.Tensor):
-            print(f"🧠 Tensor still in memory: {obj}")
 
 
 
