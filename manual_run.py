@@ -68,7 +68,8 @@ default_augementaion_technique ={ "apply_standard":False,
                             "apply_cutmix": False}
 
 
-
+x_train, y_train, x_test, y_test = get_dataset( output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], 
+                                                augementation_technique=default_augementaion_technique)
 
     
 
@@ -90,8 +91,7 @@ while trainable_models_count < number_of_models:  # Train number_of_models with 
     #                                 }
     # print(f"\n🎲 Randomly selected augmentation for model {trainable_models_count}: {aug_type}\n")
 
-    x_train, y_train, x_test, y_test = get_dataset( output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], 
-                                                augementation_technique=default_augementaion_technique)
+
     
     model_name = f"TakuNet_Random_{trainable_models_count}"
     #print(f"\n🔍 Selected hyperparameters for {model_name}:\n{json.dumps(model_params, indent=4)}")
@@ -113,7 +113,7 @@ while trainable_models_count < number_of_models:  # Train number_of_models with 
         print(f"❌ Model {model_name} rejected due to memory constraints")
     
     
-    del taku_model, x_train, y_train, x_test, y_test
+    #del taku_model, x_train, y_train, x_test, y_test
     tf.keras.backend.clear_session()
     gc.collect()
 
