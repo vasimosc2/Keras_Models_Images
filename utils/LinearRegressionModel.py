@@ -4,11 +4,11 @@ import joblib
 import matplotlib.pyplot as plt
 
 # === CONFIG ===
-CSV_PATH = "your_flash_data.csv"  # 👈 Replace with your actual CSV file path
-ESTIMATE_COL = "Estimated_Flash_Memory_KB"
-TFLITE_COL = "TFlite_Estimation_size_KB"
+CSV_PATH = "../Manual_Run/results/Old/Training_Results.csv"
+ESTIMATE_COL = "Estimated Flash Memory (KB)"
+TFLITE_COL = "TFlite Estimation size(KB)"
 MODEL_SAVE_PATH = "flash_regression_model.pkl"
-PLOT = True  # Set to False if you don't want a plot
+PLOT = False
 
 # === LOAD CSV ===
 df = pd.read_csv(CSV_PATH)
