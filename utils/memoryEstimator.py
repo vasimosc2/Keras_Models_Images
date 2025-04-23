@@ -1,5 +1,5 @@
 from typing import Tuple
-
+import joblib
 import numpy as np
 import tensorflow as tf
 
@@ -33,9 +33,10 @@ def memoryEstimation(model:tf.keras.Model,data_dtype_multiplier: int = 1)-> Tupl
         layer_ram_usage: int = input_memory + output_memory
         max_activation_memory = max(max_activation_memory, layer_ram_usage) # Here we keep the the maximum use of RAM of each layer
 
-    # Convert bytes to KB
     estimatedMaxRam: float = max_activation_memory / 1024
-    estimatedFlash: float = total_param_memory / 1024
+    
+    flashModel = joblib.load("flash_regression_model.pkl")
+    estimatedFlash: float = flashModel.predict([[total_param_memory / 1024]])[0]
 
     return estimatedMaxRam, estimatedFlash
 
