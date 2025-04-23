@@ -449,7 +449,6 @@ class TakuNetModel:
             return False
 
         self.results.estimatedMaxRam, self.results.estimatedFlash = memoryEstimator.memoryEstimation(model = self.model, data_dtype_multiplier = self.train_params["data_dtype_multiplier"])
-        self.results.estimatedFlash = memoryEstimator.FlashEstimator(model = self.model, input_shape = self.input_shape )
 
         print(f"Max RAM Usage: {self.results.estimatedMaxRam:.2f} KB\n")
         print(f"Parameter Memory: {self.results.estimatedFlash:.2f} KB\n")

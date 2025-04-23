@@ -34,8 +34,8 @@ def memoryEstimation(model:tf.keras.Model,data_dtype_multiplier: int = 1)-> Tupl
         max_activation_memory = max(max_activation_memory, layer_ram_usage) # Here we keep the the maximum use of RAM of each layer
 
     estimatedMaxRam: float = max_activation_memory / 1024
-    
-    flashModel = joblib.load("flash_regression_model.pkl")
+
+    flashModel = joblib.load("utils/flash_regression_model.pkl")
     estimatedFlash: float = flashModel.predict([[total_param_memory / 1024]])[0]
 
     return estimatedMaxRam, estimatedFlash
