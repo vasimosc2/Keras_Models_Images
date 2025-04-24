@@ -40,27 +40,27 @@ def memoryEstimation(model:tf.keras.Model,data_dtype_multiplier: int = 1)-> Tupl
 
     return estimatedMaxRam, estimatedFlash
 
-def FlashEstimator(model: tf.keras.Model, input_shape=(32, 32, 3)) -> float:
-    """
-    Simulates a quantized TFLite conversion and returns estimated flash size in KB.
-    """
-    # Dummy representative dataset (untrained models work fine)
-    def representative_dataset():
-        for _ in range(100):
-            data = tf.random.uniform(shape=(1,) + input_shape, minval=0, maxval=1, dtype=tf.float32)
-            yield [data]
+# def FlashEstimator(model: tf.keras.Model, input_shape=(32, 32, 3)) -> float:
+#     """
+#     Simulates a quantized TFLite conversion and returns estimated flash size in KB.
+#     """
+#     # Dummy representative dataset (untrained models work fine)
+#     def representative_dataset():
+#         for _ in range(100):
+#             data = tf.random.uniform(shape=(1,) + input_shape, minval=0, maxval=1, dtype=tf.float32)
+#             yield [data]
 
-    converter = tf.lite.TFLiteConverter.from_keras_model(model)
-    converter.optimizations = [tf.lite.Optimize.DEFAULT]
-    converter.representative_dataset = representative_dataset
-    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-    converter.inference_input_type = tf.uint8
-    converter.inference_output_type = tf.uint8
+#     converter = tf.lite.TFLiteConverter.from_keras_model(model)
+#     converter.optimizations = [tf.lite.Optimize.DEFAULT]
+#     converter.representative_dataset = representative_dataset
+#     converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+#     converter.inference_input_type = tf.uint8
+#     converter.inference_output_type = tf.uint8
 
-    try:
-        tflite_model = converter.convert()
-        size_kb = len(tflite_model) / 1024
-        return size_kb
-    except Exception as e:
-        print(f"❌ TFLite conversion failed during flash estimation: {e}")
-        return -1.0
+#     try:
+#         tflite_model = converter.convert()
+#         size_kb = len(tflite_model) / 1024
+#         return size_kb
+#     except Exception as e:
+#         print(f"❌ TFLite conversion failed during flash estimation: {e}")
+#         return -1.0
