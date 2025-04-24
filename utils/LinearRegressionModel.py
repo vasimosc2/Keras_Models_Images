@@ -54,4 +54,4 @@ if PLOT:
     plt.tight_layout()
     plt.savefig("flash_piecewise_model_plot.png")
 
-"✅ Saved improved piecewise model as flash_regression_model_poly.pkl and plot as flash_piecewise_model_plot.png"
+print("✅ Saved improved piecewise model as flash_regression_model_poly.pkl and plot as flash_piecewise_model_plot.png")
