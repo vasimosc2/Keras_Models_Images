@@ -1,4 +1,3 @@
-# Re-run after kernel reset
 import pandas as pd
 import joblib
 import matplotlib.pyplot as plt
@@ -10,48 +9,38 @@ from sklearn.preprocessing import PolynomialFeatures
 CSV_PATH = "../Manual_Run/results/Old/Training_Results.csv"
 ESTIMATE_COL = "Estimated Flash Memory (KB)"
 TFLITE_COL = "TFlite Estimation size(KB)"
-MODEL_SAVE_PATH = "flash_regression_model_poly.pkl"
-PLOT = False
+MODEL_SAVE_PATH = "flash_regression_model_smooth.pkl"
+PLOT = True
 
 # === LOAD CSV ===
 df = pd.read_csv(CSV_PATH)
+X = df[ESTIMATE_COL].values.reshape(-1, 1)
+y = df[TFLITE_COL].values
 
-# === SPLIT DATA ===
-threshold = 400
-df_small = df[df[ESTIMATE_COL] <= threshold]
-df_large = df[df[ESTIMATE_COL] > threshold]
+# === POLYNOMIAL REGRESSION FOR ALL DATA ===
+model = make_pipeline(PolynomialFeatures(degree=2), LinearRegression())
+model.fit(X, y)
 
-# === POLYNOMIAL REGRESSION FOR SMALL MODELS ===
-X_small = df_small[ESTIMATE_COL].values.reshape(-1, 1)
-y_small = df_small[TFLITE_COL].values
-model_small = make_pipeline(PolynomialFeatures(degree=2), LinearRegression())
-model_small.fit(X_small, y_small)
-
-# === LINEAR REGRESSION FOR LARGE MODELS ===
-X_large = df_large[ESTIMATE_COL].values.reshape(-1, 1)
-y_large = df_large[TFLITE_COL].values
-model_large = LinearRegression()
-model_large.fit(X_large, y_large)
-
-# === SAVE MODELS ===
-joblib.dump((model_small, model_large, threshold), MODEL_SAVE_PATH)
+# === SAVE MODEL ===
+joblib.dump(model, MODEL_SAVE_PATH)
+print(f"✅ Smooth polynomial model saved to: {MODEL_SAVE_PATH}")
 
 # === OPTIONAL: PLOT ===
 if PLOT:
-    plt.figure(figsize=(8, 5))
-    plt.scatter(df[ESTIMATE_COL], df[TFLITE_COL], color='blue', label="Actual TFLite Sizes")
+    # Sort for smooth plotting
+    sorted_data = sorted(zip(X.flatten(), model.predict(X)))
+    sorted_X, sorted_preds = zip(*sorted_data)
 
-    # Plot predictions
-    x_vals = df[ESTIMATE_COL].values.reshape(-1, 1)
-    predictions = [model_small.predict([[x[0]]])[0] if x[0] <= threshold else model_large.predict([[x[0]]])[0] for x in x_vals]
-    plt.plot(df[ESTIMATE_COL], predictions, color='red', label="Piecewise Fit")
+    plt.figure(figsize=(8, 5))
+    plt.scatter(X, y, label="Actual TFLite Sizes", color='blue')
+    plt.plot(sorted_X, sorted_preds, color='red', label="Polynomial Fit (Degree 2)")
 
     plt.xlabel("Estimated Flash Memory (KB)")
     plt.ylabel("True TFLite Size (KB)")
-    plt.title("Flash Estimation: Piecewise (Poly + Linear)")
+    plt.title("Flash Estimation: Smooth Polynomial Regression")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig("flash_piecewise_model_plot.png")
+    plt.savefig("../plotting/images/flash_regression_poly_fit.png")
+    print("📊 Plot saved to: images/flash_regression_poly_fit.png")
 
-print("✅ Saved improved piecewise model as flash_regression_model_poly.pkl and plot as flash_piecewise_model_plot.png")
