@@ -469,6 +469,19 @@ class TakuNetModel:
             print("⚠️ Model in gray zone. Converting to TFLite for precise RAM usage...")
             self._convert_to_tflite()
             try:
+
+
+                dtype_map = {
+                    tf.float32: np.float32,
+                    tf.float16: np.float16,
+                    tf.int32: np.int32,
+                    tf.uint8: np.uint8,
+                    tf.int8: np.int8,
+                    tf.int16: np.int16,
+                    tf.int64: np.int64,
+                    tf.bool: np.bool_,
+                }
+
                 interpreter = tf.lite.Interpreter(model_path=f"{self.folderName}/TfLiteModels/{self.model_name}.tflite",
                                                   experimental_delegates=[])
                 interpreter.allocate_tensors()
@@ -477,14 +490,18 @@ class TakuNetModel:
                 for tensor in tensor_details:
                     shape = tensor['shape']
                     dtype = tensor['dtype']
-                    # Calculate the number of elements
-                    num_elements = 1
-                    for dim in shape:
-                        num_elements *= dim
-                    # Calculate memory for this tensor
-                    tensor_size = num_elements * np.dtype(dtype).itemsize
+                    np_dtype = dtype_map.get(dtype)
+                    
+                    if np_dtype is None:
+                        print(f"Unknown dtype {dtype}, skipping tensor {tensor['name']}")
+                        continue
+
+                    num_elements = np.prod(shape)
+                    tensor_size = num_elements * np.dtype(np_dtype).itemsize
                     total_memory += tensor_size
+                    
                 print(f"Estimated total memory usage: {total_memory / 1024:.2f} KB")
+
                 self.results.AccurateMaxRam = total_memory
                 if self.results.AccurateMaxRam > ram_limit:
                     print("❌ Not enough RAM for deployment even after conversion.")
