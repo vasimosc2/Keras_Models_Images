@@ -477,6 +477,9 @@ class TakuNetModel:
                 interpreter.allocate_tensors()
                 tensor_details = interpreter.get_tensor_details()
                 total_memory = 0
+                total_ram_memory = 0
+                total_flash_memory = 0
+
                 for tensor in tensor_details:
                     shape = tensor['shape']
                     dtype:np.dtype = np.dtype(tensor['dtype'])
@@ -486,7 +489,7 @@ class TakuNetModel:
                     tensor_size = num_elements * dtype.itemsize 
                     total_memory += tensor_size
                     allocation_type = tensor.get('allocation_type', None)
-                    
+                    print(f"{allocation_type} stupid ")
                     if tensor['name'].startswith('tfl.pseudo_qconst') or tensor['name'].startswith('arith.constant'):
                         # These are constant parameters (weights, biases) -> flash storage
                         total_flash_memory += tensor_size
