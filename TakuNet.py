@@ -313,22 +313,12 @@ class TakuNetModel:
 
         This mapping is then used to quantize the entire model.
         """
-        def representative_dataset(batch_size: int = 10, num_samples: int = 500):
-            num_samples = min(num_samples, self.x_train.shape[0])
-            for start in range(0, num_samples, batch_size):
-                end = min(start + batch_size, num_samples)
-                data = self.x_train[start:end]
+        def representative_dataset():
+            for i in range(100):
+                data:tf.Tensor = tf.cast(self.x_train[i:i+1], tf.float32)
+                yield [data]
 
-                # Ensure correct dtype and range
-                data = tf.cast(data, tf.float32)
-                if tf.reduce_max(data).numpy() > 1.0:
-                    data = data / 255.0
-
-                # Yield each sample individually
-                for i in range(data.shape[0]):
-                    yield [data[i:i+1]]
-
-        converter.representative_dataset = lambda: representative_dataset(batch_size=10, num_samples=500)
+        converter.representative_dataset = tf.lite.RepresentativeDataset(representative_dataset)
 
         # Force fully int8 quantized kernels
         converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
