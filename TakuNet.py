@@ -479,7 +479,7 @@ class TakuNetModel:
                 total_memory = 0
                 for tensor in tensor_details:
                     shape = tensor['shape']
-                    dtype:np.dtype = tensor['dtype']
+                    dtype:np.dtype = np.dtype(tensor['dtype'])
                     
 
                     num_elements = np.prod(shape)
