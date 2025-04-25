@@ -471,16 +471,6 @@ class TakuNetModel:
             try:
 
 
-                dtype_map = {
-                    tf.float32: np.float32,
-                    tf.float16: np.float16,
-                    tf.int32: np.int32,
-                    tf.uint8: np.uint8,
-                    tf.int8: np.int8,
-                    tf.int16: np.int16,
-                    tf.int64: np.int64,
-                    tf.bool: np.bool_,
-                }
 
                 interpreter = tf.lite.Interpreter(model_path=f"{self.folderName}/TfLiteModels/{self.model_name}.tflite",
                                                   experimental_delegates=[])
@@ -489,20 +479,27 @@ class TakuNetModel:
                 total_memory = 0
                 for tensor in tensor_details:
                     shape = tensor['shape']
-                    dtype = tensor['dtype']
-                    np_dtype = dtype_map.get(dtype)
+                    dtype:np.dtype = tensor['dtype']
                     
-                    if np_dtype is None:
-                        print(f"Unknown dtype {dtype}, skipping tensor {tensor['name']}")
-                        continue
 
                     num_elements = np.prod(shape)
-                    tensor_size = num_elements * np.dtype(np_dtype).itemsize
+                    tensor_size = num_elements * dtype.itemsize 
                     total_memory += tensor_size
+                    allocation_type = tensor.get('allocation_type', None)
                     
-                print(f"Estimated total memory usage: {total_memory / 1024:.2f} KB")
+                    if tensor['name'].startswith('tfl.pseudo_qconst') or tensor['name'].startswith('arith.constant'):
+                        # These are constant parameters (weights, biases) -> flash storage
+                        total_flash_memory += tensor_size
+                    elif allocation_type in (0, 2):
+                        # Intermediate or dynamic tensors -> RAM memory
+                        total_ram_memory += tensor_size
+                    else:
+                        # Persistent tensors might stay in RAM (e.g., inputs/outputs)
+                        total_ram_memory += tensor_size
 
-                self.results.AccurateMaxRam = total_memory
+                print(f"Estimated total memory usage: {total_ram_memory / 1024:.2f} KB")
+
+                self.results.AccurateMaxRam = total_ram_memory / 1024 
                 if self.results.AccurateMaxRam > ram_limit:
                     print("❌ Not enough RAM for deployment even after conversion.")
                     return False
