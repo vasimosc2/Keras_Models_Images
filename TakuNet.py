@@ -313,19 +313,31 @@ class TakuNetModel:
 
         This mapping is then used to quantize the entire model.
         """
-        def representative_dataset():
-            for i in range(min(100, self.x_train.shape[0])):
-                data = self.x_train[i:i+1]  # Already float32, normalized 0–1
+        def representative_dataset(batch_size: int = 10, num_samples: int = 500):
+            num_samples = min(num_samples, self.x_train.shape[0])
+            for start in range(0, num_samples, batch_size):
+                end = min(start + batch_size, num_samples)
+                data = self.x_train[start:end]
+
+                # Ensure correct dtype and range
+                data = tf.cast(data, tf.float32)
                 if tf.reduce_max(data).numpy() > 1.0:
                     data = data / 255.0
-                yield [tf.cast(data, tf.float32)]
 
-        converter.representative_dataset = representative_dataset
+                # Yield each sample individually
+                for i in range(data.shape[0]):
+                    yield [data[i:i+1]]
 
-        # **Ensure full integer quantization for microcontroller compatibility**
+        converter.representative_dataset = lambda: representative_dataset(batch_size=10, num_samples=500)
+
+        # Force fully int8 quantized kernels
         converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+
+        # Set input and output types to uint8
         converter.inference_input_type = tf.uint8
         converter.inference_output_type = tf.uint8
+
+        # Use the new experimental converter (default True, but safe to set)
         converter.experimental_new_converter = True
 
         tflite_model = converter.convert()
