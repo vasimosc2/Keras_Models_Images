@@ -458,13 +458,14 @@ class TakuNetModel:
         flash_limit = self.train_params["max_flash_consumption"] - self.train_params["additional_flash_consumption"]
 
 
-        ram_accept:bool = False
-        flash_accept:bool = True
-
-        if self.results.estimatedMaxRam * 1024 < ram_limit * 0.5:
+        if  self.results.estimatedFlash * 1024 > flash_limit:
+            print(f"🚨 Model not trainable: Flash usage ({ self.results.estimatedFlash:.2f} KB) exceeds limit ({flash_limit / 1024:.2f} KB).")
+            return False
+        
+        if self.results.estimatedMaxRam * 1024 < ram_limit * 0.5 :
             print("✅ Model is safely deployable. Proceeding to training...")
-            ram_accept = True
-        else:
+            return True
+        elif self.results.estimatedMaxRam * 1024 < ram_limit:
             print("⚠️ Model in gray zone. Converting to TFLite for precise RAM usage...")
             self._convert_to_tflite()
             try:
@@ -486,23 +487,17 @@ class TakuNetModel:
                 self.results.AccurateMaxRam = total_memory
                 if self.results.AccurateMaxRam > ram_limit:
                     print("❌ Not enough RAM for deployment even after conversion.")
-                    ram_accept = False
+                    return False
                 else:
                     print("Enough RAM for deployment even after conversion.")
-                    ram_accept = True
+                    return True
             except Exception as e:
                 print(f"❌ TFLite RAM check failed: {e}")
-                ram_accept = False
-
-        if  self.results.estimatedFlash * 1024 > flash_limit:
-            print(f"🚨 Model not trainable: Flash usage ({ self.results.estimatedFlash:.2f} KB) exceeds limit ({flash_limit / 1024:.2f} KB).")
-            flash_accept = False
-        
-        return ram_accept and flash_accept
+                return False
+        else:
+            print(f"🚨 Model not trainable: Flash usage ({ self.results.estimatedMaxRam:.2f} KB) exceeds limit ({ram_limit / 1024:.2f} KB).")
+            return False
     
-
-
-
     
     def train(self):
         """Train the model, evaluate metrics, and store results."""
