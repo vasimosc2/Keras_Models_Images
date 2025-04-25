@@ -24,9 +24,17 @@ def memoryEstimation(model:tf.keras.Model,data_dtype_multiplier: int = 1)-> Tupl
         # Compute activation memory (RAM)
         # I wont be inside there are layer.output is  <class 'keras.src.backend.common.keras_tensor.KerasTensor'>
         
-        output_memory: int = np.prod(layer.output.shape[1:]) * data_dtype_multiplier # If the output shape is 30 x 30 x 32 , the output memmory is  28800 * data_size
+        # Compute activation memory (RAM)
+        if isinstance(layer.output, list):
+            output_memory: int = sum(np.prod(out.shape[1:]) * data_dtype_multiplier for out in layer.output) # I wont be inside there are layer.output is  <class 'keras.src.backend.common.keras_tensor.KerasTensor'>
+        else:
+            output_memory: int = np.prod(layer.output.shape[1:]) * data_dtype_multiplier # If the output shape is 30 x 30 x 32 , the output memmory is  28800 * data_size
 
-        input_memory: int = np.prod(layer.input.shape[1:]) * data_dtype_multiplier
+        if isinstance(layer.input, list):
+            input_memory: int = sum(np.prod(inp.shape[1:]) * data_dtype_multiplier for inp in layer.input)
+        else:
+            input_memory: int = np.prod(layer.input.shape[1:]) * data_dtype_multiplier
+
 
         # Track peak RAM usage
         layer_ram_usage: int = input_memory + output_memory
