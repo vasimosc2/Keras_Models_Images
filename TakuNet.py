@@ -314,9 +314,11 @@ class TakuNetModel:
         This mapping is then used to quantize the entire model.
         """
         def representative_dataset():
-            for i in range(100):
-                data:tf.Tensor = tf.cast(self.x_train[i:i+1], tf.float32)
-                yield [data]
+            for i in range(min(100, self.x_train.shape[0])):
+                data = self.x_train[i:i+1]  # Already float32, normalized 0–1
+                if tf.reduce_max(data).numpy() > 1.0:
+                    data = data / 255.0
+                yield [tf.cast(data, tf.float32)]
 
         converter.representative_dataset = representative_dataset
 
@@ -324,6 +326,7 @@ class TakuNetModel:
         converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
         converter.inference_input_type = tf.uint8
         converter.inference_output_type = tf.uint8
+        converter.experimental_new_converter = True
 
         tflite_model = converter.convert()
 
@@ -496,7 +499,7 @@ class TakuNetModel:
                 print(f"Estimated Max RAM Usage: {total_ram_bytes} bytes ({total_ram_bytes/1024:.2f} KB)")
 
 
-                self.results.AccurateMaxRam = total_ram_bytes/1024 
+                self.results.AccurateMaxRam = total_ram_bytes
                 if self.results.AccurateMaxRam > ram_limit:
                     print("❌ Not enough RAM for deployment even after conversion.")
                     return False
