@@ -469,7 +469,8 @@ class TakuNetModel:
             print("⚠️ Model in gray zone. Converting to TFLite for precise RAM usage...")
             self._convert_to_tflite()
             try:
-                interpreter = tf.lite.Interpreter(model_path=f"{self.folderName}/TfLiteModels/{self.model_name}.tflite")
+                interpreter = tf.lite.Interpreter(model_path=f"{self.folderName}/TfLiteModels/{self.model_name}.tflite",
+                                                  experimental_delegates=[])
                 interpreter.allocate_tensors()
                 tensor_details = interpreter.get_tensor_details()
                 total_memory = 0
