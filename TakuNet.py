@@ -456,14 +456,39 @@ class TakuNetModel:
         ram_limit = self.train_params["max_ram_consumption"] #- self.train_params["additional_ram_consumption"]
         flash_limit = self.train_params["max_flash_consumption"] - self.train_params["additional_flash_consumption"]
 
-        if self.results.estimatedMaxRam * 1024 > ram_limit:
-            print(f"🚨 Model not trainable: RAM usage ({self.results.estimatedMaxRam:.2f} KB) exceeds limit ({ram_limit / 1024:.2f} KB).")
+        if self.results.estimatedMaxRam < ram_limit * 0.5:
+            print("✅ Model is safely deployable. Proceeding to training...")
+            return True
+        elif self.results.estimatedFlash < flash_limit * 0.8:
+            print("⚠️ Model in gray zone. Converting to TFLite for precise RAM usage...")
+            self._convert_to_tflite()
+            try:
+                interpreter = tf.lite.Interpreter(model_path=f"{self.folderName}/TfLiteModels/{self.model_name}.tflite")
+                interpreter.allocate_tensors()
+                tensor_details = interpreter.get_tensor_details()
+                total_memory = 0
+                for tensor in tensor_details:
+                    shape = tensor['shape']
+                    dtype = tensor['dtype']
+                    # Calculate the number of elements
+                    num_elements = 1
+                    for dim in shape:
+                        num_elements *= dim
+                    # Calculate memory for this tensor
+                    tensor_size = num_elements * np.dtype(dtype).itemsize
+                    total_memory += tensor_size
+                print(f"Estimated total memory usage: {total_memory / 1024:.2f} KB")
+                self.results.AccurateMaxRam = total_memory
+                if self.results.AccurateMaxRam > ram_limit:
+                    print("❌ Not enough RAM for deployment even after conversion.")
+                    return False
+                return True
+            except Exception as e:
+                print(f"❌ TFLite RAM check failed: {e}")
+                return False
+        else:
+            print("❌ RAM estimate too high. Skipping training.")
             return False
-        
-        if  self.results.estimatedFlash * 1024 > flash_limit:
-            print(f"🚨 Model not trainable: Flash usage ({ self.results.estimatedFlash:.2f} KB) exceeds limit ({flash_limit / 1024:.2f} KB).")
-            return False
-        return True
     
 
 
@@ -704,6 +729,7 @@ class TrainingResults:
         self.recall = None
         self.f1_score = None
         self.estimatedMaxRam = None
+        self.AccurateMaxRam = None
         self.estimatedFlash = None
         self.training_time = None
         self.fitness_score = None
@@ -721,6 +747,7 @@ class TrainingResults:
                 f"  Recall: {self.recall:.4f}\n"
                 f"  F1 Score: {self.f1_score:.4f}\n"
                 f"  Estimated Max Ram Use: {self.estimatedMaxRam:.4f}\n"
+                f"  Estimated Max Ram Use: {self.AccurateMaxRam:.4f}\n"
                 f"  Estimated Flash Memory Use: {self.estimatedFlash:.4f}\n"
                 f"  TFlite Memory Use: {self.tflite_size:.4f}\n"
                 f"  Training Time: {self.training_time}\n)"
