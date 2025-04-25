@@ -454,12 +454,17 @@ class TakuNetModel:
         print(f"Parameter Memory: {self.results.estimatedFlash:.2f} KB\n")
 
         ram_limit = self.train_params["max_ram_consumption"] #- self.train_params["additional_ram_consumption"]
+
         flash_limit = self.train_params["max_flash_consumption"] - self.train_params["additional_flash_consumption"]
 
-        if self.results.estimatedMaxRam < ram_limit * 0.5:
+
+        ram_accept:bool = False
+        flash_accept:bool = True
+
+        if self.results.estimatedMaxRam * 1024 < ram_limit * 0.5:
             print("✅ Model is safely deployable. Proceeding to training...")
-            return True
-        elif self.results.estimatedFlash < flash_limit * 0.8:
+            ram_accept = True
+        else:
             print("⚠️ Model in gray zone. Converting to TFLite for precise RAM usage...")
             self._convert_to_tflite()
             try:
@@ -481,14 +486,19 @@ class TakuNetModel:
                 self.results.AccurateMaxRam = total_memory
                 if self.results.AccurateMaxRam > ram_limit:
                     print("❌ Not enough RAM for deployment even after conversion.")
-                    return False
-                return True
+                    ram_accept = False
+                else:
+                    print("Enough RAM for deployment even after conversion.")
+                    ram_accept = True
             except Exception as e:
                 print(f"❌ TFLite RAM check failed: {e}")
-                return False
-        else:
-            print("❌ RAM estimate too high. Skipping training.")
-            return False
+                ram_accept = False
+
+        if  self.results.estimatedFlash * 1024 > flash_limit:
+            print(f"🚨 Model not trainable: Flash usage ({ self.results.estimatedFlash:.2f} KB) exceeds limit ({flash_limit / 1024:.2f} KB).")
+            flash_accept = False
+        
+        return ram_accept and flash_accept
     
 
 
