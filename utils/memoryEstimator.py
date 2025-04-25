@@ -7,62 +7,34 @@ from collections import defaultdict
 
 
 def memoryEstimation(model:tf.keras.Model,data_dtype_multiplier: int = 1)-> Tuple[float, float, float]:
-    tensor_lifetimes = defaultdict(int)
-    total_param_memory = 0
-    layer_tensor_ids = []
-    tensor_sizes = {}
-
-    def tensor_id(tensor):
-        return id(tensor)
+    """
+    ROM (Read-Only Memory) → Memory used to store layer parameters (weights & biases).
+    RAM (Random-Access Memory) → Memory used to store activations (input & output tensors).
+    """
+    max_activation_memory: int = 0  # Peak RAM usage
+    total_param_memory: int = 0      # ROM for storing weights
 
     for layer in model.layers:
-        total_param_memory += layer.count_params() * data_dtype_multiplier
+        
+        #  Number of parameters in the layer (weights & biases).
+        #  Converts the number of parameters into bytes.
+        # Adds up all the layer_param_memory of each layer
+        total_param_memory += layer.count_params()  * data_dtype_multiplier 
 
-        inputs = layer.input if isinstance(layer.input, (list, tuple)) else [layer.input]
-        outputs = layer.output if isinstance(layer.output, (list, tuple)) else [layer.output]
+        # Compute activation memory (RAM)
+        # I wont be inside there are layer.output is  <class 'keras.src.backend.common.keras_tensor.KerasTensor'>
+        
+        output_memory: int = np.prod(layer.output.shape[1:]) * data_dtype_multiplier # If the output shape is 30 x 30 x 32 , the output memmory is  28800 * data_size
 
-        curr_layer_ids = []
+        input_memory: int = np.prod(layer.input.shape[1:]) * data_dtype_multiplier
 
-        # Track input tensor size
-        for inp in inputs:
-            tid = tensor_id(inp)
-            shape = inp.shape
-            size = np.prod(shape[1:]) * data_dtype_multiplier if shape.rank else 0
-            tensor_sizes[tid] = size
-            tensor_lifetimes[tid] += 1
-            curr_layer_ids.append(tid)
+        # Track peak RAM usage
+        layer_ram_usage: int = input_memory + output_memory
+        max_activation_memory = max(max_activation_memory, layer_ram_usage) # Here we keep the the maximum use of RAM of each layer
 
-        # Track output tensor size
-        for out in outputs:
-            tid = tensor_id(out)
-            shape = out.shape
-            size = np.prod(shape[1:]) * data_dtype_multiplier if shape.rank else 0
-            tensor_sizes[tid] = size
-            tensor_lifetimes[tid] += 1
-            curr_layer_ids.append(tid)
+    flashModel = joblib.load("utils/flash_regression_model.pkl")
 
-        layer_tensor_ids.append(curr_layer_ids)
-
-    # Simulate lifetime and find peak memory
-    live_tensors = set()
-    peak_ram = 0
-
-    for curr_ids in layer_tensor_ids:
-        for tid in curr_ids:
-            live_tensors.add(tid)
-
-        current_ram = sum(tensor_sizes[tid] for tid in live_tensors)
-        peak_ram = max(peak_ram, current_ram)
-
-        # Simulate tensors being released
-        for tid in curr_ids:
-            tensor_lifetimes[tid] -= 1
-            if tensor_lifetimes[tid] == 0:
-                live_tensors.remove(tid)
-
-    flashModel = joblib.load("utils/flash_regression_model_smooth.pkl")
-
-    estimated_ram_kb = peak_ram / 1024
+    estimated_ram_kb = max_activation_memory / 1024
     estimated_flash_kb = flashModel.predict([[total_param_memory / 1024]])[0]
 
     return estimated_ram_kb, estimated_flash_kb

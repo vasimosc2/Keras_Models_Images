@@ -475,34 +475,28 @@ class TakuNetModel:
                 interpreter = tf.lite.Interpreter(model_path=f"{self.folderName}/TfLiteModels/{self.model_name}.tflite",
                                                   experimental_delegates=[])
                 interpreter.allocate_tensors()
-                tensor_details = interpreter.get_tensor_details()
-                total_memory = 0
-                total_ram_memory = 0
-                total_flash_memory = 0
 
-                for tensor in tensor_details:
-                    shape = tensor['shape']
-                    dtype:np.dtype = np.dtype(tensor['dtype'])
-                    
+                # Get tensor details
+                tensors_details = interpreter.get_tensor_details()
 
-                    num_elements = np.prod(shape)
-                    tensor_size = num_elements * dtype.itemsize 
-                    total_memory += tensor_size
-                    allocation_type = tensor.get('allocation_type', None)
-                    print(f"{allocation_type} stupid ")
-                    if tensor['name'].startswith('tfl.pseudo_qconst') or tensor['name'].startswith('arith.constant'):
-                        # These are constant parameters (weights, biases) -> flash storage
-                        total_flash_memory += tensor_size
-                    elif allocation_type in (0, 2):
-                        # Intermediate or dynamic tensors -> RAM memory
-                        total_ram_memory += tensor_size
-                    else:
-                        # Persistent tensors might stay in RAM (e.g., inputs/outputs)
-                        total_ram_memory += tensor_size
+                total_ram_bytes = 0
+                for tensor in tensors_details:
+                    if tensor['dtype'] is not None and tensor['shape_signature'] is not None:
+                        # Only count allocated tensors in RAM (Skip optional tensors)
+                        tensor_size = tensor['shape_signature']
+                        num_elements = 1
+                        for dim in tensor_size:
+                            if dim == -1:  # dynamic dimension (rare for microcontrollers)
+                                dim = 1
+                            num_elements *= dim
+                        
+                        element_size = tf.dtypes.as_dtype(tensor['dtype']).size  # bytes per element
+                        total_ram_bytes += num_elements * element_size
 
-                print(f"Estimated total memory usage: {total_ram_memory / 1024:.2f} KB")
+                print(f"Estimated Max RAM Usage: {total_ram_bytes} bytes ({total_ram_bytes/1024:.2f} KB)")
 
-                self.results.AccurateMaxRam = total_ram_memory / 1024 
+
+                self.results.AccurateMaxRam = total_ram_bytes/1024 
                 if self.results.AccurateMaxRam > ram_limit:
                     print("❌ Not enough RAM for deployment even after conversion.")
                     return False
