@@ -452,7 +452,6 @@ class TakuNetModel:
             return False
 
         self.results.estimatedMaxRam, self.results.estimatedFlash = memoryEstimator.memoryEstimation(model = self.model, data_dtype_multiplier = self.train_params["data_dtype_multiplier"])
-        self.results.AccurateMaxRam = memoryEstimator.estimate_peak_ram_uint8(model=self.model, input_shape=self.input_shape)
         print(f"⚠️ Checking model {self.model_name}.....\n")
         print(f"Max RAM Usage: {self.results.estimatedMaxRam:.2f} KB\n")
         print(f"Parameter Memory: {self.results.estimatedFlash:.2f} KB\n")
@@ -708,7 +707,6 @@ class TrainingResults:
         self.recall = None
         self.f1_score = None
         self.estimatedMaxRam = None
-        self.AccurateMaxRam = None
         self.estimatedFlash = None
         self.training_time = None
         self.fitness_score = None
@@ -726,7 +724,6 @@ class TrainingResults:
                 f"  Recall: {self.recall:.4f}\n"
                 f"  F1 Score: {self.f1_score:.4f}\n"
                 f"  Estimated Max Ram Use: {self.estimatedMaxRam:.4f}\n"
-                f"  Estimated Max Ram Use: {self.AccurateMaxRam:.4f}\n"
                 f"  Estimated Flash Memory Use: {self.estimatedFlash:.4f}\n"
                 f"  TFlite Memory Use: {self.tflite_size:.4f}\n"
                 f"  Training Time: {self.training_time}\n)"

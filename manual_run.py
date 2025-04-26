@@ -140,7 +140,6 @@ for model in models_to_train:
             "Recall": model.results.recall,
             "F1 Score": model.results.f1_score,
             "Estimated Max RAM Usage (KB)": model.results.estimatedMaxRam,
-            "Accurate RAM Usage (KB)": model.results.AccurateMaxRam,
             "Estimated Flash Memory (KB)": model.results.estimatedFlash,
             "TFlite size (KB)": model.results.tflite_size,
             "Training Time (s)": model.results.training_time,
