@@ -327,8 +327,6 @@ class TakuNetModel:
         converter.inference_input_type = tf.uint8
         converter.inference_output_type = tf.uint8
 
-        # Use the new experimental converter (default True, but safe to set)
-        converter.experimental_new_converter = True
 
         tflite_model = converter.convert()
 
@@ -454,7 +452,8 @@ class TakuNetModel:
             return False
 
         self.results.estimatedMaxRam, self.results.estimatedFlash = memoryEstimator.memoryEstimation(model = self.model, data_dtype_multiplier = self.train_params["data_dtype_multiplier"])
-
+        self.results.AccurateMaxRam = memoryEstimator.estimate_peak_ram_uint8(model=self.model, input_shape=self.input_shape)
+        print(f"⚠️ Checking model {self.model_name}.....\n")
         print(f"Max RAM Usage: {self.results.estimatedMaxRam:.2f} KB\n")
         print(f"Parameter Memory: {self.results.estimatedFlash:.2f} KB\n")
 
@@ -467,53 +466,11 @@ class TakuNetModel:
             print(f"🚨 Model not trainable: Flash usage ({ self.results.estimatedFlash:.2f} KB) exceeds limit ({flash_limit / 1024:.2f} KB).")
             return False
         
-        if self.results.estimatedMaxRam * 1024 < ram_limit * 0.5 :
-            print("✅ Model is safely deployable. Proceeding to training...")
-            return True
-        elif self.results.estimatedMaxRam * 1024 < ram_limit:
-            print("⚠️ Model in gray zone. Converting to TFLite for precise RAM usage...")
-            self._convert_to_tflite()
-            try:
-
-
-
-                interpreter = tf.lite.Interpreter(model_path=f"{self.folderName}/TfLiteModels/{self.model_name}.tflite",
-                                                  experimental_delegates=[])
-                interpreter.allocate_tensors()
-
-                # Get tensor details
-                tensors_details = interpreter.get_tensor_details()
-
-                total_ram_bytes = 0
-                for tensor in tensors_details:
-                    if tensor['dtype'] is not None and tensor['shape_signature'] is not None:
-                        # Only count allocated tensors in RAM (Skip optional tensors)
-                        tensor_size = tensor['shape_signature']
-                        num_elements = 1
-                        for dim in tensor_size:
-                            if dim == -1:  # dynamic dimension (rare for microcontrollers)
-                                dim = 1
-                            num_elements *= dim
-                        
-                        element_size = tf.dtypes.as_dtype(tensor['dtype']).size  # bytes per element
-                        total_ram_bytes += num_elements * element_size
-
-                print(f"Estimated Max RAM Usage: {total_ram_bytes} bytes ({total_ram_bytes/1024:.2f} KB)")
-
-
-                self.results.AccurateMaxRam = total_ram_bytes
-                if self.results.AccurateMaxRam > ram_limit:
-                    print("❌ Not enough RAM for deployment even after conversion.")
-                    return False
-                else:
-                    print("Enough RAM for deployment even after conversion.")
-                    return True
-            except Exception as e:
-                print(f"❌ TFLite RAM check failed: {e}")
-                return False
-        else:
+        if self.results.estimatedMaxRam * 1024 > ram_limit  :
             print(f"🚨 Model not trainable: Flash usage ({ self.results.estimatedMaxRam:.2f} KB) exceeds limit ({ram_limit / 1024:.2f} KB).")
             return False
+        
+        return True
     
     
     def train(self):

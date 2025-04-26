@@ -2,8 +2,6 @@ from typing import Tuple
 import joblib
 import numpy as np
 import tensorflow as tf
-from collections import defaultdict
-
 
 
 def memoryEstimation(model:tf.keras.Model,data_dtype_multiplier: int = 1)-> Tuple[float, float, float]:
@@ -50,7 +48,44 @@ def memoryEstimation(model:tf.keras.Model,data_dtype_multiplier: int = 1)-> Tupl
 
 
 
+def estimate_peak_ram_uint8(model: tf.keras.Model, input_shape=(32, 32, 3)):
+    """
+    Estimate peak RAM usage for a quantized (uint8) model 
+    by simulating a forward pass layer-by-layer.
+    """
+    dummy_input = tf.zeros((1,) + input_shape, dtype=tf.uint8)
+    max_memory_bytes = 0
+    current_memory_bytes = 0
 
+    x = dummy_input
+
+    for layer in model.layers:
+        try:
+            x_new = layer(x)
+
+            # Estimate the memory size of the output tensor
+            tensor_size = np.prod(x_new.shape)  # number of elements
+            dtype_size = tf.dtypes.as_dtype(x_new.dtype).size  # bytes per element (should be 1 for uint8)
+            tensor_memory_bytes = tensor_size * dtype_size
+
+            # Update memory tracking
+            current_memory_bytes += tensor_memory_bytes
+            max_memory_bytes = max(max_memory_bytes, current_memory_bytes)
+
+            # Free input memory if not reused
+            if not isinstance(x, (list, tuple)):
+                input_size = np.prod(x.shape)
+                input_memory_bytes = input_size * tf.dtypes.as_dtype(x.dtype).size
+                current_memory_bytes -= input_memory_bytes
+
+            x = x_new
+
+        except Exception as e:
+            print(f"Skipping layer {layer.name} due to error: {e}")
+            x = x_new  # Try to continue forward
+
+    print(f"✅ Estimated Peak RAM Usage (uint8 model): {max_memory_bytes / 1024:.2f} KB")
+    return max_memory_bytes
 
 
 
