@@ -539,7 +539,7 @@ class TakuNetModel:
         print(f"✅ Final Best model restored from {checkpoint_path}\n")
 
         # **Predictions & Metrics**
-        y_test_pred = self.model.predict(self.x_test)
+        y_test_pred = self.model.predict(x_test)
         y_test_pred_classes = np.argmax(y_test_pred, axis=1)
         y_true_classes = np.argmax(self.y_test, axis=1)
 
