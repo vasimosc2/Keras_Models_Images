@@ -48,60 +48,51 @@ def memoryEstimation(model:tf.keras.Model,data_dtype_multiplier: int = 1)-> Tupl
 
 
 
-def estimate_peak_ram_uint8(model: tf.keras.Model, input_shape=(32, 32, 3)):
+def estimate_tflite_ram_from_keras(model: tf.keras.Model, input_shape=(32, 32, 3)):
     """
-    Estimate peak RAM usage for a quantized (uint8) model 
-    by simulating a forward pass layer-by-layer.
+    Estimate peak RAM usage from a Keras model by:
+    1. Converting it to a quantized TFLite model (in memory).
+    2. Estimating RAM usage without saving to disk.
+    
+    Parameters:
+        model: tf.keras.Model
+            The Keras model to be quantized and analyzed.
+        input_shape: tuple
+            Input shape of the model excluding batch dimension.
     """
-    dummy_input = tf.zeros((1,) + input_shape, dtype=tf.uint8)
-    max_memory_bytes = 0
-    current_memory_bytes = 0
+    # --- Define an automatic representative dataset generator ---
+    def representative_dataset():
+        for _ in range(100):
+            dummy_input = tf.random.uniform(shape=(1,) + input_shape, minval=0, maxval=1, dtype=tf.float32)
+            yield [dummy_input]
 
-    x = dummy_input
+    # --- Convert Keras model to TFLite model (in memory) ---
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    converter.representative_dataset = tf.lite.RepresentativeDataset(representative_dataset)
+    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+    converter.inference_input_type = tf.uint8
+    converter.inference_output_type = tf.uint8
+    converter.experimental_new_converter = True  # default True in latest TF
 
-    for layer in model.layers:
-        try:
-            # --- Handle multi-input layers properly ---
-            if isinstance(layer.input, (list, tuple)):
-                # If the layer expects multiple inputs, wrap x in a list
-                x_new = layer([x])
-            else:
-                x_new = layer(x)
+    tflite_model_buffer = converter.convert()
 
-            # --- Memory Calculation ---
-            if isinstance(x_new, (list, tuple)):
-                # If output is multiple tensors (rare), sum their memory
-                tensor_memory_bytes = sum(
-                    np.prod(output.shape) * tf.dtypes.as_dtype(output.dtype).size
-                    for output in x_new
-                )
-            else:
-                tensor_memory_bytes = np.prod(x_new.shape) * tf.dtypes.as_dtype(x_new.dtype).size
+    # --- Load TFLite model from buffer ---
+    interpreter = tf.lite.Interpreter(model_content=tflite_model_buffer)
+    interpreter.allocate_tensors()
 
-            current_memory_bytes += tensor_memory_bytes
-            max_memory_bytes = max(max_memory_bytes, current_memory_bytes)
+    tensor_details = interpreter.get_tensor_details()
 
-            # --- Free previous input memory ---
-            if isinstance(x, (list, tuple)):
-                input_memory_bytes = sum(
-                    np.prod(inp.shape) * tf.dtypes.as_dtype(inp.dtype).size
-                    for inp in x
-                )
-            else:
-                input_memory_bytes = np.prod(x.shape) * tf.dtypes.as_dtype(x.dtype).size
+    total_arena_memory = 0
+    for tensor in tensor_details:
+        if tensor['shape_signature'] is not None and tensor['dtype'] is not None:
+            shape = tensor['shape_signature']
+            num_elements = np.prod([dim if dim > 0 else 1 for dim in shape])
+            dtype_size = tf.dtypes.as_dtype(tensor['dtype']).size
+            total_arena_memory += num_elements * dtype_size
 
-            current_memory_bytes -= input_memory_bytes
-
-            # --- Update x for next layer ---
-            x = x_new
-
-        except Exception as e:
-            print(f"⚠️ Skipping layer {layer.name} due to error: {e}")
-            # Don't update x if failed, move to next layer
-            continue
-
-    print(f"✅ Estimated Peak RAM Usage (uint8 model): {max_memory_bytes / 1024:.2f} KB")
-    return max_memory_bytes
+    print(f"✅ Estimated Peak RAM Usage (from quantized TFLite model): {total_arena_memory / 1024:.2f} KB")
+    return total_arena_memory
 
 
 
