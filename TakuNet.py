@@ -411,10 +411,10 @@ class TakuNetModel:
             print("⚠️ Cannot check trainability: `train_params` is None.")
             return False
 
-        self.results.estimatedMaxRam, 
+        (self.results.estimatedMaxRam, 
         self.results.estimatedFlash, 
         self.results.AccurateMaxRam,
-        self.results.ModelRam = memoryEstimator.memoryEstimation(model = self.model, data_dtype_multiplier = self.train_params["data_dtype_multiplier"])
+        self.results.ModelRam)= memoryEstimator.memoryEstimation(model = self.model, data_dtype_multiplier = self.train_params["data_dtype_multiplier"])
 
         print(f"⚠️ Checking model {self.model_name}.....\n")
         print(f"Max RAM Usage: {self.results.estimatedMaxRam:.2f} KB\n")
