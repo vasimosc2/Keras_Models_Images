@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import List, Tuple
 import joblib
 import numpy as np
 import tensorflow as tf
@@ -11,6 +11,7 @@ def memoryEstimation(model:tf.keras.Model,data_dtype_multiplier: int = 1)-> Tupl
     """
     max_activation_memory: int = 0  # Peak RAM usage
     total_param_memory: int = 0      # ROM for storing weights
+    layer_ram_usages: List[int] = []          # Store RAM usage of each layer
 
     for layer in model.layers:
         
@@ -36,11 +37,32 @@ def memoryEstimation(model:tf.keras.Model,data_dtype_multiplier: int = 1)-> Tupl
 
         # Track peak RAM usage
         layer_ram_usage: int = input_memory + output_memory
+        layer_ram_usages.append(layer_ram_usage)
         max_activation_memory = max(max_activation_memory, layer_ram_usage) # Here we keep the the maximum use of RAM of each layer
 
     flashModel = joblib.load("utils/flash_regression_model.pkl")
 
-    estimated_ram_kb = max_activation_memory / 1024
-    estimated_flash_kb = flashModel.predict([[total_param_memory / 1024]])[0]
+    estimated_ram_kb:float = max_activation_memory / 1024
+    estimated_flash_kb:float = flashModel.predict([[total_param_memory / 1024]])[0]
+    accurate_ram_kb:float = ram_accurate(max_activation_memory=estimated_ram_kb,layer_ram_usages=layer_ram_usages)
+    return estimated_ram_kb, estimated_flash_kb, accurate_ram_kb
 
-    return estimated_ram_kb, estimated_flash_kb
+
+def ram_accurate(max_activation_memory:int,layer_ram_usages:List[int]) -> float:
+     # Now, check for >4 consecutive layers with max RAM usage
+    consecutive_max = 0
+    max_ram_reached = False
+
+    for ram_usage in layer_ram_usages:
+        if ram_usage == max_activation_memory:
+            consecutive_max += 1
+            if consecutive_max > 4:
+                max_ram_reached = True
+                break
+        else:
+            consecutive_max = 0  # Reset if break in maximum RAM sequence
+
+    if max_ram_reached:
+        return (2 * max_activation_memory / 1024)  # Double the RAM estimation
+    
+    return max_activation_memory / 1024
