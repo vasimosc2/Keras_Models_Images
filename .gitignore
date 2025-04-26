@@ -18,4 +18,4 @@ Manual_Run/*
 NAS/*
 OverleafAssistance.tex
 utils/CreateMemoryReport.sh
-*.csv
+MemorySymbols/*
