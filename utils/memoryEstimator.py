@@ -61,28 +61,44 @@ def estimate_peak_ram_uint8(model: tf.keras.Model, input_shape=(32, 32, 3)):
 
     for layer in model.layers:
         try:
-            x_new = layer(x)
+            # --- Handle multi-input layers properly ---
+            if isinstance(layer.input, (list, tuple)):
+                # If the layer expects multiple inputs, wrap x in a list
+                x_new = layer([x])
+            else:
+                x_new = layer(x)
 
-            # Estimate the memory size of the output tensor
-            tensor_size = np.prod(x_new.shape)  # number of elements
-            dtype_size = tf.dtypes.as_dtype(x_new.dtype).size  # bytes per element (should be 1 for uint8)
-            tensor_memory_bytes = tensor_size * dtype_size
+            # --- Memory Calculation ---
+            if isinstance(x_new, (list, tuple)):
+                # If output is multiple tensors (rare), sum their memory
+                tensor_memory_bytes = sum(
+                    np.prod(output.shape) * tf.dtypes.as_dtype(output.dtype).size
+                    for output in x_new
+                )
+            else:
+                tensor_memory_bytes = np.prod(x_new.shape) * tf.dtypes.as_dtype(x_new.dtype).size
 
-            # Update memory tracking
             current_memory_bytes += tensor_memory_bytes
             max_memory_bytes = max(max_memory_bytes, current_memory_bytes)
 
-            # Free input memory if not reused
-            if not isinstance(x, (list, tuple)):
-                input_size = np.prod(x.shape)
-                input_memory_bytes = input_size * tf.dtypes.as_dtype(x.dtype).size
-                current_memory_bytes -= input_memory_bytes
+            # --- Free previous input memory ---
+            if isinstance(x, (list, tuple)):
+                input_memory_bytes = sum(
+                    np.prod(inp.shape) * tf.dtypes.as_dtype(inp.dtype).size
+                    for inp in x
+                )
+            else:
+                input_memory_bytes = np.prod(x.shape) * tf.dtypes.as_dtype(x.dtype).size
 
+            current_memory_bytes -= input_memory_bytes
+
+            # --- Update x for next layer ---
             x = x_new
 
         except Exception as e:
-            print(f"Skipping layer {layer.name} due to error: {e}")
-            x = x_new  # Try to continue forward
+            print(f"⚠️ Skipping layer {layer.name} due to error: {e}")
+            # Don't update x if failed, move to next layer
+            continue
 
     print(f"✅ Estimated Peak RAM Usage (uint8 model): {max_memory_bytes / 1024:.2f} KB")
     return max_memory_bytes
