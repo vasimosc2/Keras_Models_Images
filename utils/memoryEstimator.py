@@ -52,36 +52,31 @@ import numpy as np
 from typing import Dict, Set, Tuple
 
 def build_graph(model: tf.keras.Model) -> Tuple[Dict[str, Set[str]], Dict[str, int]]:
-    """
-    Build dependency graph from a Keras model.
-    
-    Returns:
-        producers (dict): Maps tensor name -> input tensor names
-        tensor_sizes (dict): Maps tensor name -> size in bytes (assuming uint8)
-    """
     producers = {}
     tensor_sizes = {}
 
     for layer in model.layers:
-        # Get input tensors
-        if isinstance(layer.input, list):
-            input_names = [inp.name for inp in layer.input]
-        else:
-            input_names = [layer.input.name]
+        # Skip layers without real tensors
+        if not hasattr(layer, 'input') or not hasattr(layer, 'output'):
+            continue
 
-        # Get output tensors
-        if isinstance(layer.output, list):
-            output_names = [out.name for out in layer.output]
-        else:
-            output_names = [layer.output.name]
+        input_tensors = layer.input if isinstance(layer.input, (list, tuple)) else [layer.input]
+        output_tensors = layer.output if isinstance(layer.output, (list, tuple)) else [layer.output]
 
-        for out_name in output_names:
-            producers[out_name] = set(input_names)
+        input_names = []
+        for inp in input_tensors:
+            if hasattr(inp, 'name') and hasattr(inp, 'shape') and inp.shape is not None:
+                input_names.append(inp.name)
 
-            # Calculate tensor size (assuming uint8, 1 byte per element)
-            shape = layer.output.shape
-            if None not in shape:  # Ignore dynamic shapes
-                tensor_sizes[out_name] = np.prod(shape[1:])  # Exclude batch dim
+        for out in output_tensors:
+            if hasattr(out, 'name') and hasattr(out, 'shape') and out.shape is not None:
+                out_name = out.name
+                producers[out_name] = set(input_names)
+
+                # Only calculate size if shape is known and fixed
+                shape = out.shape
+                if None not in shape:
+                    tensor_sizes[out_name] = np.prod(shape[1:])
 
     return producers, tensor_sizes
 
