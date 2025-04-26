@@ -102,14 +102,53 @@ def save_ram_model():
     plt.savefig("ram_estimated_vs_measured.png")
     print(f"📷 Estimated RAM Plot saved to: ram_estimated_vs_measured.png")
 
+
+def save_inference_time_model():
+    print(f"\n🚀 Training Inference Time model...")
+
+    CSV_PATH = "ram_inference_flash.csv"  # Same file
+    ACCURATE_COL = "AccurateRam(KB)"
+    INFERENCE_TIME_COL = "InferenceTime(S)"
+
+    df = pd.read_csv(CSV_PATH)
+
+    X = df[ACCURATE_COL].values.reshape(-1, 1)
+    y = df[INFERENCE_TIME_COL].values
+
+    model = LinearRegression()
+    model.fit(X, y)
+
+    model_save_path = "inference_time_regression_model.pkl"
+    plot_save_path = "inference_time_regression_plot.png"
+
+    joblib.dump(model, model_save_path)
+    print(f"✅ Inference Time model saved to: {model_save_path}")
+
+    print(f"📈 Inference Time Regression formula: Time ≈ {model.coef_[0]:.6f} × Accurate RAM + {model.intercept_:.6f}")
+
+    # Plot
+    plt.figure(figsize=(8, 5))
+    plt.scatter(X, y, color='purple', label="Actual Inference Times")
+    plt.plot(X, model.predict(X), color='orange', label="Regression Line")
+    plt.xlabel("Accurate RAM (KB)")
+    plt.ylabel("Inference Time (s)")
+    plt.title("Accurate RAM vs Inference Time")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(plot_save_path)
+    print(f"📷 Inference Time Plot saved to: {plot_save_path}")
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train Flash or RAM regression model.")
-    parser.add_argument("--memory_type", default="ram", choices=["flash", "ram"], help="Memory type to process")
+    parser.add_argument("--memory_type", default="time", choices=["flash", "ram", "time"], help="Memory type to process")
     args = parser.parse_args()
 
     if args.memory_type.lower() == "flash":
         save_flash_model()
-    else:
+    elif args.memory_type.lower() == "ram":
         save_ram_model()
+    else:
+        save_inference_time_model()
 
     print("\n🎯 Finished training and saving models!")

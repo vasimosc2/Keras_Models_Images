@@ -429,8 +429,8 @@ class TakuNetModel:
             print(f"🚨 Model not trainable: Flash usage ({ self.results.estimatedFlash:.2f} KB) exceeds limit ({flash_limit / 1024:.2f} KB). \n")
             return False
         
-        if self.results.estimatedMaxRam * 1024 > ram_limit  :
-            print(f"🚨 Model not trainable: Flash usage ({ self.results.estimatedMaxRam:.2f} KB) exceeds limit ({ram_limit / 1024:.2f} KB). \n")
+        if self.results.ModelRam * 1024 > ram_limit  :
+            print(f"🚨 Model not trainable: Flash usage ({ self.results.ModelRam:.2f} KB) exceeds limit ({ram_limit / 1024:.2f} KB). \n")
             return False
         
         return True
