@@ -212,49 +212,6 @@ class TakuNetModel:
             x = self._stage_block(x, curr_stage_number)
         outputs = self._refiner_block(x)
         return Model(inputs, outputs)
-    
-
-    # # Measurements
-    # def _memoryEstimation(self,data_dtype_multiplier: int = 1)-> Tuple[float, float, float]:
-    #     """
-    #     ROM (Read-Only Memory) → Memory used to store layer parameters (weights & biases).
-    #     RAM (Random-Access Memory) → Memory used to store activations (input & output tensors).
-    #     """
-    #     max_activation_memory: int = 0  # Peak RAM usage
-    #     total_param_memory: int = 0      # ROM for storing weights
-
-    #     for layer in self.model.layers:
-            
-    #         layer_params: int = layer.count_params() #  Number of parameters in the layer (weights & biases).
-    #         layer_param_memory: int = layer_params * data_dtype_multiplier#  Converts the number of parameters into bytes.
-    #         total_param_memory += layer_param_memory # Adds up all the layer_param_memory of each layer
-
-    #         # Compute activation memory (RAM)
-    #         if isinstance(layer.output, list):
-    #             output_memory: int = sum(np.prod(out.shape[1:]) * data_dtype_multiplier for out in layer.output) # I wont be inside there are layer.output is  <class 'keras.src.backend.common.keras_tensor.KerasTensor'>
-    #         else:
-    #             output_memory: int = np.prod(layer.output.shape[1:]) * data_dtype_multiplier # If the output shape is 30 x 30 x 32 , the output memmory is  28800 * data_size
-
-    #         if isinstance(layer.input, list):
-    #             input_memory: int = sum(np.prod(inp.shape[1:]) * data_dtype_multiplier for inp in layer.input)
-    #         else:
-    #             input_memory: int = np.prod(layer.input.shape[1:]) * data_dtype_multiplier
-
-    #         # Track peak RAM usage
-    #         layer_ram_usage: int = input_memory + output_memory
-    #         max_activation_memory = max(max_activation_memory, layer_ram_usage) # Here we keep the the maximum use of RAM of each layer
-
-    #     # Convert bytes to KB
-    #     max_ram_usage: float = max_activation_memory / 1024
-    #     param_memory: float = total_param_memory / 1024
-    #     total_memory: float = (max_activation_memory + total_param_memory) / 1024
-
-    #     return max_ram_usage, param_memory, total_memory
-    
-
-
-
-
 
 
     def _count_flops(self, batch_size=1)-> int:
@@ -290,7 +247,7 @@ class TakuNetModel:
 
 
 
-    def _convert_to_tflite(self)->None:
+    def _convert_to_tflite(self,x_train:Optional[tf.Tensor] = None)->None:
         """Converts a trained model to TFLite with full-integer quantization."""
         converter = tf.lite.TFLiteConverter.from_keras_model(self.model)
 
@@ -389,7 +346,10 @@ class TakuNetModel:
     
     
         
-    def _evaluate_tflite_model(self)-> float:
+    def _evaluate_tflite_model(self,
+                               x_test:Optional[tf.Tensor]= None,
+                               y_test:Optional[tf.Tensor]= None)-> float:
+        
         """Evaluates the TFLite model and returns the accuracy."""
         tflite_path = f"{self.folderName}/TfLiteModels/{self.model_name}.tflite"
 
@@ -410,7 +370,7 @@ class TakuNetModel:
         print("📌 Input Details:", input_details)
         print("📌 Output Details:", output_details)
         print("Expected Input Shape:", input_details[0]['shape'])
-        print("Actual Input Shape: \n", self.x_test[0].shape)
+        print("Actual Input Shape: \n", x_test[0].shape)
         print()
 
         def preprocess_input(input_data):
@@ -421,8 +381,8 @@ class TakuNetModel:
             return input_data
 
         y_pred = []
-        for i in range(len(self.x_test)):
-            input_data = preprocess_input(self.x_test[i:i+1])
+        for i in range(len(x_test)):
+            input_data = preprocess_input(x_test[i:i+1])
 
             # Ensure shape is correct
             input_data = np.reshape(input_data, input_details[0]['shape'])
@@ -440,7 +400,7 @@ class TakuNetModel:
 
         y_pred = np.array(y_pred).squeeze()
         y_pred_classes = np.argmax(y_pred, axis=-1) if output.ndim > 1 else (output > 0.5).astype(np.int32)
-        y_true_classes = np.argmax(self.y_test, axis=-1)
+        y_true_classes = np.argmax(y_test, axis=-1)
         accuracy = np.mean(y_pred_classes == y_true_classes)
         return accuracy
 
@@ -473,9 +433,18 @@ class TakuNetModel:
         return True
     
     
-    def train(self):
-        """Train the model, evaluate metrics, and store results."""
+    def train(self,
+              x_train:Optional[tf.Tensor]= None,
+              y_train:Optional[tf.Tensor]= None,
+              x_test:Optional[tf.Tensor]= None,
+              y_test:Optional[tf.Tensor]= None):
         
+        """Train the model, evaluate metrics, and store results."""
+        x_train = x_train if x_train is not None else self.x_train
+        y_train = y_train if y_train is not None else self.y_train
+        x_test = x_test if x_test is not None else self.x_test
+        y_test = y_test if y_test is not None else self.y_test
+
         if self.check_trainability is False:
             return None
 
@@ -526,10 +495,10 @@ class TakuNetModel:
         print(f"✅Start training of {self.model_name}\n")
 
         history = self.model.fit(
-            self.x_train, self.y_train,
+            x_train, y_train,
             epochs= self.epochs if self.epochs else self.train_params["num_epochs"],
             batch_size=self.train_params["batch_size"],
-            validation_data=(self.x_test, self.y_test),
+            validation_data=(x_test, y_test),
             verbose=2,
             callbacks=[midway_callback, early_stopping_acc, reduce_lr, checkpoint, adjust_dropout]
         )
@@ -549,11 +518,11 @@ class TakuNetModel:
             print(f"\n\🚀 Best test accuracy ({best_test_acc:.4f}) exceeded 58%. Continuing training for 100 more epochs.")
 
             history_extra = self.model.fit(
-                self.x_train, self.y_train,
+                x_train, y_train,
                 epochs=self.results.epochs_trained + 100,
                 initial_epoch=self.results.epochs_trained,
                 batch_size=self.train_params["batch_size"],
-                validation_data=(self.x_test, self.y_test),
+                validation_data=(x_test, y_test),
                 verbose=2,
                 callbacks=[midway_callback, early_stopping_acc, reduce_lr, checkpoint, adjust_dropout]
             )
@@ -587,13 +556,14 @@ class TakuNetModel:
         self.is_trained = True
 
         # **Save Model in Multiple Formats**
-        self._convert_to_tflite()
+        self._convert_to_tflite(x_train=x_train)
         self._convert_tflite_to_c_array()
         self.results.flops = self._count_flops()
         print(f"📊 Estimated FLOPs: {self.results.flops:,}")
 
         # **Evaluate the TFLite Model**
-        tflite_acc = self._evaluate_tflite_model()
+        tflite_acc = self._evaluate_tflite_model(x_test=x_test,
+                                                 y_test=y_test)
         self.results.tflite_accuracy = tflite_acc
         print(f"Test Accuracy (TFLite): {tflite_acc:.4f}")
 

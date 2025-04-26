@@ -67,12 +67,6 @@ default_augementaion_technique ={ "apply_standard":False,
                             "apply_mixup": False,
                             "apply_cutmix": False}
 
-
-x_train, y_train, x_test, y_test = get_dataset( output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], 
-                                                augementation_technique=default_augementaion_technique)
-
-    
-
 while trainable_models_count < number_of_models:  # Train number_of_models with random hyperparameters
     model_params = getSearchSpaceParameters.sample_from_search_space(config["model_search_space"])
     train_params = getTrainingParameters.sample_from_train_and_evaluate(config["train_and_evaluate"])
@@ -99,10 +93,10 @@ while trainable_models_count < number_of_models:  # Train number_of_models with 
                                             input_shape=(32, 32, 3), 
                                             model_params=model_params, 
                                             train_params=train_params, 
-                                            x_train=x_train,
-                                            y_train=y_train, 
-                                            x_test=x_test, 
-                                            y_test=y_test,
+                                            x_train=None,
+                                            y_train=None, 
+                                            x_test=None, 
+                                            y_test=None,
                                             folder=Folder)
     if taku_model.is_trainable:
         models_to_train.append(taku_model)
@@ -119,7 +113,10 @@ while trainable_models_count < number_of_models:  # Train number_of_models with 
 
 
 
+x_train, y_train, x_test, y_test = get_dataset( output_classes= config["model_search_space"]["refiner_block"]["num_output_classes"], 
+                                                augementation_technique=default_augementaion_technique)
 
+    
 
 results = []
 print("🚀 Starting model training...\n")
@@ -128,7 +125,10 @@ start_time = time.time()
 for model in models_to_train:
     print(f"\nTraining {model.model_name}...")
 
-    model.train()  # Train the model
+    model.train(x_train=x_train,
+                y_train=y_train,
+                x_test=x_test,
+                y_test=y_test)  # Train the model
 
     if model.results.train_accuracy is not None:
         results.append({
