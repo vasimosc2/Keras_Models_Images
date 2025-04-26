@@ -411,7 +411,11 @@ class TakuNetModel:
             print("⚠️ Cannot check trainability: `train_params` is None.")
             return False
 
-        self.results.estimatedMaxRam, self.results.estimatedFlash, self.results.AccurateMaxRam = memoryEstimator.memoryEstimation(model = self.model, data_dtype_multiplier = self.train_params["data_dtype_multiplier"])
+        self.results.estimatedMaxRam, 
+        self.results.estimatedFlash, 
+        self.results.AccurateMaxRam,
+        self.results.ModelRam = memoryEstimator.memoryEstimation(model = self.model, data_dtype_multiplier = self.train_params["data_dtype_multiplier"])
+
         print(f"⚠️ Checking model {self.model_name}.....\n")
         print(f"Max RAM Usage: {self.results.estimatedMaxRam:.2f} KB\n")
         print(f"Parameter Memory: {self.results.estimatedFlash:.2f} KB\n")
@@ -422,11 +426,11 @@ class TakuNetModel:
 
 
         if  self.results.estimatedFlash * 1024 > flash_limit:
-            print(f"🚨 Model not trainable: Flash usage ({ self.results.estimatedFlash:.2f} KB) exceeds limit ({flash_limit / 1024:.2f} KB).")
+            print(f"🚨 Model not trainable: Flash usage ({ self.results.estimatedFlash:.2f} KB) exceeds limit ({flash_limit / 1024:.2f} KB). \n")
             return False
         
         if self.results.estimatedMaxRam * 1024 > ram_limit  :
-            print(f"🚨 Model not trainable: Flash usage ({ self.results.estimatedMaxRam:.2f} KB) exceeds limit ({ram_limit / 1024:.2f} KB).")
+            print(f"🚨 Model not trainable: Flash usage ({ self.results.estimatedMaxRam:.2f} KB) exceeds limit ({ram_limit / 1024:.2f} KB). \n")
             return False
         
         return True
@@ -447,7 +451,7 @@ class TakuNetModel:
         if self.check_trainability is False:
             return None
 
-        print("✅ Memory check passed! Starting training...")
+        print("✅ Memory check passed! Starting training... \n")
 
         # **Compile Model**
         if not self.is_trained:
@@ -678,6 +682,7 @@ class TrainingResults:
         self.f1_score = None
         self.estimatedMaxRam = None
         self.AccurateMaxRam = None
+        self.ModelRam = None
         self.estimatedFlash = None
         self.training_time = None
         self.fitness_score = None

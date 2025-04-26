@@ -30,3 +30,4 @@ def compute_layer_ram_usage(model, data_dtype_multiplier=4):
         layer_ram_usage = (input_memory + output_memory) / 1024  # Convert bytes to KB
 
         print(f"{layer.name}: {layer_ram_usage:.2f} KB")
+    print("\n")

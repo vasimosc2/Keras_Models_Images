@@ -1,6 +1,7 @@
 from typing import List, Tuple
 import joblib
 import numpy as np
+from sklearn.linear_model import LinearRegression
 import tensorflow as tf
 
 
@@ -40,12 +41,15 @@ def memoryEstimation(model:tf.keras.Model,data_dtype_multiplier: int = 1)-> Tupl
         layer_ram_usages.append(layer_ram_usage / 1024)
         max_activation_memory = max(max_activation_memory, layer_ram_usage) # Here we keep the the maximum use of RAM of each layer
 
-    flashModel = joblib.load("utils/EstimationModels/flash_regression_model.pkl")
+    flashModel : LinearRegression = joblib.load("utils/EstimationModels/flash_regression_model.pkl")
+    ramModel : LinearRegression  = joblib.load("utils/EstimationModels/ram_regression_model.pkl")
 
     estimated_ram_kb:float = max_activation_memory / 1024
     estimated_flash_kb:float = flashModel.predict([[total_param_memory / 1024]])[0]
     accurate_ram_kb:float = ram_accurate(max_activation_memory=estimated_ram_kb,layer_ram_usages=layer_ram_usages)
-    return estimated_ram_kb, estimated_flash_kb, accurate_ram_kb
+
+    modelRAM:float = ramModel.predict([[accurate_ram_kb]])[0]
+    return estimated_ram_kb, estimated_flash_kb, accurate_ram_kb, modelRAM
 
 
 def ram_accurate(max_activation_memory:int,layer_ram_usages:List[int]) -> float:
