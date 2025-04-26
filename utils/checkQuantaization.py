@@ -1,26 +1,26 @@
 import tensorflow as tf
 
+# ALL Those float32 are Temp, so all good 
 def check_tflite_quantization(model_path: str):
     interpreter = tf.lite.Interpreter(model_path=model_path)
     interpreter.allocate_tensors()
 
     tensor_details = interpreter.get_tensor_details()
+    tensor_idx_to_dtype = {tensor['index']: tensor['dtype'] for tensor in tensor_details}
 
-    dtypes_used = set()
-    for tensor in tensor_details:
-        dtypes_used.add(tensor['dtype'])
+    ops = interpreter._get_ops_details()
 
-    print(f"\n📦 Tensor data types used in model: {dtypes_used}")
+    print("\n🔍 Model Ops:")
+    for op in ops:
+        input_dtypes = [tensor_idx_to_dtype.get(i, 'UNKNOWN') for i in op['inputs']]
+        output_dtypes = [tensor_idx_to_dtype.get(i, 'UNKNOWN') for i in op['outputs']]
+        print(f"Op {op['op_name']}")
+        print(f"  Inputs: {input_dtypes}")
+        print(f"  Outputs: {output_dtypes}")
+        if tf.float32 in input_dtypes or tf.float32 in output_dtypes:
+            print("  ⚠️ This op uses float32!")
 
-    if dtypes_used == {tf.uint8}:
-        print("✅ Model is fully quantized to uint8!")
-    elif tf.int8 in dtypes_used and len(dtypes_used) == 1:
-        print("✅ Model is fully quantized to int8!")
-    else:
-        print("⚠️ Model is not fully quantized!")
-        if tf.float32 in dtypes_used:
-            print("⚠️ Found float32 tensors, model is partially quantized.")
-        print(f"👉 Tensors found: {dtypes_used}")
+
 
 # Example Usage
-check_tflite_quantization("Manual_Run/TfLiteModels/TakuNet_Random_0.tflite")
+check_tflite_quantization("../Manual_Run/TfLiteModels/TakuNet_Random_0.tflite")
