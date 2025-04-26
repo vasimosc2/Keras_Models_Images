@@ -48,7 +48,7 @@ def memoryEstimation(model:tf.keras.Model,data_dtype_multiplier: int = 1)-> Tupl
 
 
 
-def estimate_tflite_ram_from_keras(model: tf.keras.Model, input_shape=(32, 32, 3)):
+def estimate_peak_ram_uint8(model: tf.keras.Model, input_shape=(32, 32, 3)):
     """
     Estimate peak RAM usage from a Keras model by:
     1. Converting it to a quantized TFLite model (in memory).
