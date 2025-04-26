@@ -541,7 +541,7 @@ class TakuNetModel:
         # **Predictions & Metrics**
         y_test_pred = self.model.predict(x_test)
         y_test_pred_classes = np.argmax(y_test_pred, axis=1)
-        y_true_classes = np.argmax(self.y_test, axis=1)
+        y_true_classes = np.argmax(y_test, axis=1)
 
         self.results.history = history
         self.results.epochs_trained = len(history.history['loss'])
