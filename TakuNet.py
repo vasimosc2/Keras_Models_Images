@@ -272,7 +272,7 @@ class TakuNetModel:
         """
         def representative_dataset():
             for i in range(100):
-                data:tf.Tensor = tf.cast(self.x_train[i:i+1], tf.float32)
+                data:tf.Tensor = tf.cast(x_train[i:i+1], tf.float32)
                 yield [data]
 
         converter.representative_dataset = tf.lite.RepresentativeDataset(representative_dataset)
