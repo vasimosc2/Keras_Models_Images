@@ -107,7 +107,7 @@ def save_inference_time_model():
     print(f"\n🚀 Training Inference Time model...")
 
     CSV_PATH = "ram_inference_flash.csv"  # Same file
-    ACCURATE_COL = "AccurateRam(KB)"
+    ACCURATE_COL = "MeasuredRam(KB)"
     INFERENCE_TIME_COL = "InferenceTime(S)"
 
     df = pd.read_csv(CSV_PATH)
