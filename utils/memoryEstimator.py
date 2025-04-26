@@ -37,7 +37,7 @@ def memoryEstimation(model:tf.keras.Model,data_dtype_multiplier: int = 1)-> Tupl
 
         # Track peak RAM usage
         layer_ram_usage: int = input_memory + output_memory
-        layer_ram_usages.append(layer_ram_usage)
+        layer_ram_usages.append(layer_ram_usage / 1024)
         max_activation_memory = max(max_activation_memory, layer_ram_usage) # Here we keep the the maximum use of RAM of each layer
 
     flashModel = joblib.load("utils/flash_regression_model.pkl")
@@ -63,6 +63,6 @@ def ram_accurate(max_activation_memory:int,layer_ram_usages:List[int]) -> float:
             consecutive_max = 0  # Reset if break in maximum RAM sequence
 
     if max_ram_reached:
-        return (2 * max_activation_memory / 1024)  # Double the RAM estimation
+        return 2 * max_activation_memory   # Double the RAM estimation
     
-    return max_activation_memory / 1024
+    return max_activation_memory
