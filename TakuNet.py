@@ -7,7 +7,6 @@ from typing import Dict, List, Optional, Tuple
 from sklearn.metrics import precision_score, recall_score, f1_score
 from tensorflow.keras.callbacks import Callback, EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop
-from tensorflow.keras import regularizers
 from utils import memoryEstimator
 import math
 import random
@@ -57,8 +56,8 @@ class TakuNetModel:
         The output shape is: (None, 32 / (Conv_strides * DWConv_stride), 32 / (Conv_strides * DWConv_stride), filters)
         """
 
-        regularizers = regularizers.l2(self.model_params["stem_block"]["l2_weight_decay"]) # None
-        
+        regularizers = tf.keras.regularizers.l2(self.model_params["stem_block"]["l2_weight_decay"]) # None
+
         x = layers.Conv2D(filters=self.model_params["stem_block"]["filters"], 
                           kernel_size=self.model_params["stem_block"]["Conv_kernel"],
                           strides=self.model_params["stem_block"]["Conv_strides"], 
@@ -142,7 +141,8 @@ class TakuNetModel:
         Kernel size must be 1 to perform a PointWise Convolution
 
         """
-        regularizers =  regularizers.l2(self.model_params["stages_block"]["downsampler"]["l2_weight_decay"]) # None
+        regularizers =  tf.keras.regularizers.l2(self.model_params["stages_block"]["downsampler"]["l2_weight_decay"]) # None
+
         x = layers.Conv2D(  filters=input_channels, 
                             kernel_size=1, 
                             groups=groups, 
@@ -197,7 +197,7 @@ class TakuNetModel:
 
         x = dropout_after_gap(x)
 
-        regularizers = regularizers.l2(self.model_params["refiner_block"]["l2_weight_decay"]) # None
+        regularizers = tf.keras.regularizers.l2(self.model_params["refiner_block"]["l2_weight_decay"]) # None
 
         return layers.Dense(self.model_params["refiner_block"]["num_output_classes"], 
                             activation='softmax',
