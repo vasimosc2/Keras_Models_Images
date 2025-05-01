@@ -56,20 +56,20 @@ class TakuNetModel:
         The output shape is: (None, 32 / (Conv_strides * DWConv_stride), 32 / (Conv_strides * DWConv_stride), filters)
         """
 
-        regularizers = tf.keras.regularizers.l2(self.model_params["stem_block"]["l2_weight_decay"]) # None
+        regularizers = tf.keras.regularizers.l2(self.model_params["stem_block"]["l2_weight_decay"])
 
         x = layers.Conv2D(filters=self.model_params["stem_block"]["filters"], 
                           kernel_size=self.model_params["stem_block"]["Conv_kernel"],
                           strides=self.model_params["stem_block"]["Conv_strides"], 
                           padding='same', 
                           use_bias=False,
-                          kernel_regularizer = regularizers )(inputs)
+                          kernel_regularizer = None )(inputs)
         
         x = layers.BatchNormalization()(x)
 
         x = layers.ReLU(6.0)(x)
 
-        initial_rate:float = 0.0 # self.model_params["stem_block"]["dropout"]
+        initial_rate:float = 0.0
 
         self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=initial_rate, 
                                                      name="adaptive_dropout_stem")
@@ -96,7 +96,7 @@ class TakuNetModel:
         x = layers.ReLU(6.0)(x)
 
 
-        initial_rate:float = 0.0 # self.model_params["stages_block"]["taku_block"]["dropout"]
+        initial_rate:float = 0.0
 
         adaptiveDropout = AdaptiveDropout(initial_rate=initial_rate,
                                           name=f"adaptive_dropout_taku_stage{stage_number}_block{taku_block_number}")
@@ -141,13 +141,13 @@ class TakuNetModel:
         Kernel size must be 1 to perform a PointWise Convolution
 
         """
-        regularizers =  tf.keras.regularizers.l2(self.model_params["stages_block"]["downsampler"]["l2_weight_decay"]) # None
+        regularizers =  tf.keras.regularizers.l2(self.model_params["stages_block"]["downsampler"]["l2_weight_decay"])
 
         x = layers.Conv2D(  filters=input_channels, 
                             kernel_size=1, 
                             groups=groups, 
                             use_bias=False,
-                            kernel_regularizer=regularizers)(inputs)
+                            kernel_regularizer=None)(inputs)
 
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
@@ -177,7 +177,7 @@ class TakuNetModel:
 
         x = layers.BatchNormalization()(x)
 
-        initial_rate:float = 0.0 # self.model_params["refiner_block"]["dropout"] 
+        initial_rate:float = 0.0
 
         dropout_after_dw = AdaptiveDropout(initial_rate=initial_rate,
                                            name=f"adaptive_dropout_refiner_after_dw")
@@ -188,7 +188,7 @@ class TakuNetModel:
 
         x = layers.GlobalAveragePooling2D()(x)
 
-        additional_rate = 0.10
+        additional_rate:float = 0.0
 
         dropout_after_gap = AdaptiveDropout(initial_rate = initial_rate + additional_rate,
                                             name=f"adaptive_dropout_refiner_after_gap")
@@ -197,11 +197,11 @@ class TakuNetModel:
 
         x = dropout_after_gap(x)
 
-        regularizers = tf.keras.regularizers.l2(self.model_params["refiner_block"]["l2_weight_decay"]) # None
+        regularizers = tf.keras.regularizers.l2(self.model_params["refiner_block"]["l2_weight_decay"])
 
         return layers.Dense(self.model_params["refiner_block"]["num_output_classes"], 
                             activation='softmax',
-                            kernel_regularizer=regularizers)(x)
+                            kernel_regularizer=None)(x)
     
 
 
