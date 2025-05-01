@@ -51,7 +51,7 @@
             },
             "adaptive_dropout": {
                 "max_dropout": 0.4,
-                "incrementFactor": 1.2,
+                "incrementFactor": 1.0,
                 "overfitting": 0.10
                 }
             },

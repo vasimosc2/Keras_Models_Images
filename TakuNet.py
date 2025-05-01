@@ -655,7 +655,7 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
         self.apply_after_epoch = total_epochs // divider
         self.start_dropout_epoch = start_dropout_epoch
         self.cooldown_counter = 0
-        self.dropout_initialized = False  # 🔥 Track if we already initialized dropout
+        self.dropout_initialized = False
 
     def on_epoch_end(self, epoch, logs=None):
         # 🔵 Step 1: Initialize Dropout after a specific epoch
@@ -687,9 +687,8 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
             self._increase_one_dropout()
             self.cooldown_counter = self.cooldown  # Reset cooldown after adjusting
 
-    def _initialize_dropout_rates(self, initial_rate:float):
-        """Forcefully set all AdaptiveDropout layers to initial_rate after specific epoch."""
-        dropout_layers:List[AdaptiveDropout] = []
+    def _initialize_dropout_rates(self):
+        dropout_layers: List[AdaptiveDropout] = []
 
         if self.model_instance.adaptive_dropout_stem is not None:
             dropout_layers.append(self.model_instance.adaptive_dropout_stem)
@@ -701,8 +700,18 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
             dropout_layers.extend([d for d in self.model_instance.adaptive_dropout_refiner if d is not None])
 
         for layer in dropout_layers:
+            if "stem" in layer.name:
+                initial_rate = 0.05
+            elif "taku" in layer.name:
+                initial_rate = 0.05
+            elif "refiner" in layer.name:
+                initial_rate = 0.1
+            else:
+                initial_rate = 0.05
+
             layer.rate.assign(initial_rate)
             print(f"🔧 {layer.name}: initialized dropout rate to {initial_rate:.3f}")
+
 
     def _increase_one_dropout(self):
         dropout_layers:List[AdaptiveDropout] = []
@@ -721,7 +730,7 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
             return
 
         chosen_layer:AdaptiveDropout = random.choice(dropout_layers)
-        new_rate = max(0.05, min(self.factor * float(chosen_layer.rate.numpy()), self.max_rate))
+        new_rate = max(0.05, min(self.factor + float(chosen_layer.rate.numpy()), self.max_rate))
         chosen_layer.rate.assign(new_rate)
         print(f"🔧 {chosen_layer.name}: dropout rate increased to {new_rate:.3f}")
 
