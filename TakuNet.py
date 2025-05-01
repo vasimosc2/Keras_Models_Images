@@ -713,7 +713,7 @@ class ManualLearningRateScheduler(Callback):
         self.factor = factor
         self.start_epoch = start_epoch
 
-    def on_epoch_end(self, epoch):
+    def on_epoch_end(self, epoch,logs=None):
         if epoch < self.start_epoch:
             return  # Skip adjustment before start_epoch
         
