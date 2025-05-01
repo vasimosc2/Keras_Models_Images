@@ -68,7 +68,7 @@ class TakuNetModel:
 
         x = layers.ReLU(6.0)(x)
 
-        self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=0.1, name="adaptive_dropout_stem")
+        self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=0.05, name="adaptive_dropout_stem")
         x = self.adaptive_dropout_stem(x)
 
         # if self.model_params["stem_block"]["dropout"] > 0:
@@ -144,15 +144,6 @@ class TakuNetModel:
 
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
-
-        """
-        Maybe Avoid dropout in this Layer
-        """
-
-        # if self.model_params["stages_block"]["downsampler"]["dropout"] > 0:
-        #     self.adaptive_dropout_downsampler = AdaptiveDropout(initial_rate=self.model_params["stages_block"]["downsampler"]["dropout"],
-        #                                                  name=f"adaptive_dropout_downsampler_stage{curr_stage_number}")
-        #     x = self.adaptive_dropout_downsampler(x)
 
         pool_layer = layers.MaxPooling2D if curr_stage_number < self.model_params["stages_block"]["stages_number"] else layers.AveragePooling2D
 
@@ -486,8 +477,8 @@ class TakuNetModel:
                                              threshold=0.30)
         
         adjust_dropout = AdjustDropoutCallback(model_instance=self,
-                                               overfitting_threshold=0.1,
-                                               factor=self.train_params['increment'],
+                                               overfitting_threshold=self.train_params["overfitting"],
+                                               factor=self.train_params['incrementFactor'],
                                                max_rate=self.train_params["max_dropout"],
                                                cooldown=3,
                                                total_epochs=self.train_params["num_epochs"],
@@ -517,8 +508,8 @@ class TakuNetModel:
 
         print(f"✅ Best Test Accuracy (Best Model): {best_test_acc:.4f}\n")
 
-        if best_test_acc > 0.58:
-            print(f"\n\🚀 Best test accuracy ({best_test_acc:.4f}) exceeded 58%. Continuing training for 100 more epochs.")
+        if best_test_acc > 0.50:
+            print(f"\n\🚀 Best test accuracy ({best_test_acc:.4f}) exceeded 50%. Continuing training for 100 more epochs.")
 
             history_extra = self.model.fit(
                 x_train, y_train,
@@ -672,16 +663,13 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
             self.cooldown_counter = self.cooldown  # Reset cooldown after adjusting
 
     def _increase_one_dropout(self):
-        dropout_layers = []
+        dropout_layers:List[AdaptiveDropout] = []
 
         if self.model_instance.adaptive_dropout_stem is not None:
             dropout_layers.append(self.model_instance.adaptive_dropout_stem)
 
         if self.model_instance.adaptive_dropout_taku is not None:
             dropout_layers.extend([d for d in self.model_instance.adaptive_dropout_taku if d is not None])
-
-        if self.model_instance.adaptive_dropout_downsampler is not None:
-            dropout_layers.extend([d for d in self.model_instance.adaptive_dropout_downsampler if d is not None])
 
         if self.model_instance.adaptive_dropout_refiner is not None:
             dropout_layers.extend([d for d in self.model_instance.adaptive_dropout_refiner if d is not None])
@@ -690,11 +678,10 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
             print("⚠️ No AdaptiveDropout layers found to adjust.")
             return
 
-        chosen_layer = random.choice(dropout_layers)
-        if isinstance(chosen_layer, AdaptiveDropout):
-            new_rate = min(self.factor * float(chosen_layer.rate.numpy()), self.max_rate)
-            chosen_layer.rate.assign(new_rate)
-            print(f"🔧 {chosen_layer.name}: dropout rate increased to {new_rate:.3f}")
+        chosen_layer:AdaptiveDropout = random.choice(dropout_layers)
+        new_rate = min(self.factor * float(chosen_layer.rate.numpy()), self.max_rate)
+        chosen_layer.rate.assign(new_rate)
+        print(f"🔧 {chosen_layer.name}: dropout rate increased to {new_rate:.3f}")
 
 
 

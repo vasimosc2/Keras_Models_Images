@@ -15,9 +15,9 @@ def sample_from_train_and_evaluate(train_and_evaluate)->Dict:
         "learning_factor": train_and_evaluate["model_config"]["learning"]["factor"],
         "learning_rate_patience": train_and_evaluate["model_config"]["learning"]["patience"],
         
-        "max_dropout": train_and_evaluate["model_config"]["adaptive_dropout"]["max"],
-        "increment": train_and_evaluate["model_config"]["adaptive_dropout"]["increment"],
-        "threshold_dropout": train_and_evaluate["model_config"]["adaptive_dropout"]["threshold"],
+        "max_dropout": train_and_evaluate["model_config"]["adaptive_dropout"]["max_dropout"],
+        "incrementFactor": train_and_evaluate["model_config"]["adaptive_dropout"]["incrementFactor"],
+        "overfitting": train_and_evaluate["model_config"]["adaptive_dropout"]["overfitting"],
         
         "num_epochs": train_and_evaluate["evaluation_config"]["num_epochs"],
         "batch_size": train_and_evaluate["evaluation_config"]["batch_size"],
