@@ -484,7 +484,7 @@ class TakuNetModel:
         adjust_dropout = AdjustDropoutCallback(model_instance=self.model,
                                                overfitting_threshold=0.1,
                                                factor=self.train_params['increment'],
-                                               max_rate=self.train_params["threshold_dropout"],
+                                               max_rate=self.train_params["max_dropout"],
                                                cooldown=3,
                                                total_epochs=self.train_params["num_epochs"],
                                                divider=self.train_params["divider"])
