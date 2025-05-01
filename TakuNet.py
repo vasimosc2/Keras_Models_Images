@@ -57,7 +57,8 @@ class TakuNetModel:
         The output shape is: (None, 32 / (Conv_strides * DWConv_stride), 32 / (Conv_strides * DWConv_stride), filters)
         """
 
-        regularizers = None #  regularizers.l2(self.model_params["stem_block"]["l2_weight_decay"])
+        regularizers = regularizers.l2(self.model_params["stem_block"]["l2_weight_decay"]) # None
+        
         x = layers.Conv2D(filters=self.model_params["stem_block"]["filters"], 
                           kernel_size=self.model_params["stem_block"]["Conv_kernel"],
                           strides=self.model_params["stem_block"]["Conv_strides"], 
@@ -69,7 +70,7 @@ class TakuNetModel:
 
         x = layers.ReLU(6.0)(x)
 
-        initial_rate = 0 # self.model_params["stem_block"]["dropout"]
+        initial_rate:float = 0.0 # self.model_params["stem_block"]["dropout"]
 
         self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=initial_rate, 
                                                      name="adaptive_dropout_stem")
@@ -96,7 +97,7 @@ class TakuNetModel:
         x = layers.ReLU(6.0)(x)
 
 
-        initial_rate = 0 # self.model_params["stages_block"]["taku_block"]["dropout"]
+        initial_rate:float = 0.0 # self.model_params["stages_block"]["taku_block"]["dropout"]
 
         adaptiveDropout = AdaptiveDropout(initial_rate=initial_rate,
                                           name=f"adaptive_dropout_taku_stage{stage_number}_block{taku_block_number}")
@@ -141,7 +142,7 @@ class TakuNetModel:
         Kernel size must be 1 to perform a PointWise Convolution
 
         """
-        regularizers = None #  regularizers.l2(self.model_params["stages_block"]["downsampler"]["l2_weight_decay"])
+        regularizers =  regularizers.l2(self.model_params["stages_block"]["downsampler"]["l2_weight_decay"]) # None
         x = layers.Conv2D(  filters=input_channels, 
                             kernel_size=1, 
                             groups=groups, 
@@ -176,7 +177,7 @@ class TakuNetModel:
 
         x = layers.BatchNormalization()(x)
 
-        initial_rate = 0 # self.model_params["refiner_block"]["dropout"]
+        initial_rate:float = 0.0 # self.model_params["refiner_block"]["dropout"] 
 
         dropout_after_dw = AdaptiveDropout(initial_rate=initial_rate,
                                            name=f"adaptive_dropout_refiner_after_dw")
@@ -187,7 +188,7 @@ class TakuNetModel:
 
         x = layers.GlobalAveragePooling2D()(x)
 
-        additional_rate = 0 # 0.1
+        additional_rate = 0.10
 
         dropout_after_gap = AdaptiveDropout(initial_rate = initial_rate + additional_rate,
                                             name=f"adaptive_dropout_refiner_after_gap")
@@ -195,7 +196,8 @@ class TakuNetModel:
         self.adaptive_dropout_refiner.append(dropout_after_gap)
 
         x = dropout_after_gap(x)
-        regularizers = None # regularizers.l2(self.model_params["refiner_block"]["l2_weight_decay"])
+
+        regularizers = regularizers.l2(self.model_params["refiner_block"]["l2_weight_decay"]) # None
 
         return layers.Dense(self.model_params["refiner_block"]["num_output_classes"], 
                             activation='softmax',
@@ -643,19 +645,27 @@ class AdaptiveDropout(tf.keras.layers.Layer):
 
 class AdjustDropoutCallback(tf.keras.callbacks.Callback):
     def __init__(self, model_instance:TakuNetModel, overfitting_threshold:float=0.1, factor:float=1.2, max_rate:float=0.5,
-                 cooldown:int=3, total_epochs:int=50, divider:int = 5):
+                 cooldown:int=3, total_epochs:int=50, divider:int=5, start_dropout_epoch:int=10):
         super().__init__()
         self.model_instance = model_instance
         self.overfitting_threshold = overfitting_threshold
         self.factor = factor
         self.max_rate = max_rate
-        self.cooldown = cooldown  # Number of epochs to wait after adjusting
-        self.apply_after_epoch = total_epochs // divider  # Ignore overfitting detection before this epoch
-        self.cooldown_counter = 0  # Internal counter
+        self.cooldown = cooldown
+        self.apply_after_epoch = total_epochs // divider
+        self.start_dropout_epoch = start_dropout_epoch
+        self.cooldown_counter = 0
+        self.dropout_initialized = False  # 🔥 Track if we already initialized dropout
 
     def on_epoch_end(self, epoch, logs=None):
-        # If still warming up, skip
-        if epoch < self.apply_after_epoch :
+        # 🔵 Step 1: Initialize Dropout after a specific epoch
+        if not self.dropout_initialized and epoch >= self.start_dropout_epoch:
+            print(f"\n🚀 Initializing Dropout rates at Epoch {epoch}")
+            self._initialize_dropout_rates(initial_rate=0.05)
+            self.dropout_initialized = True
+
+        # If still warming up for overfitting detection, skip
+        if epoch < self.apply_after_epoch:
             return
 
         # If still in cooldown after last adjustment, skip
@@ -663,6 +673,7 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
             self.cooldown_counter -= 1
             return
 
+        # 🔵 Step 2: Normal overfitting detection
         train_acc = logs.get('accuracy')
         val_acc = logs.get('val_accuracy')
 
@@ -675,6 +686,23 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
             print(f"\n⚠️ Overfitting detected! Train Acc - Val Acc = {gap:.3f} > {self.overfitting_threshold}")
             self._increase_one_dropout()
             self.cooldown_counter = self.cooldown  # Reset cooldown after adjusting
+
+    def _initialize_dropout_rates(self, initial_rate:float):
+        """Forcefully set all AdaptiveDropout layers to initial_rate after specific epoch."""
+        dropout_layers:List[AdaptiveDropout] = []
+
+        if self.model_instance.adaptive_dropout_stem is not None:
+            dropout_layers.append(self.model_instance.adaptive_dropout_stem)
+
+        if self.model_instance.adaptive_dropout_taku is not None:
+            dropout_layers.extend([d for d in self.model_instance.adaptive_dropout_taku if d is not None])
+
+        if self.model_instance.adaptive_dropout_refiner is not None:
+            dropout_layers.extend([d for d in self.model_instance.adaptive_dropout_refiner if d is not None])
+
+        for layer in dropout_layers:
+            layer.rate.assign(initial_rate)
+            print(f"🔧 {layer.name}: initialized dropout rate to {initial_rate:.3f}")
 
     def _increase_one_dropout(self):
         dropout_layers:List[AdaptiveDropout] = []
@@ -693,9 +721,10 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
             return
 
         chosen_layer:AdaptiveDropout = random.choice(dropout_layers)
-        new_rate = min(self.factor * float(chosen_layer.rate.numpy()), self.max_rate)
+        new_rate = max(0.05, min(self.factor * float(chosen_layer.rate.numpy()), self.max_rate))
         chosen_layer.rate.assign(new_rate)
         print(f"🔧 {chosen_layer.name}: dropout rate increased to {new_rate:.3f}")
+
 
 
 
