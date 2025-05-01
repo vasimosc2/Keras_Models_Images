@@ -3,12 +3,14 @@ import time
 import os
 import tensorflow as tf
 from tensorflow.keras import layers, Model
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from sklearn.metrics import precision_score, recall_score, f1_score
 from tensorflow.keras.callbacks import Callback, EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop
 from tensorflow.keras import regularizers
 from utils import memoryEstimator
+import math
+import random
 
 class TakuNetModel:
     def __init__(self, 
@@ -41,17 +43,16 @@ class TakuNetModel:
         self.results: TrainingResults = TrainingResults()
         self.is_trainable: bool = self.check_trainability()
 
-        self.adaptive_dropout_stem = None
-        self.adaptive_dropout_taku = None
-        self.adaptive_dropout_refiner = None
+        self.adaptive_dropout_stem: AdaptiveDropout = None
+        self.adaptive_dropout_taku: List[AdaptiveDropout] = None # This will have Length As much as the Stages
+        self.adaptive_dropout_refiner: List[AdaptiveDropout] = None # This will have a fix lenght of 2
 
     
     def _stem_block(self, inputs:tuple):
         """
         The input shape is: (None,32,32,3) (Given input 32,32,3)
-        The output shape is: (None, 32 / (Conv_strides * DWConv_kernel), 32 / (Conv_strides * DWConv_kernel), filters,)
+        The output shape is: (None, 32 / (Conv_strides * DWConv_stride), 32 / (Conv_strides * DWConv_stride), filters)
         """
-        #print(f"Stem 1 block shape {inputs.shape}\n")
 
         x = layers.Conv2D(filters=self.model_params["stem_block"]["filters"], 
                           kernel_size=self.model_params["stem_block"]["Conv_kernel"],
@@ -60,155 +61,148 @@ class TakuNetModel:
                           use_bias=False,
                           kernel_regularizer = regularizers.l2(self.model_params["stem_block"]["l2_weight_decay"]) )(inputs)
         
-        #print(f"Stem 2 block shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
 
         x = layers.ReLU(6.0)(x)
 
-        if self.model_params["stem_block"]["dropout"] > 0:
+        self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=0.1, name="adaptive_dropout_stem")
+        x = self.adaptive_dropout_stem(x)
 
-            self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=self.model_params["stem_block"]["dropout"],
-                                                         name=f"adaptive_dropout_stem")
-            x = self.adaptive_dropout_stem(x)
+        # if self.model_params["stem_block"]["dropout"] > 0:
 
-            #x = layers.Dropout(self.model_params["stem_block"]["dropout"])(x)
+        #     self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=self.model_params["stem_block"]["dropout"],
+        #                                                  name=f"adaptive_dropout_stem")
+        #     x = self.adaptive_dropout_stem(x)
 
         x = layers.DepthwiseConv2D(kernel_size=self.model_params["stem_block"]["DWConv_kernel"],
                                    strides=self.model_params["stem_block"]["DWConv_strides"],
                                    padding='same', 
                                    use_bias=False)(x)
 
-        # x = layers.SeparableConv2D(
-        #     filters=self.model_params["stem_block"]["filters"],
-        #     kernel_size=self.model_params["stem_block"]["DWConv_kernel"],
-        #     strides=self.model_params["stem_block"]["DWConv_strides"],
-        #     padding='same',
-        #     use_bias=False,
-        #     depthwise_regularizer=regularizers.l2(self.model_params["stem_block"]["l2_weight_decay"]),
-        #     pointwise_regularizer=regularizers.l2(self.model_params["stem_block"]["l2_weight_decay"])
-        # )(x)
 
-        #print(f"Stem 3 block shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
         return x
     
     def _taku_block(self, inputs:tuple, taku_block_number:int, stage_number:int):
 
-        #print(f"TakuBlock {taku_block_number}: input shape {inputs.shape}\n")
-
         x = layers.DepthwiseConv2D( kernel_size=self.model_params["stages_block"]["taku_block"]["DWConv_kernel"], 
                                     strides=self.model_params["stages_block"]["taku_block"]["DWConv_strides"], 
                                     padding='same', 
                                     use_bias=False)(inputs)
 
-        # x = layers.SeparableConv2D(
-        #     filters=inputs.shape[-1],  # maintain channel dimension
-        #     kernel_size=self.model_params["stages_block"]["taku_block"]["DWConv_kernel"],
-        #     strides=self.model_params["stages_block"]["taku_block"]["DWConv_strides"],
-        #     padding='same',
-        #     use_bias=False,
-        #     depthwise_regularizer=regularizers.l2(self.model_params["stages_block"]["taku_block"]["l2_weight_decay"]),
-        #     pointwise_regularizer=regularizers.l2(self.model_params["stages_block"]["taku_block"]["l2_weight_decay"])
-        # )(inputs)
-        
-        #print(f"TakuBlock {taku_block_number}: output shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
 
         if self.model_params["stages_block"]["taku_block"]["dropout"] > 0:
 
-            self.adaptive_dropout_taku = AdaptiveDropout(initial_rate=self.model_params["stages_block"]["taku_block"]["dropout"],
-                                                         name=f"adaptive_dropout_taku_stage{stage_number}_block{taku_block_number}")
-            x = self.adaptive_dropout_taku(x)
+            adaptiveDropout = AdaptiveDropout(initial_rate=self.model_params["stages_block"]["taku_block"]["dropout"],
+                                              name=f"adaptive_dropout_taku_stage{stage_number}_block{taku_block_number}")
+            self.adaptive_dropout_taku.append(adaptiveDropout)
 
-            #x = layers.Dropout(self.model_params["stages_block"]["taku_block"]["dropout"])(x)
+            x = adaptiveDropout(x)
 
         return layers.Add()([x, inputs])
     
+
+    
     def _downsampler_block(self, inputs:tuple, curr_stage_number:int):
-        #print(f"DownSampler of Stage {curr_stage_number}  input shape {inputs.shape}\n")
-        filters = inputs.shape[-1]
-        num_groups = max(1, min(self.model_params["stages_block"]["stages_number"], filters))
-        if filters % num_groups != 0:
-            num_groups = 1  
-        kernel_size = min(self.model_params["stages_block"]["downsampler"]["Conv_kernel"], inputs.shape[1], inputs.shape[2])
+
+        input_channels:int = inputs.shape[-1]
+
+        """
+        desired_groups, represents the input_channel + output_channel, which match
+        Divided by the number of stages we have
+        """
+        desired_groups:int = math.floor(2 * input_channels / self.model_params["stages_block"]["stages_number"]) 
+
+        groups:int = find_nearest_valid_groups( desired_groups=desired_groups,
+                                           input_channels=input_channels)
         
-        x = layers.Conv2D(  filters=filters, 
-                            kernel_size=kernel_size, 
-                            groups=num_groups, 
+        """
+        This Grouped Conv2D, DOES NOT CHANGE the shape if input is (None,1,1,2048) then the output is also (None,1,1,2048), because
+            filters = filters
+
+        If the number of stages ( Taken from the Config ) does not divide accurate the filters (filters % num_groups)
+
+        The Convlution becomes a normal convolution ( Conv2D ) as we have :
+            groups = 1
+        So mix up all channels in one Group
+
+        Kernel size must be 1 to perform a PointWise Convolution
+
+        """
+        x = layers.Conv2D(  filters=input_channels, 
+                            kernel_size=1, 
+                            groups=groups, 
                             use_bias=False,
                             kernel_regularizer=regularizers.l2(self.model_params["stages_block"]["downsampler"]["l2_weight_decay"]))(inputs)
-        
-        #print(f"DownSampler of Stage {curr_stage_number}, second shape {x.shape}\n")
+
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
 
-        if self.model_params["stages_block"]["downsampler"]["dropout"] > 0:
-            self.adaptive_dropout_downsampler = AdaptiveDropout(initial_rate=self.model_params["stages_block"]["downsampler"]["dropout"],
-                                                         name=f"adaptive_dropout_downsampler_stage{curr_stage_number}")
-            x = self.adaptive_dropout_downsampler(x)
-            #x = layers.Dropout(self.model_params["stages_block"]["downsampler"]["dropout"])(x)
+        """
+        Maybe Avoid dropout in this Layer
+        """
+
+        # if self.model_params["stages_block"]["downsampler"]["dropout"] > 0:
+        #     self.adaptive_dropout_downsampler = AdaptiveDropout(initial_rate=self.model_params["stages_block"]["downsampler"]["dropout"],
+        #                                                  name=f"adaptive_dropout_downsampler_stage{curr_stage_number}")
+        #     x = self.adaptive_dropout_downsampler(x)
 
         pool_layer = layers.MaxPooling2D if curr_stage_number < self.model_params["stages_block"]["stages_number"] else layers.AveragePooling2D
+
         x = pool_layer(pool_size=self.model_params["stages_block"]["downsampler"]["pool_size"], 
                        strides=self.model_params["stages_block"]["downsampler"]["strides"], 
                        padding='same')(x)
-        #print(f"DownSampler of Stage {curr_stage_number}, output shape {x.shape}\n")
+        
         return layers.LayerNormalization()(x)
+    
     
     def _stage_block(self, inputs, curr_stage_number):
         x = inputs
         for i in range(self.model_params["stages_block"]["taku_block"]["taku_block_number"]):
-            #print(f" Start assembling Taku block {i}\n")
             x = self._taku_block(inputs=x, taku_block_number=i, stage_number=curr_stage_number)
-            #x = self._taku_block(inputs=x, taku_block_number=i )
         concat = layers.Concatenate()([inputs, x])
         return self._downsampler_block(inputs=concat, curr_stage_number=curr_stage_number)
     
     def _refiner_block(self, inputs):
-        #print(f"Refiner Block: input shape {inputs.shape}\n")
 
         x = layers.DepthwiseConv2D( kernel_size=self.model_params["refiner_block"]["DWConv_kernel"], 
                                     strides = self.model_params["refiner_block"]["DWConv_strides"], 
                                     padding='same', 
                                     use_bias=False)(inputs)
 
-        # x = layers.SeparableConv2D(
-        #     filters=inputs.shape[-1],  # maintain depth
-        #     kernel_size=self.model_params["refiner_block"]["DWConv_kernel"],
-        #     strides=self.model_params["refiner_block"]["DWConv_strides"],
-        #     padding='same',
-        #     use_bias=False,
-        #     depthwise_regularizer=regularizers.l2(self.model_params["refiner_block"]["l2_weight_decay"]),
-        #     pointwise_regularizer=regularizers.l2(self.model_params["refiner_block"]["l2_weight_decay"])
-        # )(inputs)
-
-
-        
-        #print(f"Refiner Block: Second shape {x.shape}\n")
         x = layers.BatchNormalization()(x)
-        x = layers.Dropout(0.3)(x)
+
+        dropout_after_dw = AdaptiveDropout(initial_rate=self.model_params["refiner_block"]["dropout"],
+                                           name=f"adaptive_dropout_refiner_after_dw")
+        
+        self.adaptive_dropout_refiner.append(dropout_after_dw)
+
+        x = dropout_after_dw(x)
+
         x = layers.GlobalAveragePooling2D()(x)
-        #print(f"Refiner Block: Output shape {x.shape}\n")
 
         if self.model_params["refiner_block"]["dropout"] > 0:
 
-            self.adaptive_dropout_refiner = AdaptiveDropout(initial_rate=self.model_params["refiner_block"]["dropout"],
-                                                            name=f"adaptive_dropout_refiner")
-            x = self.adaptive_dropout_refiner(x)
+            dropout_after_gap = AdaptiveDropout(initial_rate=self.model_params["refiner_block"]["dropout"],
+                                                            name=f"adaptive_dropout_refiner_after_gap")
+            self.adaptive_dropout_refiner.append(dropout_after_gap)
 
-            #x = layers.Dropout(self.model_params["refiner_block"]["dropout"])(x)
+            x = dropout_after_gap(x)
 
         return layers.Dense(self.model_params["refiner_block"]["num_output_classes"], 
                             activation='softmax',
                             kernel_regularizer=regularizers.l2(self.model_params["refiner_block"]["l2_weight_decay"]))(x)
     
+
+
+    
     def _build_model(self) -> tf.keras.Model:
         inputs = tf.keras.Input(shape=self.input_shape)
         x = self._stem_block(inputs)
         for curr_stage_number in range(self.model_params["stages_block"]["stages_number"]):
-            #print(f"Assembling Stage Block {curr_stage_number}\n")
             x = self._stage_block(x, curr_stage_number)
         outputs = self._refiner_block(x)
         return Model(inputs, outputs)
@@ -487,11 +481,13 @@ class TakuNetModel:
                                              divider=self.train_params["divider"], 
                                              threshold=0.30)
         
-        adjust_dropout = AdjustDropoutCallback(threshold=self.train_params["threshold_dropout"], 
-                                               max_dropout=self.train_params["max_dropout"], 
-                                               increment=self.train_params["increment"], 
-                                               total_epochs = self.train_params["num_epochs"], 
-                                               divider = self.train_params["divider"])
+        adjust_dropout = AdjustDropoutCallback(model_instance=self.model,
+                                               overfitting_threshold=0.1,
+                                               factor=self.train_params['increment'],
+                                               max_rate=self.train_params["threshold_dropout"],
+                                               cooldown=3,
+                                               total_epochs=self.train_params["num_epochs"],
+                                               divider=self.train_params["divider"])
 
         # **Train Model with Timing**
         start_time = time.time()
@@ -609,6 +605,17 @@ def get_optimizer(name, learning_rate, weight_decay=1e-4):
     return optimizers.get(name.lower(), Adam(learning_rate=learning_rate))  # If the name is not found return Adam by default
 
 
+def find_nearest_valid_groups(desired_groups:int, input_channels:int) -> int:
+    """
+    Given the desired number and the input channels
+    Try to find the closet integer number ( With priority given to the smallest number )
+    Which will perfectly divide the inpu_channe; ( input_channels % candidate ) 
+    """
+    for offset in range(0, desired_groups):
+        for candidate in (desired_groups - offset, desired_groups + offset):
+            if candidate > 0 and input_channels % candidate == 0:
+                return candidate
+    return 1
 
 # Helper Classes
 
@@ -625,32 +632,65 @@ class AdaptiveDropout(tf.keras.layers.Layer):
         return tf.nn.dropout(inputs, rate=self.rate) if training else inputs
 
 
-class AdjustDropoutCallback(Callback):
-    def __init__(self, threshold:float=0.05, max_dropout:float=0.6, increment:float=0.05, total_epochs:int = 50, divider:int = 5):
+class AdjustDropoutCallback(tf.keras.callbacks.Callback):
+    def __init__(self, model_instance:tf.keras.Model, overfitting_threshold:float=0.1, factor:float=1.2, max_rate:float=0.5,
+                 cooldown:int=3, total_epochs:int=50, divider:int = 5):
         super().__init__()
-        self.threshold = threshold
-        self.max_dropout = max_dropout
-        self.increment = increment
-        self.apply_after_epoch = total_epochs // divider
+        self.model_instance = model_instance
+        self.overfitting_threshold = overfitting_threshold
+        self.factor = factor
+        self.max_rate = max_rate
+        self.cooldown = cooldown  # Number of epochs to wait after adjusting
+        self.apply_after_epoch = total_epochs // divider  # Ignore overfitting detection before this epoch
+        self.cooldown_counter = 0  # Internal counter
 
     def on_epoch_end(self, epoch, logs=None):
-        if epoch < self.apply_after_epoch:
-            return  # Skip until target epoch
+        # If still warming up, skip
+        if epoch < self.apply_after_epoch :
+            return
 
-        logs = logs or {}
-        train_acc = logs.get("accuracy")
-        val_acc = logs.get("val_accuracy")
+        # If still in cooldown after last adjustment, skip
+        if self.cooldown_counter > 0:
+            self.cooldown_counter -= 1
+            return
 
-        if train_acc is not None and val_acc is not None:
-            gap = train_acc - val_acc
-            if gap > self.threshold:
-                print(f"\n⚠️ Overfitting detected (gap = {gap:.4f}). Increasing dropout rates.")
-                for layer in self.model.layers:
-                    if isinstance(layer, AdaptiveDropout):
-                        old = float(layer.rate.numpy())
-                        new = min(old + self.increment, self.max_dropout)
-                        layer.rate.assign(new)
-                        print(f"🔧 {layer.name}: dropout rate increased from {old:.2f} → {new:.2f}")
+        train_acc = logs.get('accuracy')
+        val_acc = logs.get('val_accuracy')
+
+        if train_acc is None or val_acc is None:
+            return
+
+        gap = train_acc - val_acc
+
+        if gap > self.overfitting_threshold:
+            print(f"\n⚠️ Overfitting detected! Train Acc - Val Acc = {gap:.3f} > {self.overfitting_threshold}")
+            self._increase_one_dropout()
+            self.cooldown_counter = self.cooldown  # Reset cooldown after adjusting
+
+    def _increase_one_dropout(self):
+        dropout_layers = []
+
+        if self.model_instance.adaptive_dropout_stem is not None:
+            dropout_layers.append(self.model_instance.adaptive_dropout_stem)
+
+        if self.model_instance.adaptive_dropout_taku is not None:
+            dropout_layers.extend([d for d in self.model_instance.adaptive_dropout_taku if d is not None])
+
+        if self.model_instance.adaptive_dropout_downsampler is not None:
+            dropout_layers.extend([d for d in self.model_instance.adaptive_dropout_downsampler if d is not None])
+
+        if self.model_instance.adaptive_dropout_refiner is not None:
+            dropout_layers.extend([d for d in self.model_instance.adaptive_dropout_refiner if d is not None])
+
+        if not dropout_layers:
+            print("⚠️ No AdaptiveDropout layers found to adjust.")
+            return
+
+        chosen_layer = random.choice(dropout_layers)
+        if isinstance(chosen_layer, AdaptiveDropout):
+            new_rate = min(self.factor * float(chosen_layer.rate.numpy()), self.max_rate)
+            chosen_layer.rate.assign(new_rate)
+            print(f"🔧 {chosen_layer.name}: dropout rate increased to {new_rate:.3f}")
 
 
 

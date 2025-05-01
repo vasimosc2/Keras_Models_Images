@@ -51,13 +51,13 @@
             },
             "adaptive_dropout": {
                 "max": 0.4,
-                "increment": 0.03,
+                "increment": 1.2,
                 "threshold": 0.10
                 }
             },
     
         "evaluation_config": {
-            "num_epochs": 2,
+            "num_epochs": 50,
             "batch_size": 32,
             "max_ram_consumption": 262144,
             "additional_ram_consumption": 59720,
