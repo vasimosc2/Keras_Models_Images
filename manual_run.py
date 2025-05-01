@@ -21,7 +21,7 @@ Folder="Manual_Run"
 
 
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
-
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # 0 = all logs, 1 = INFO, 2 = WARNING, 3 = ERROR
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
     try:

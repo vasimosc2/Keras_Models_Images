@@ -712,17 +712,35 @@ class ManualLearningRateScheduler(Callback):
         self.threshold = threshold
         self.factor = factor
         self.start_epoch = start_epoch
-
-    def on_epoch_end(self, epoch,logs=None):
-        if epoch < self.start_epoch:
-            return  # Skip adjustment before start_epoch
+        self.verbose = True
         
-        old_lr = float(tf.keras.backend.get_value(self.model.optimizer.learning_rate))
-        if old_lr >= self.threshold:
-            new_lr = old_lr * self.factor
-            tf.keras.backend.set_value(self.model.optimizer.learning_rate, new_lr)
-            print(f"\n🔧 Manual LR Adjustment at epoch {epoch}: {old_lr:.6f} → {new_lr:.6f}")
+    def on_epoch_end(self, epoch, logs=None):
+        current_lr = self._get_current_lr()
 
+        if epoch >= self.start_epoch:
+            if current_lr >= self.threshold:
+                new_lr = current_lr * self.factor
+                self._set_current_lr(new_lr)
+                if self.verbose:
+                    print(f"\n🔧 [Manual LR Scheduler] Epoch {epoch}: LR adjusted from {current_lr:.6f} → {new_lr:.6f}")
+            elif self.verbose:
+                print(f"\nℹ️ [Manual LR Scheduler] Epoch {epoch}: No adjustment (LR={current_lr:.6f})")
+        elif self.verbose:
+            print(f"\nℹ️ [Manual LR Scheduler] Epoch {epoch}: Waiting (Start adjustment after epoch {self.start_epoch})")
+
+    def _get_current_lr(self):
+        lr = self.model.optimizer.learning_rate
+        if isinstance(lr, tf.Variable):
+            return float(tf.keras.backend.get_value(lr))
+        else:
+            return float(lr)
+
+    def _set_current_lr(self, new_lr):
+        lr = self.model.optimizer.learning_rate
+        if hasattr(lr, 'assign'):
+            lr.assign(new_lr)
+        else:
+            self.model.optimizer.learning_rate = new_lr
 
 class TrainingResults:
     """Class to store training and evaluation results."""
