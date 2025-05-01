@@ -645,7 +645,7 @@ class AdaptiveDropout(tf.keras.layers.Layer):
 
 class AdjustDropoutCallback(tf.keras.callbacks.Callback):
     def __init__(self, model_instance:TakuNetModel, overfitting_threshold:float=0.1, factor:float=1.2, max_rate:float=0.5,
-                 cooldown:int=3, total_epochs:int=50, divider:int=5, start_dropout_epoch:int=10):
+                 cooldown:int=3, total_epochs:int=50, divider:int=5, start_dropout_epoch:int=15):
         super().__init__()
         self.model_instance = model_instance
         self.overfitting_threshold = overfitting_threshold
@@ -764,9 +764,9 @@ class ManualLearningRateScheduler(Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         current_lr = self._get_current_lr()
-
-        if epoch >= self.start_epoch:
-            if current_lr >= self.threshold:
+        epochDecades = epoch // self.start_epoch
+        if epochDecades >= 1 and epochDecades <=2:
+            if current_lr >= self.threshold/epochDecades:
                 new_lr = current_lr * self.factor
                 self._set_current_lr(new_lr)
                 if self.verbose:
