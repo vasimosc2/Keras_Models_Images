@@ -482,7 +482,8 @@ class TakuNetModel:
         reduce_lr = ReduceLROnPlateau(monitor='val_accuracy', 
                                       factor=self.train_params["learning_factor"], 
                                       patience=self.train_params["learning_rate_patience"], 
-                                      verbose=1)
+                                      verbose=1,
+                                      min_lr=5e-4)
         
         midway_callback = MidwayStopCallback(total_epochs=self.train_params["num_epochs"], 
                                              divider=self.train_params["divider"], 
@@ -537,7 +538,7 @@ class TakuNetModel:
                 callbacks = [midway_callback, early_stopping_acc, reduce_lr, checkpoint, adjust_dropout]
             )
 
-            self.results.epochs_trained += len(history_extra.history['loss'])
+            self.results.epochs_trained = self.epochs + len(history_extra.history['loss'])
 
             best_test_acc = max(history_extra.history['val_accuracy'])
             self.results.test_accuracy = best_test_acc
