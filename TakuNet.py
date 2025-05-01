@@ -44,8 +44,8 @@ class TakuNetModel:
         self.is_trainable: bool = self.check_trainability()
 
         self.adaptive_dropout_stem: AdaptiveDropout = None
-        self.adaptive_dropout_taku: List[AdaptiveDropout] = None # This will have Length As much as the Stages
-        self.adaptive_dropout_refiner: List[AdaptiveDropout] = None # This will have a fix lenght of 2
+        self.adaptive_dropout_taku: List[AdaptiveDropout] = [] # This will have Length As much as the Stages
+        self.adaptive_dropout_refiner: List[AdaptiveDropout] = [] # This will have a fix lenght of 2
 
     
     def _stem_block(self, inputs:tuple):
@@ -98,6 +98,7 @@ class TakuNetModel:
 
             adaptiveDropout = AdaptiveDropout(initial_rate=self.model_params["stages_block"]["taku_block"]["dropout"],
                                               name=f"adaptive_dropout_taku_stage{stage_number}_block{taku_block_number}")
+            
             self.adaptive_dropout_taku.append(adaptiveDropout)
 
             x = adaptiveDropout(x)
