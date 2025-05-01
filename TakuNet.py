@@ -30,6 +30,11 @@ class TakuNetModel:
         self.input_shape: Tuple[int, int, int] = input_shape
         self.model_params: Optional[Dict] = model_params
         self.train_params: Optional[Dict] = train_params
+        
+        self.adaptive_dropout_stem: AdaptiveDropout = None
+        self.adaptive_dropout_taku: List[AdaptiveDropout] = [] # This will have Length As much as the Stages
+        self.adaptive_dropout_refiner: List[AdaptiveDropout] = [] # This will have a fix lenght of 2
+        
         self.model:tf.keras.Model = given_model if given_model else self._build_model()
         self.x_train: Optional[tf.Tensor] = x_train
         self.y_train: Optional[tf.Tensor] = y_train
@@ -43,9 +48,7 @@ class TakuNetModel:
         self.results: TrainingResults = TrainingResults()
         self.is_trainable: bool = self.check_trainability()
 
-        self.adaptive_dropout_stem: AdaptiveDropout = None
-        self.adaptive_dropout_taku: List[AdaptiveDropout] = [] # This will have Length As much as the Stages
-        self.adaptive_dropout_refiner: List[AdaptiveDropout] = [] # This will have a fix lenght of 2
+  
 
     
     def _stem_block(self, inputs:tuple):
@@ -482,7 +485,7 @@ class TakuNetModel:
                                              divider=self.train_params["divider"], 
                                              threshold=0.30)
         
-        adjust_dropout = AdjustDropoutCallback(model_instance=self.model,
+        adjust_dropout = AdjustDropoutCallback(model_instance=self,
                                                overfitting_threshold=0.1,
                                                factor=self.train_params['increment'],
                                                max_rate=self.train_params["max_dropout"],
@@ -634,7 +637,7 @@ class AdaptiveDropout(tf.keras.layers.Layer):
 
 
 class AdjustDropoutCallback(tf.keras.callbacks.Callback):
-    def __init__(self, model_instance:tf.keras.Model, overfitting_threshold:float=0.1, factor:float=1.2, max_rate:float=0.5,
+    def __init__(self, model_instance:TakuNetModel, overfitting_threshold:float=0.1, factor:float=1.2, max_rate:float=0.5,
                  cooldown:int=3, total_epochs:int=50, divider:int = 5):
         super().__init__()
         self.model_instance = model_instance
