@@ -661,7 +661,7 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
         # 🔵 Step 1: Initialize Dropout after a specific epoch
         if not self.dropout_initialized and epoch >= self.start_dropout_epoch:
             print(f"\n🚀 Initializing Dropout rates at Epoch {epoch}")
-            self._initialize_dropout_rates(initial_rate=0.05)
+            self._initialize_dropout_rates()
             self.dropout_initialized = True
 
         # If still warming up for overfitting detection, skip
