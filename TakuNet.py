@@ -57,18 +57,21 @@ class TakuNetModel:
         The output shape is: (None, 32 / (Conv_strides * DWConv_stride), 32 / (Conv_strides * DWConv_stride), filters)
         """
 
+        regularizers = None #  regularizers.l2(self.model_params["stem_block"]["l2_weight_decay"])
         x = layers.Conv2D(filters=self.model_params["stem_block"]["filters"], 
                           kernel_size=self.model_params["stem_block"]["Conv_kernel"],
                           strides=self.model_params["stem_block"]["Conv_strides"], 
                           padding='same', 
                           use_bias=False,
-                          kernel_regularizer = regularizers.l2(self.model_params["stem_block"]["l2_weight_decay"]) )(inputs)
+                          kernel_regularizer = regularizers )(inputs)
         
         x = layers.BatchNormalization()(x)
 
         x = layers.ReLU(6.0)(x)
 
-        self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=self.model_params["stem_block"]["dropout"], 
+        initial_rate = 0 # self.model_params["stem_block"]["dropout"]
+
+        self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=initial_rate, 
                                                      name="adaptive_dropout_stem")
         x = self.adaptive_dropout_stem(x)
 
@@ -92,14 +95,15 @@ class TakuNetModel:
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
 
-        if self.model_params["stages_block"]["taku_block"]["dropout"] > 0:
 
-            adaptiveDropout = AdaptiveDropout(initial_rate=self.model_params["stages_block"]["taku_block"]["dropout"],
-                                              name=f"adaptive_dropout_taku_stage{stage_number}_block{taku_block_number}")
+        initial_rate = 0 # self.model_params["stages_block"]["taku_block"]["dropout"]
+
+        adaptiveDropout = AdaptiveDropout(initial_rate=initial_rate,
+                                          name=f"adaptive_dropout_taku_stage{stage_number}_block{taku_block_number}")
             
-            self.adaptive_dropout_taku.append(adaptiveDropout)
+        self.adaptive_dropout_taku.append(adaptiveDropout)
 
-            x = adaptiveDropout(x)
+        x = adaptiveDropout(x)
 
         return layers.Add()([x, inputs])
     
@@ -137,11 +141,12 @@ class TakuNetModel:
         Kernel size must be 1 to perform a PointWise Convolution
 
         """
+        regularizers = None #  regularizers.l2(self.model_params["stages_block"]["downsampler"]["l2_weight_decay"])
         x = layers.Conv2D(  filters=input_channels, 
                             kernel_size=1, 
                             groups=groups, 
                             use_bias=False,
-                            kernel_regularizer=regularizers.l2(self.model_params["stages_block"]["downsampler"]["l2_weight_decay"]))(inputs)
+                            kernel_regularizer=regularizers)(inputs)
 
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
@@ -171,7 +176,9 @@ class TakuNetModel:
 
         x = layers.BatchNormalization()(x)
 
-        dropout_after_dw = AdaptiveDropout(initial_rate=self.model_params["refiner_block"]["dropout"],
+        initial_rate = 0 # self.model_params["refiner_block"]["dropout"]
+
+        dropout_after_dw = AdaptiveDropout(initial_rate=initial_rate,
                                            name=f"adaptive_dropout_refiner_after_dw")
         
         self.adaptive_dropout_refiner.append(dropout_after_dw)
@@ -180,17 +187,19 @@ class TakuNetModel:
 
         x = layers.GlobalAveragePooling2D()(x)
 
+        additional_rate = 0 # 0.1
 
-        dropout_after_gap = AdaptiveDropout(initial_rate= self.model_params["refiner_block"]["dropout"] + 0.1,
+        dropout_after_gap = AdaptiveDropout(initial_rate = initial_rate + additional_rate,
                                             name=f"adaptive_dropout_refiner_after_gap")
         
         self.adaptive_dropout_refiner.append(dropout_after_gap)
 
         x = dropout_after_gap(x)
+        regularizers = None # regularizers.l2(self.model_params["refiner_block"]["l2_weight_decay"])
 
         return layers.Dense(self.model_params["refiner_block"]["num_output_classes"], 
                             activation='softmax',
-                            kernel_regularizer=regularizers.l2(self.model_params["refiner_block"]["l2_weight_decay"]))(x)
+                            kernel_regularizer=regularizers)(x)
     
 
 
@@ -706,6 +715,7 @@ class MidwayStopCallback(Callback):
                 print(f"\n🚨 Stopping early: Training accuracy is below {self.threshold} at epoch {epoch}")
                 self.model.stop_training = True
 
+
 class ManualLearningRateScheduler(Callback):
     def __init__(self, threshold=0.0020, factor=0.5, start_epoch=10):
         super().__init__()
@@ -713,7 +723,7 @@ class ManualLearningRateScheduler(Callback):
         self.factor = factor
         self.start_epoch = start_epoch
         self.verbose = True
-        
+
     def on_epoch_end(self, epoch, logs=None):
         current_lr = self._get_current_lr()
 
@@ -723,10 +733,6 @@ class ManualLearningRateScheduler(Callback):
                 self._set_current_lr(new_lr)
                 if self.verbose:
                     print(f"\n🔧 [Manual LR Scheduler] Epoch {epoch}: LR adjusted from {current_lr:.6f} → {new_lr:.6f}")
-            elif self.verbose:
-                print(f"\nℹ️ [Manual LR Scheduler] Epoch {epoch}: No adjustment (LR={current_lr:.6f})")
-        elif self.verbose:
-            print(f"\nℹ️ [Manual LR Scheduler] Epoch {epoch}: Waiting (Start adjustment after epoch {self.start_epoch})")
 
     def _get_current_lr(self):
         lr = self.model.optimizer.learning_rate
