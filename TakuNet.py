@@ -477,6 +477,10 @@ class TakuNetModel:
                                              divider=self.train_params["divider"], 
                                              threshold=0.30)
         
+        learning_rate_callback = ManualLearningRateScheduler(threshold=0.002,
+                                                             factor=0.5,
+                                                             start_epoch=10)
+        
         adjust_dropout = AdjustDropoutCallback(model_instance=self,
                                                overfitting_threshold=self.train_params["overfitting"],
                                                factor=self.train_params['incrementFactor'],
@@ -495,7 +499,7 @@ class TakuNetModel:
             batch_size=self.train_params["batch_size"],
             validation_data=(x_test, y_test),
             verbose=2,
-            callbacks=[midway_callback, early_stopping_acc, reduce_lr, checkpoint, adjust_dropout]
+            callbacks=[midway_callback, early_stopping_acc, reduce_lr, checkpoint, adjust_dropout, learning_rate_callback]
         )
 
         training_time = time.time() - start_time
@@ -701,6 +705,23 @@ class MidwayStopCallback(Callback):
             if val_acc < self.threshold:  
                 print(f"\n🚨 Stopping early: Training accuracy is below {self.threshold} at epoch {epoch}")
                 self.model.stop_training = True
+
+class ManualLearningRateScheduler(Callback):
+    def __init__(self, threshold=0.0020, factor=0.5, start_epoch=10):
+        super().__init__()
+        self.threshold = threshold
+        self.factor = factor
+        self.start_epoch = start_epoch
+
+    def on_epoch_end(self, epoch):
+        if epoch < self.start_epoch:
+            return  # Skip adjustment before start_epoch
+        
+        old_lr = float(tf.keras.backend.get_value(self.model.optimizer.lr))
+        if old_lr >= self.threshold:
+            new_lr = old_lr * self.factor
+            tf.keras.backend.set_value(self.model.optimizer.lr, new_lr)
+            print(f"\n🔧 Manual LR Adjustment at epoch {epoch}: {old_lr:.6f} → {new_lr:.6f}")
 
 
 class TrainingResults:
