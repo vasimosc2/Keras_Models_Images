@@ -68,14 +68,9 @@ class TakuNetModel:
 
         x = layers.ReLU(6.0)(x)
 
-        self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=0.05, name="adaptive_dropout_stem")
+        self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=self.model_params["stem_block"]["dropout"], 
+                                                     name="adaptive_dropout_stem")
         x = self.adaptive_dropout_stem(x)
-
-        # if self.model_params["stem_block"]["dropout"] > 0:
-
-        #     self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=self.model_params["stem_block"]["dropout"],
-        #                                                  name=f"adaptive_dropout_stem")
-        #     x = self.adaptive_dropout_stem(x)
 
         x = layers.DepthwiseConv2D(kernel_size=self.model_params["stem_block"]["DWConv_kernel"],
                                    strides=self.model_params["stem_block"]["DWConv_strides"],
@@ -115,13 +110,19 @@ class TakuNetModel:
         input_channels:int = inputs.shape[-1]
 
         """
-        desired_groups, represents the input_channel + output_channel, which match
-        Divided by the number of stages we have
+        desired_groups, represents the input_channel + output_channel, 
+        Input_Channel, is the output of the first DownSampler
+        Output_Channel is the output of the Last TakuBlock
+        BUT
+        When we use the Concat layer:
+        input:  (batch, height, width, C1)
+        output:  (batch, height, width, C1)
+        concat will be shape (batch, height, width, C1 + C2), which is what goes inside the DownSampler
         """
-        desired_groups:int = math.floor(2 * input_channels / self.model_params["stages_block"]["stages_number"]) 
+        desired_groups:int = math.floor(input_channels / self.model_params["stages_block"]["stages_number"]) 
 
-        groups:int = find_nearest_valid_groups( desired_groups=desired_groups,
-                                           input_channels=input_channels)
+        groups:int = find_nearest_valid_groups(desired_groups=desired_groups,
+                                               input_channels=input_channels)
         
         """
         This Grouped Conv2D, DOES NOT CHANGE the shape if input is (None,1,1,2048) then the output is also (None,1,1,2048), because
@@ -179,13 +180,13 @@ class TakuNetModel:
 
         x = layers.GlobalAveragePooling2D()(x)
 
-        if self.model_params["refiner_block"]["dropout"] > 0:
 
-            dropout_after_gap = AdaptiveDropout(initial_rate=self.model_params["refiner_block"]["dropout"],
-                                                            name=f"adaptive_dropout_refiner_after_gap")
-            self.adaptive_dropout_refiner.append(dropout_after_gap)
+        dropout_after_gap = AdaptiveDropout(initial_rate= self.model_params["refiner_block"]["dropout"] + 0.1,
+                                            name=f"adaptive_dropout_refiner_after_gap")
+        
+        self.adaptive_dropout_refiner.append(dropout_after_gap)
 
-            x = dropout_after_gap(x)
+        x = dropout_after_gap(x)
 
         return layers.Dense(self.model_params["refiner_block"]["num_output_classes"], 
                             activation='softmax',
@@ -490,7 +491,7 @@ class TakuNetModel:
 
         history = self.model.fit(
             x_train, y_train,
-            epochs= self.epochs if self.epochs else self.train_params["num_epochs"],
+            epochs = self.epochs if self.epochs else self.train_params["num_epochs"],
             batch_size=self.train_params["batch_size"],
             validation_data=(x_test, y_test),
             verbose=2,
@@ -510,15 +511,15 @@ class TakuNetModel:
 
         if best_test_acc > 0.50:
             print(f"\n\🚀 Best test accuracy ({best_test_acc:.4f}) exceeded 50%. Continuing training for 100 more epochs.")
-
+            alreadyUsedEpochs = self.epochs if self.epochs else self.train_params["num_epochs"]
             history_extra = self.model.fit(
                 x_train, y_train,
-                epochs=self.results.epochs_trained + 100,
-                initial_epoch=self.results.epochs_trained,
-                batch_size=self.train_params["batch_size"],
-                validation_data=(x_test, y_test),
-                verbose=2,
-                callbacks=[midway_callback, early_stopping_acc, reduce_lr, checkpoint, adjust_dropout]
+                epochs = alreadyUsedEpochs + 100,
+                initial_epoch = alreadyUsedEpochs,
+                batch_size = self.train_params["batch_size"],
+                validation_data = (x_test, y_test),
+                verbose = 2,
+                callbacks = [midway_callback, early_stopping_acc, reduce_lr, checkpoint, adjust_dropout]
             )
 
             self.results.epochs_trained += len(history_extra.history['loss'])
