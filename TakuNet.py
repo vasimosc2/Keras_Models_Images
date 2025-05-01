@@ -717,11 +717,11 @@ class ManualLearningRateScheduler(Callback):
         if epoch < self.start_epoch:
             return  # Skip adjustment before start_epoch
         
-        old_lr = float(tf.keras.backend.get_value(self.model.optimizer.lr))
+        old_lr = float(tf.keras.backend.get_value(self.model.optimizer.learning_rate))
         if old_lr >= self.threshold:
             new_lr = old_lr * self.factor
-            tf.keras.backend.set_value(self.model.optimizer.lr, new_lr)
-            print(f"\n🔧 Manual LR Adjustment at epoch {epoch}: {old_lr:.6f} → {new_lr:.6f}")
+            tf.keras.backend.set_value(self.model.optimizer.learning_rate, new_lr)
+            print(f"\n🔧 Manual LR Adjustment at epoch {epoch}: {old_lr:.6f} → {new_lr:.6f}"
 
 
 class TrainingResults:
