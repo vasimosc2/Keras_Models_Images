@@ -461,7 +461,12 @@ class TakuNetModel:
             self.model.compile( optimizer = optimizer, 
                                 loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=self.train_params["label_smothing"]),
                                 metrics = ['accuracy'])
-
+        """
+        Label smoothing: [0,0,1,0,0] -> [a/(C-1), a/(C-1), 1-a, a/(C-1), a/(C-1)] = [0.025, 0.025, 0.9, 0.025, 0.025] ,
+                        where C is the number of Classes and a = label_smoothing
+                        If C is big , it might makes sense a to be also bigger to cause some significant generalaization
+        
+        """
         # **Callbacks**
         checkpoint_path = f'{self.folderName}/saved_models/{self.model_name}.keras'
 
