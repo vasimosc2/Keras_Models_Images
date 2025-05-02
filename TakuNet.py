@@ -659,9 +659,15 @@ class AdaptiveDropout(tf.keras.layers.Layer):
         super().__init__(**kwargs)
         self.initial_rate = initial_rate
         self.rate = tf.Variable(initial_value=initial_rate, trainable=False, dtype=tf.float32)
+        self.spatial_dropout = tf.keras.layers.SpatialDropout2D(rate=self.initial_rate)
 
     def call(self, inputs, training=False):
-        return tf.keras.layers.SpatialDropout2D(self.rate)(inputs) if training else inputs
+        if training:
+            self.spatial_dropout.rate.assign(self.rate)  # Update dynamically
+            return self.spatial_dropout(inputs, training=True)
+        else:
+            return inputs
+
 
 
 class AdjustDropoutCallback(tf.keras.callbacks.Callback):
