@@ -5,7 +5,7 @@ import tensorflow as tf
 from tensorflow.keras import layers, Model
 from typing import Dict, List, Optional, Tuple
 from sklearn.metrics import precision_score, recall_score, f1_score
-from tensorflow.keras.callbacks import Callback, EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+from tensorflow.keras.callbacks import Callback, EarlyStopping, ModelCheckpoint
 from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop
 from utils import memoryEstimator
 import math
@@ -56,22 +56,17 @@ class TakuNetModel:
         The output shape is: (None, 32 / (Conv_strides * DWConv_stride), 32 / (Conv_strides * DWConv_stride), filters)
         """
 
-        regularizers = tf.keras.regularizers.l2(self.model_params["stem_block"]["l2_weight_decay"])
-
         x = layers.Conv2D(filters=self.model_params["stem_block"]["filters"], 
                           kernel_size=self.model_params["stem_block"]["Conv_kernel"],
                           strides=self.model_params["stem_block"]["Conv_strides"], 
                           padding='same', 
-                          use_bias=False,
-                          kernel_regularizer = None )(inputs)
+                          use_bias=False)(inputs)
         
         x = layers.BatchNormalization()(x)
 
         x = layers.ReLU(6.0)(x)
 
-        initial_rate:float = 0.0
-
-        self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=initial_rate, 
+        self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=0.0, 
                                                      name="adaptive_dropout_stem")
         x = self.adaptive_dropout_stem(x)
 
@@ -103,10 +98,7 @@ class TakuNetModel:
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
 
-
-        initial_rate:float = 0.0
-
-        adaptiveDropout = AdaptiveDropout(initial_rate=initial_rate,
+        adaptiveDropout = AdaptiveDropout(initial_rate=0.0,
                                           name=f"adaptive_dropout_taku_stage{stage_number}_block{taku_block_number}")
             
         self.adaptive_dropout_taku.append(adaptiveDropout)
@@ -121,7 +113,7 @@ class TakuNetModel:
         se = layers.GlobalAveragePooling2D()(inputs)
         se = layers.Dense(filters // ratio, activation='relu', use_bias=False)(se)
         se = layers.Dense(filters, activation='sigmoid', use_bias=False)(se)
-        se = layers.Reshape((1,1,filters))(se)  # Match dims
+        se = layers.Reshape((1,1,filters))(se)
         return layers.multiply([inputs, se])
     
     def _downsampler_block(self, inputs:tuple, curr_stage_number:int):
@@ -156,13 +148,10 @@ class TakuNetModel:
         Kernel size must be 1 to perform a PointWise Convolution
 
         """
-        regularizers =  tf.keras.regularizers.l2(self.model_params["stages_block"]["downsampler"]["l2_weight_decay"])
-
         x = layers.Conv2D(  filters=input_channels, 
                             kernel_size=1, 
                             groups=groups, 
-                            use_bias=False,
-                            kernel_regularizer=None)(inputs)
+                            use_bias=False)(inputs)
 
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
@@ -196,10 +185,8 @@ class TakuNetModel:
 
         x = layers.BatchNormalization()(x)
 
-        initial_rate:float = 0.0
-
-        dropout_after_dw = AdaptiveDropout(initial_rate=initial_rate,
-                                           name=f"adaptive_dropout_refiner_after_dw")
+        dropout_after_dw = AdaptiveDropout(initial_rate=0.0,
+                                           name=f"adaptive_dropout_refiner1_after_dw")
         
         self.adaptive_dropout_refiner.append(dropout_after_dw)
 
@@ -207,26 +194,15 @@ class TakuNetModel:
 
         x = layers.GlobalAveragePooling2D()(x)
 
-        additional_rate:float = 0.0
-
-        dropout_after_gap = AdaptiveDropout(initial_rate = initial_rate + additional_rate,
-                                            name=f"adaptive_dropout_refiner_after_gap")
+        dropout_after_gap = AdaptiveDropout(initial_rate = 0.0,
+                                            name=f"adaptive_dropout_refiner2_after_gap")
         
         self.adaptive_dropout_refiner.append(dropout_after_gap)
 
         x = dropout_after_gap(x)
 
-        regularizers = tf.keras.regularizers.l2(self.model_params["refiner_block"]["l2_weight_decay"])
-
         return layers.Dense(self.model_params["refiner_block"]["num_output_classes"], 
-                            activation='softmax',
-                            kernel_regularizer=None)(x)
-    
-
-
-    
-
-
+                            activation='softmax')(x)
     
     def _build_model(self) -> tf.keras.Model:
         inputs = tf.keras.Input(shape=self.input_shape)
@@ -479,8 +455,8 @@ class TakuNetModel:
         # **Compile Model**
         if not self.is_trained:
 
-            optimizer = get_optimizer(self.train_params["optimizer"], 
-                                      self.train_params["learning_rate"] if self.learningRate is None else self.learningRate)
+            optimizer = get_optimizer(name=self.train_params["optimizer"], 
+                                      learning_rate=self.train_params["learning_rate"] if self.learningRate is None else self.learningRate)
             
             self.model.compile( optimizer = optimizer, 
                                 loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=self.train_params["label_smothing"]),
@@ -763,10 +739,14 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
                 initial_rate = 0.05
                 layer.addtion = 0.05
                 layer.max_rate = 0.4
-            elif "refiner" in layer.name:
+            elif "refiner1" in layer.name:
                 initial_rate = 0.1
                 layer.addtion = 0.1
                 layer.max_rate = 0.4
+            elif "refiner2" in layer.name:
+                initial_rate = 0.2
+                layer.addtion = 0.1
+                layer.max_rate = 0.5
             else:
                 initial_rate = 0.05
                 layer.addtion = 0.05
