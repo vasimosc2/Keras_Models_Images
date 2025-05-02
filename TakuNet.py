@@ -492,7 +492,7 @@ class TakuNetModel:
                                                             smart_factor=0.5,
                                                             smart_patience=8,
                                                             smart_min_delta=4e-2,
-                                                            smart_min_lr=5e-4,
+                                                            smart_min_lr=1e-4,
                                                             smart_start_epoch=15,
                                                             verbose=True)
         
@@ -812,7 +812,7 @@ class SmartLearningRateScheduler(tf.keras.callbacks.Callback):
                  smart_factor=0.5,
                  smart_patience=8,
                  smart_min_delta=4e-2,
-                 smart_min_lr=5e-4,
+                 smart_min_lr=1e-4,
                  smart_start_epoch=15,
                  verbose=True):
         """

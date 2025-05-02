@@ -1,7 +1,7 @@
 {
     "model_search_space":{
         "stem_block":{
-            "filters": [32, 64, 128],
+            "filters": [128,256],
             "Conv_kernel": [3, 5],
             "l2_weight_decay": [5e-5, 1e-4],
             "Conv_strides": [1, 2],
@@ -37,7 +37,7 @@
     "train_and_evaluate":{
         "model_config": {
             "optimizer": ["adamw"],
-            "label_smothing": 0.05,
+            "label_smothing": 1e-1,
 
             "divider" : 5,
 
