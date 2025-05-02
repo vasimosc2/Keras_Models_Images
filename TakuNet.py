@@ -479,12 +479,19 @@ class TakuNetModel:
                                            mode='max', 
                                            restore_best_weights=True)
         
-        reduce_lr = ReduceLROnPlateau(monitor='val_accuracy', 
-                                      factor=self.train_params["learning_factor"], 
-                                      patience=self.train_params["learning_rate_patience"], 
-                                      verbose=1,
-                                      min_lr=1.25e-4)
+        # reduce_lr = ReduceLROnPlateau(monitor='val_accuracy', 
+        #                               factor=self.train_params["learning_factor"], 
+        #                               patience=self.train_params["learning_rate_patience"], 
+        #                               verbose=1,
+        #                               min_lr=1.25e-4)
         
+        reduce_lr = SmartReduceLROnPlateau(factor=0.5, 
+                                           patience=8,
+                                           min_delta=4e-2, 
+                                           min_lr=1.25e-4,
+                                           startEpoch=15,
+                                           verbose=True)
+
         midway_callback = MidwayStopCallback(total_epochs=self.train_params["num_epochs"], 
                                              divider=self.train_params["divider"], 
                                              threshold=0.30)
@@ -729,9 +736,10 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
             return
 
         chosen_layer:AdaptiveDropout = random.choice(dropout_layers)
-        new_rate = max(0.05, min(self.factor + float(chosen_layer.rate.numpy()), self.max_rate))
+        old_rate = float(chosen_layer.rate.numpy())
+        new_rate = max(0.05, min(old_rate + self.factor, self.max_rate)) 
         chosen_layer.rate.assign(new_rate)
-        print(f"🔧 {chosen_layer.name}: dropout rate increased from {float(chosen_layer.rate.numpy()):.3f} to {new_rate:.3f}")
+        print(f"🔧 {chosen_layer.name}: dropout rate increased from {old_rate:.3f} to {new_rate:.3f}")
 
 
 
@@ -784,6 +792,64 @@ class ManualLearningRateScheduler(Callback):
             lr.assign(new_lr)
         else:
             self.model.optimizer.learning_rate = new_lr
+
+class SmartReduceLROnPlateau(tf.keras.callbacks.Callback):
+    def __init__(self, factor:float=0.5, patience:int=8, min_delta:float=4e-2, min_lr:float=1.25e-4, 
+                 startEpoch:int = 15 ,verbose:bool=True):
+        """
+        factor: factor to reduce LR (e.g., 0.5)
+        patience: how many epochs to wait before reducing
+        min_delta: required minimum improvement (e.g., 0.04 means 4%)
+        min_lr: minimum LR allowed
+        verbose: print when reducing
+        """
+        super().__init__()
+        self.factor = factor
+        self.patience = patience
+        self.min_delta = min_delta
+        self.min_lr = min_lr
+        self.verbose = verbose
+        self.best_val_acc = 0.0
+        self.start_epoch = startEpoch
+        self.wait = 0
+
+    def on_epoch_end(self, epoch, logs=None):
+        current_val_acc = logs.get('val_accuracy')
+
+        if epoch < self.start_epoch:
+            return
+        
+        if current_val_acc is None:
+            return
+
+        if current_val_acc > self.best_val_acc + self.min_delta:
+            self.best_val_acc = current_val_acc
+            self.wait = 0  # Reset wait counter
+        else:
+            self.wait += 1
+            if self.wait >= self.patience:
+                current_lr = self._get_current_lr()
+                if current_lr > self.min_lr:
+                    new_lr = max(current_lr * self.factor, self.min_lr)
+                    self._set_current_lr(new_lr)
+                    if self.verbose:
+                        print(f"\n🔻 [SmartReduceLROnPlateau] Reducing learning rate from {current_lr:.6f} to {new_lr:.6f}")
+                self.wait = 0  # Reset after reduction
+
+    def _get_current_lr(self):
+        lr = self.model.optimizer.learning_rate
+        if isinstance(lr, tf.Variable):
+            return float(tf.keras.backend.get_value(lr))
+        else:
+            return float(lr)
+
+    def _set_current_lr(self, new_lr):
+        lr = self.model.optimizer.learning_rate
+        if hasattr(lr, 'assign'):
+            lr.assign(new_lr)
+        else:
+            self.model.optimizer.learning_rate = new_lr
+
 
 class TrainingResults:
     """Class to store training and evaluation results."""
