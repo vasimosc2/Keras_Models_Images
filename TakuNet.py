@@ -95,6 +95,14 @@ class TakuNetModel:
         x = layers.BatchNormalization()(x)
         x = layers.ReLU(6.0)(x)
 
+        x = layers.Conv2D(filters=inputs.shape[-1],
+                          kernel_size=1,
+                          padding='same',
+                          use_bias=False)(x)
+
+        x = layers.BatchNormalization()(x)
+        x = layers.ReLU(6.0)(x)
+
 
         initial_rate:float = 0.0
 
@@ -653,7 +661,7 @@ class AdaptiveDropout(tf.keras.layers.Layer):
         self.rate = tf.Variable(initial_value=initial_rate, trainable=False, dtype=tf.float32)
 
     def call(self, inputs, training=False):
-        return tf.nn.dropout(inputs, rate=self.rate) if training else inputs
+        return tf.keras.layers.SpatialDropout2D(self.rate)(inputs) if training else inputs
 
 
 class AdjustDropoutCallback(tf.keras.callbacks.Callback):
