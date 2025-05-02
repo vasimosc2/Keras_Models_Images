@@ -662,11 +662,11 @@ class AdaptiveDropout(tf.keras.layers.Layer):
 
     def call(self, inputs, training=False):
         if training:
-            # Dynamically create a new SpatialDropout2D with the current rate
-            dropout_layer = tf.keras.layers.SpatialDropout2D(rate=float(self.rate))
+            dropout_layer = tf.keras.layers.SpatialDropout2D(rate=self.rate)
             return dropout_layer(inputs, training=True)
         else:
             return inputs
+
 
 
 
