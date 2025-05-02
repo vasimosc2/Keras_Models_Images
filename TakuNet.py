@@ -478,34 +478,27 @@ class TakuNetModel:
                                            patience=self.train_params["stop_patience"], # We stop the training if for "stop_patience" we have no improvement
                                            mode='max', 
                                            restore_best_weights=True)
-        
-        # reduce_lr = ReduceLROnPlateau(monitor='val_accuracy', 
-        #                               factor=self.train_params["learning_factor"], 
-        #                               patience=self.train_params["learning_rate_patience"], 
-        #                               verbose=1,
-        #                               min_lr=1.25e-4)
-        
-        reduce_lr = SmartReduceLROnPlateau(factor=0.5, 
-                                           patience=8,
-                                           min_delta=4e-2, 
-                                           min_lr=1.25e-4,
-                                           startEpoch=15,
-                                           verbose=True)
 
         midway_callback = MidwayStopCallback(total_epochs=self.train_params["num_epochs"], 
                                              divider=self.train_params["divider"], 
                                              threshold=0.30)
         
-        learning_rate_callback = ManualLearningRateScheduler(threshold=0.002,
-                                                             factor=0.5,
-                                                             start_epoch=10)
+        learning_rate_callback = SmartLearningRateScheduler(manual_threshold=2e-3,
+                                                            manual_factor=0.5,
+                                                            manual_start_epoch=10,
+                                                            smart_factor=0.5,
+                                                            smart_patience=8,
+                                                            smart_min_delta=4e-2,
+                                                            smart_min_lr=2.5e-4,
+                                                            smart_start_epoch=15,
+                                                            verbose=True)
         
         adjust_dropout = AdjustDropoutCallback(model_instance=self,
                                                overfitting_threshold=self.train_params["overfitting"],
                                                factor=self.train_params['incrementFactor'],
                                                max_rate=self.train_params["max_dropout"],
                                                cooldown=3,
-                                               start_dropout_epoch=15)
+                                               start_dropout_epoch=20)
 
         # **Train Model with Timing**
         start_time = time.time()
@@ -517,7 +510,7 @@ class TakuNetModel:
             batch_size=self.train_params["batch_size"],
             validation_data=(x_test, y_test),
             verbose=2,
-            callbacks=[midway_callback, early_stopping_acc, reduce_lr, checkpoint, adjust_dropout, learning_rate_callback]
+            callbacks=[midway_callback, early_stopping_acc, checkpoint, adjust_dropout, learning_rate_callback]
         )
 
         training_time = time.time() - start_time
@@ -531,27 +524,39 @@ class TakuNetModel:
 
         print(f"✅ Best Test Accuracy (Best Model): {best_test_acc:.4f}\n")
 
+        # Initialize full history and epoch counter
+        full_history = history
+        total_epochs_trained = len(history.history['loss'])
+
+        # **Check if we should continue training**
         if best_test_acc > 0.50:
-            print(f"\n\🚀 Best test accuracy ({best_test_acc:.4f}) exceeded 50%. Continuing training for 100 more epochs.")
-            alreadyUsedEpochs = self.epochs if self.epochs else self.train_params["num_epochs"]
+            print(f"\n🚀 Best test accuracy ({best_test_acc:.4f}) exceeded 50%. Continuing training for 100 more epochs.\n")
+            
+            already_used_epochs = self.epochs if self.epochs else self.train_params["num_epochs"]
+            
+            # Extra Training Phase
             history_extra = self.model.fit(
                 x_train, y_train,
-                epochs = alreadyUsedEpochs + 100,
-                initial_epoch = alreadyUsedEpochs,
-                batch_size = self.train_params["batch_size"],
-                validation_data = (x_test, y_test),
-                verbose = 2,
-                callbacks = [midway_callback, early_stopping_acc, reduce_lr, checkpoint, adjust_dropout]
+                epochs=already_used_epochs + 100,
+                initial_epoch=already_used_epochs,
+                batch_size=self.train_params["batch_size"],
+                validation_data=(x_test, y_test),
+                verbose=2,
+                callbacks=[midway_callback, early_stopping_acc, checkpoint, adjust_dropout, learning_rate_callback]
             )
-
-            self.results.epochs_trained = alreadyUsedEpochs + len(history_extra.history['loss'])
-
+            
+            # Update best accuracy after extra training
             best_test_acc = max(history_extra.history['val_accuracy'])
-            self.results.test_accuracy = best_test_acc
-            self.results.train_accuracy = max(history_extra.history['accuracy'])
+
+            # Merge histories
+            for key in full_history.history.keys():
+                full_history.history[key].extend(history_extra.history[key])
+
+            total_epochs_trained += len(history_extra.history['loss'])
 
             print(f"\n🔁 Continued Training Complete. New Best Test Accuracy: {best_test_acc:.4f}\n")
-        
+
+        # **Load final Best Model**
         self.model.load_weights(checkpoint_path)
         print(f"✅ Final Best model restored from {checkpoint_path}\n")
 
@@ -560,9 +565,10 @@ class TakuNetModel:
         y_test_pred_classes = np.argmax(y_test_pred, axis=1)
         y_true_classes = np.argmax(y_test, axis=1)
 
-        self.results.history = history
-        self.results.epochs_trained = len(history.history['loss'])
-        self.results.train_accuracy = max(history.history['accuracy']) 
+        # **Save Results**
+        self.results.history = full_history
+        self.results.epochs_trained = total_epochs_trained
+        self.results.train_accuracy = max(full_history.history['accuracy'])
         self.results.test_accuracy = best_test_acc
         self.results.precision = precision_score(y_true_classes, y_test_pred_classes, average='macro')
         self.results.recall = recall_score(y_true_classes, y_test_pred_classes, average='macro')
@@ -761,80 +767,73 @@ class MidwayStopCallback(Callback):
                 self.model.stop_training = True
 
 
-class ManualLearningRateScheduler(Callback):
-    def __init__(self, threshold=0.0020, factor=0.5, start_epoch=10):
+class SmartLearningRateScheduler(tf.keras.callbacks.Callback):
+    def __init__(self, 
+                 manual_threshold=0.0020, 
+                 manual_factor=0.5, 
+                 manual_start_epoch=10,
+                 smart_factor=0.5,
+                 smart_patience=8,
+                 smart_min_delta=4e-2,
+                 smart_min_lr=2.5e-4,
+                 smart_start_epoch=15,
+                 verbose=True):
+        """
+        Combines Manual LR scheduling and Smart ReduceLROnPlateau into one callback.
+        
+        manual_threshold: threshold for manual decay
+        manual_factor: factor for manual decay
+        manual_start_epoch: when to start manual decay
+        smart_factor: factor for smart decay
+        smart_patience: patience for smart decay
+        smart_min_delta: min improvement for smart decay
+        smart_min_lr: minimum learning rate allowed
+        smart_start_epoch: when to activate smart decay
+        verbose: print messages
+        """
         super().__init__()
-        self.threshold = threshold
-        self.factor = factor
-        self.start_epoch = start_epoch
-        self.verbose = True
+        self.manual_threshold = manual_threshold
+        self.manual_factor = manual_factor
+        self.manual_start_epoch = manual_start_epoch
+
+        self.smart_factor = smart_factor
+        self.smart_patience = smart_patience
+        self.smart_min_delta = smart_min_delta
+        self.smart_min_lr = smart_min_lr
+        self.smart_start_epoch = smart_start_epoch
+
+        self.verbose = verbose
+        self.best_val_acc = 0.0
+        self.wait = 0
 
     def on_epoch_end(self, epoch, logs=None):
         current_lr = self._get_current_lr()
-        epochDecades = epoch // self.start_epoch
-        if epochDecades >= 1 and epochDecades <=2:
-            if current_lr >= self.threshold/epochDecades:
-                new_lr = current_lr * self.factor
+        current_val_acc = logs.get('val_accuracy')
+
+        # --- Manual LR Scheduling ---
+        epoch_decades = epoch // self.manual_start_epoch
+        if epoch_decades >= 1 and epoch_decades <= 2:
+            if current_lr >= self.manual_threshold / epoch_decades:
+                new_lr = current_lr * self.manual_factor
                 self._set_current_lr(new_lr)
                 if self.verbose:
                     print(f"\n🔧 [Manual LR Scheduler] Epoch {epoch}: LR adjusted from {current_lr:.6f} → {new_lr:.6f}")
 
-    def _get_current_lr(self):
-        lr = self.model.optimizer.learning_rate
-        if isinstance(lr, tf.Variable):
-            return float(tf.keras.backend.get_value(lr))
-        else:
-            return float(lr)
-
-    def _set_current_lr(self, new_lr):
-        lr = self.model.optimizer.learning_rate
-        if hasattr(lr, 'assign'):
-            lr.assign(new_lr)
-        else:
-            self.model.optimizer.learning_rate = new_lr
-
-class SmartReduceLROnPlateau(tf.keras.callbacks.Callback):
-    def __init__(self, factor:float=0.5, patience:int=8, min_delta:float=4e-2, min_lr:float=1.25e-4, 
-                 startEpoch:int = 15 ,verbose:bool=True):
-        """
-        factor: factor to reduce LR (e.g., 0.5)
-        patience: how many epochs to wait before reducing
-        min_delta: required minimum improvement (e.g., 0.04 means 4%)
-        min_lr: minimum LR allowed
-        verbose: print when reducing
-        """
-        super().__init__()
-        self.factor = factor
-        self.patience = patience
-        self.min_delta = min_delta
-        self.min_lr = min_lr
-        self.verbose = verbose
-        self.best_val_acc = 0.0
-        self.start_epoch = startEpoch
-        self.wait = 0
-
-    def on_epoch_end(self, epoch, logs=None):
-        current_val_acc = logs.get('val_accuracy')
-
-        if epoch < self.start_epoch:
-            return
-        
-        if current_val_acc is None:
-            return
-
-        if current_val_acc > self.best_val_acc + self.min_delta:
-            self.best_val_acc = current_val_acc
-            self.wait = 0  # Reset wait counter
-        else:
-            self.wait += 1
-            if self.wait >= self.patience:
-                current_lr = self._get_current_lr()
-                if current_lr > self.min_lr:
-                    new_lr = max(current_lr * self.factor, self.min_lr)
-                    self._set_current_lr(new_lr)
-                    if self.verbose:
-                        print(f"\n🔻 [SmartReduceLROnPlateau] Reducing learning rate from {current_lr:.6f} to {new_lr:.6f}")
-                self.wait = 0  # Reset after reduction
+        # --- Smart Reduce on Plateau ---
+        if epoch >= self.smart_start_epoch:
+            if current_val_acc is not None:
+                if current_val_acc > self.best_val_acc + self.smart_min_delta:
+                    self.best_val_acc = current_val_acc
+                    self.wait = 0  # Reset wait counter
+                else:
+                    self.wait += 1
+                    if self.wait >= self.smart_patience:
+                        if current_lr > self.smart_min_lr:
+                            new_lr = max(current_lr * self.smart_factor, self.smart_min_lr)
+                            self._set_current_lr(new_lr)
+                            if self.verbose:
+                                print(f"\n🔻 [SmartReduceLROnPlateau] Reducing learning rate from {current_lr:.6f} to {new_lr:.6f}")
+                        self.wait = 0  # Reset wait counter
 
     def _get_current_lr(self):
         lr = self.model.optimizer.learning_rate
