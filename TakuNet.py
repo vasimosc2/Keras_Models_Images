@@ -499,7 +499,7 @@ class TakuNetModel:
         adjust_dropout = AdjustDropoutCallback(model_instance=self,
                                                overfitting_threshold=self.train_params["overfitting"],
                                                cooldown=3,
-                                               start_dropout_epoch=15)
+                                               start_dropout_epoch=20)
 
         # **Train Model with Timing**
         start_time = time.time()
@@ -737,24 +737,24 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
 
         for layer in dropout_layers:
             if "stem" in layer.name:
-                initial_rate = 0.03
-                layer.addtion = 0.03
+                initial_rate = 0.02
+                layer.addtion = 0.02
                 layer.max_rate = 0.15
             elif "taku" in layer.name:
-                initial_rate = 0.05
-                layer.addtion = 0.05
+                initial_rate = 0.03
+                layer.addtion = 0.03
                 layer.max_rate = 0.4
             elif "refiner1" in layer.name:
-                initial_rate = 0.1
-                layer.addtion = 0.1
+                initial_rate = 0.05
+                layer.addtion = 0.03
                 layer.max_rate = 0.4
             elif "refiner2" in layer.name:
-                initial_rate = 0.2
-                layer.addtion = 0.1
+                initial_rate = 0.1
+                layer.addtion = 0.03
                 layer.max_rate = 0.5
             else:
                 initial_rate = 0.05
-                layer.addtion = 0.05
+                layer.addtion = 0.03
                 layer.max_rate = 0.3
 
             layer.rate.assign(initial_rate)

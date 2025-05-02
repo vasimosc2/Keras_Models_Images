@@ -37,7 +37,7 @@
     "train_and_evaluate":{
         "model_config": {
             "optimizer": ["adamw"],
-            "label_smothing": 0.1,
+            "label_smothing": 0.05,
 
             "divider" : 5,
 
