@@ -506,7 +506,7 @@ class TakuNetModel:
                                                factor=self.train_params['incrementFactor'],
                                                max_rate=self.train_params["max_dropout"],
                                                cooldown=3,
-                                               start_dropout_epoch=20)
+                                               start_dropout_epoch=15)
 
         # **Train Model with Timing**
         start_time = time.time()
