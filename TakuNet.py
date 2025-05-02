@@ -662,8 +662,8 @@ class AdaptiveDropout(tf.keras.layers.Layer):
 
     def call(self, inputs, training=False):
         if training:
-            dropout_layer = tf.keras.layers.SpatialDropout2D(rate=self.rate)
-            return dropout_layer(inputs, training=True)
+            noise_shape = (None, 1, 1, tf.shape(inputs)[-1])  # for SpatialDropout2D behavior
+            return tf.nn.dropout(inputs, rate=self.rate, noise_shape=noise_shape)
         else:
             return inputs
 
