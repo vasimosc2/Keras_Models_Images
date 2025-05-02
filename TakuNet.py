@@ -664,7 +664,7 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
             self.dropout_initialized = True
 
         # If still warming up for overfitting detection, skip
-        if epoch < self.apply_after_epoch:
+        if epoch < self.start_dropout_epoch:
             return
 
         # If still in cooldown after last adjustment, skip
