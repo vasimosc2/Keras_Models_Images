@@ -115,7 +115,14 @@ class TakuNetModel:
 
         return layers.Add()([x, inputs])
     
-
+    def _se_block(self, inputs, ratio=8):
+        """Squeeze-and-Excitation block."""
+        filters = inputs.shape[-1]
+        se = layers.GlobalAveragePooling2D()(inputs)
+        se = layers.Dense(filters // ratio, activation='relu', use_bias=False)(se)
+        se = layers.Dense(filters, activation='sigmoid', use_bias=False)(se)
+        se = layers.Reshape((1,1,filters))(se)  # Match dims
+        return layers.multiply([inputs, se])
     
     def _downsampler_block(self, inputs:tuple, curr_stage_number:int):
 
@@ -166,6 +173,8 @@ class TakuNetModel:
                        strides=self.model_params["stages_block"]["downsampler"]["strides"], 
                        padding='same')(x)
         
+        x = self._se_block(x, ratio=8)
+        
         return layers.LayerNormalization()(x)
     
     
@@ -173,6 +182,8 @@ class TakuNetModel:
         x = inputs
         for i in range(self.model_params["stages_block"]["taku_block"]["taku_block_number"]):
             x = self._taku_block(inputs=x, taku_block_number=i, stage_number=curr_stage_number)
+
+        x = layers.Add()([x, inputs])
         concat = layers.Concatenate()([inputs, x])
         return self._downsampler_block(inputs=concat, curr_stage_number=curr_stage_number)
     
@@ -210,6 +221,9 @@ class TakuNetModel:
         return layers.Dense(self.model_params["refiner_block"]["num_output_classes"], 
                             activation='softmax',
                             kernel_regularizer=None)(x)
+    
+
+
     
 
 
@@ -497,14 +511,12 @@ class TakuNetModel:
                                                             smart_factor=0.5,
                                                             smart_patience=8,
                                                             smart_min_delta=4e-2,
-                                                            smart_min_lr=2.5e-4,
+                                                            smart_min_lr=5e-4,
                                                             smart_start_epoch=15,
                                                             verbose=True)
         
         adjust_dropout = AdjustDropoutCallback(model_instance=self,
                                                overfitting_threshold=self.train_params["overfitting"],
-                                               factor=self.train_params['incrementFactor'],
-                                               max_rate=self.train_params["max_dropout"],
                                                cooldown=3,
                                                start_dropout_epoch=15)
 
@@ -659,6 +671,7 @@ class AdaptiveDropout(tf.keras.layers.Layer):
         super().__init__(**kwargs)
         self.initial_rate = initial_rate
         self.rate = tf.Variable(initial_value=initial_rate, trainable=False, dtype=tf.float32)
+        self.addtion:float = 0.0
 
     def call(self, inputs, training=False):
         """
@@ -689,13 +702,11 @@ class AdaptiveDropout(tf.keras.layers.Layer):
 
 
 class AdjustDropoutCallback(tf.keras.callbacks.Callback):
-    def __init__(self, model_instance:TakuNetModel, overfitting_threshold:float=0.1, factor:float=1.2, max_rate:float=0.5,
+    def __init__(self, model_instance:TakuNetModel, overfitting_threshold:float=0.1,
                  cooldown:int=3, start_dropout_epoch:int=15):
         super().__init__()
         self.model_instance = model_instance
         self.overfitting_threshold = overfitting_threshold
-        self.factor = factor
-        self.max_rate = max_rate
         self.cooldown = cooldown
         self.start_dropout_epoch = start_dropout_epoch
         self.cooldown_counter = 0
@@ -734,27 +745,36 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
     def _initialize_dropout_rates(self):
         dropout_layers: List[AdaptiveDropout] = []
 
-        if self.model_instance.adaptive_dropout_stem is not None:
+        if isinstance(self.model_instance.adaptive_dropout_stem, AdaptiveDropout) :
             dropout_layers.append(self.model_instance.adaptive_dropout_stem)
 
         if self.model_instance.adaptive_dropout_taku is not None:
-            dropout_layers.extend([d for d in self.model_instance.adaptive_dropout_taku if d is not None])
+            dropout_layers.extend([d for d in self.model_instance.adaptive_dropout_taku if isinstance(d, AdaptiveDropout)])
 
         if self.model_instance.adaptive_dropout_refiner is not None:
-            dropout_layers.extend([d for d in self.model_instance.adaptive_dropout_refiner if d is not None])
+            dropout_layers.extend([d for d in self.model_instance.adaptive_dropout_refiner if isinstance(d, AdaptiveDropout)])
 
         for layer in dropout_layers:
             if "stem" in layer.name:
-                initial_rate = 0.05
+                initial_rate = 0.03
+                layer.addtion = 0.03
+                layer.max_rate = 0.15
             elif "taku" in layer.name:
                 initial_rate = 0.05
+                layer.addtion = 0.05
+                layer.max_rate = 0.4
             elif "refiner" in layer.name:
                 initial_rate = 0.1
+                layer.addtion = 0.1
+                layer.max_rate = 0.4
             else:
                 initial_rate = 0.05
+                layer.addtion = 0.05
+                layer.max_rate = 0.3
 
             layer.rate.assign(initial_rate)
-            print(f"🔧 {layer.name}: initialized dropout rate to {initial_rate:.3f}")
+            print(f"🔧 {layer.name}: initialized dropout rate to {initial_rate:.3f} (max {layer.max_rate:.3f})")
+
 
 
     def _increase_one_dropout(self):
@@ -775,7 +795,7 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
 
         chosen_layer:AdaptiveDropout = random.choice(dropout_layers)
         old_rate = float(chosen_layer.rate.numpy())
-        new_rate = max(0.05, min(old_rate + self.factor, self.max_rate)) 
+        new_rate = max(0.05, min(old_rate + chosen_layer.addtion, chosen_layer.max_rate)) 
         chosen_layer.rate.assign(new_rate)
         print(f"🔧 {chosen_layer.name}: dropout rate increased from {old_rate:.3f} to {new_rate:.3f}")
 
