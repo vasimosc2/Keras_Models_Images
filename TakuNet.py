@@ -538,7 +538,7 @@ class TakuNetModel:
                 callbacks = [midway_callback, early_stopping_acc, reduce_lr, checkpoint, adjust_dropout]
             )
 
-            self.results.epochs_trained = self.epochs + len(history_extra.history['loss'])
+            self.results.epochs_trained = alreadyUsedEpochs + len(history_extra.history['loss'])
 
             best_test_acc = max(history_extra.history['val_accuracy'])
             self.results.test_accuracy = best_test_acc
