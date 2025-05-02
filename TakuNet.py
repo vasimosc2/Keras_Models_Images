@@ -662,12 +662,22 @@ class AdaptiveDropout(tf.keras.layers.Layer):
 
     def call(self, inputs, training=False):
         if training:
-            batch_size = tf.shape(inputs)[0]
-            channels = tf.shape(inputs)[-1]
-            noise_shape = (batch_size, 1, 1, channels)  # (B, 1, 1, C)
+            input_shape = tf.shape(inputs)
+            input_rank = inputs.shape.rank  # static rank if possible
+
+            if input_rank == 4:
+                # (batch, height, width, channels) -> Spatial Dropout
+                noise_shape = (input_shape[0], 1, 1, input_shape[-1])
+            elif input_rank == 2:
+                # (batch, features) -> Normal Dropout
+                noise_shape = (input_shape[0], input_shape[1])
+            else:
+                raise ValueError(f"Unsupported input rank {input_rank} for AdaptiveDropout")
+
             return tf.nn.dropout(inputs, rate=self.rate, noise_shape=noise_shape)
         else:
             return inputs
+
 
 
 
