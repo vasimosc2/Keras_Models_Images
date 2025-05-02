@@ -483,7 +483,7 @@ class TakuNetModel:
                                       factor=self.train_params["learning_factor"], 
                                       patience=self.train_params["learning_rate_patience"], 
                                       verbose=1,
-                                      min_lr=5e-4)
+                                      min_lr=1.25e-4)
         
         midway_callback = MidwayStopCallback(total_epochs=self.train_params["num_epochs"], 
                                              divider=self.train_params["divider"], 
@@ -498,8 +498,7 @@ class TakuNetModel:
                                                factor=self.train_params['incrementFactor'],
                                                max_rate=self.train_params["max_dropout"],
                                                cooldown=3,
-                                               total_epochs=self.train_params["num_epochs"],
-                                               divider=self.train_params["divider"])
+                                               start_dropout_epoch=15)
 
         # **Train Model with Timing**
         start_time = time.time()
@@ -646,14 +645,13 @@ class AdaptiveDropout(tf.keras.layers.Layer):
 
 class AdjustDropoutCallback(tf.keras.callbacks.Callback):
     def __init__(self, model_instance:TakuNetModel, overfitting_threshold:float=0.1, factor:float=1.2, max_rate:float=0.5,
-                 cooldown:int=3, total_epochs:int=50, divider:int=5, start_dropout_epoch:int=15):
+                 cooldown:int=3, start_dropout_epoch:int=15):
         super().__init__()
         self.model_instance = model_instance
         self.overfitting_threshold = overfitting_threshold
         self.factor = factor
         self.max_rate = max_rate
         self.cooldown = cooldown
-        self.apply_after_epoch = total_epochs // divider
         self.start_dropout_epoch = start_dropout_epoch
         self.cooldown_counter = 0
         self.dropout_initialized = False
@@ -733,7 +731,7 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
         chosen_layer:AdaptiveDropout = random.choice(dropout_layers)
         new_rate = max(0.05, min(self.factor + float(chosen_layer.rate.numpy()), self.max_rate))
         chosen_layer.rate.assign(new_rate)
-        print(f"🔧 {chosen_layer.name}: dropout rate increased to {new_rate:.3f}")
+        print(f"🔧 {chosen_layer.name}: dropout rate increased from {float(chosen_layer.rate.numpy()):.3f} to {new_rate:.3f}")
 
 
 
