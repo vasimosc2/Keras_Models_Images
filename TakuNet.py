@@ -661,6 +661,12 @@ class AdaptiveDropout(tf.keras.layers.Layer):
         self.rate = tf.Variable(initial_value=initial_rate, trainable=False, dtype=tf.float32)
 
     def call(self, inputs, training=False):
+        """
+
+        Use noise to emulate the SpatialDropout2D 
+        Use None to have the original Dropout
+
+        """
         if training:
             input_shape = tf.shape(inputs)
             input_rank = inputs.shape.rank  # static rank if possible
@@ -674,7 +680,7 @@ class AdaptiveDropout(tf.keras.layers.Layer):
             else:
                 raise ValueError(f"Unsupported input rank {input_rank} for AdaptiveDropout")
 
-            return tf.nn.dropout(inputs, rate=self.rate, noise_shape=noise_shape)
+            return tf.nn.dropout(inputs, rate=self.rate, noise_shape=None)
         else:
             return inputs
 
@@ -795,13 +801,13 @@ class MidwayStopCallback(Callback):
 
 class SmartLearningRateScheduler(tf.keras.callbacks.Callback):
     def __init__(self, 
-                 manual_threshold=0.0020, 
+                 manual_threshold=2e-3, 
                  manual_factor=0.5, 
                  manual_start_epoch=10,
                  smart_factor=0.5,
                  smart_patience=8,
                  smart_min_delta=4e-2,
-                 smart_min_lr=2.5e-4,
+                 smart_min_lr=5e-4,
                  smart_start_epoch=15,
                  verbose=True):
         """
