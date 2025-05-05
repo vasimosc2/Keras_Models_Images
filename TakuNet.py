@@ -710,7 +710,7 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
         if not self.dropout_initialized and gap > self.overfitting_threshold:
             # 🚀 First overfitting detected — initialize dropouts now
             print(f"\n🚀 Initializing Dropout rates at Epoch {epoch} due to overfitting!")
-            self.model_instance._initialize_dropout_rates()
+            self._initialize_dropout_rates()
             self.dropout_initialized = True
             self.cooldown_counter = self.cooldown  # start cooldown
             return
