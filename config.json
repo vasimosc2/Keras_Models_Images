@@ -1,7 +1,7 @@
 {
     "model_search_space":{
         "stem_block":{
-            "filters": [32,64,96],
+            "filters": [32, 64, 128],
             "Conv_kernel": [3, 5],
             "Conv_strides": [1, 2],
             "DWConv_kernel": [3, 5],
