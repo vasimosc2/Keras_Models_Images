@@ -722,7 +722,7 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
 
             if gap > self.overfitting_threshold:
                 print(f"\n⚠️ Overfitting detected! Train Acc - Val Acc = {gap:.3f} > {self.overfitting_threshold}")
-                self.model_instance._increase_one_dropout()
+                self._increase_one_dropout()
                 self.cooldown_counter = self.cooldown
 
 

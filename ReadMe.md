@@ -44,7 +44,7 @@ This JSON file dictates the hyperparameters and constraints for training, ensuri
                       Too few epochs → The model might underfit (not learn enough patterns).
                       Too many epochs → The model might overfit (memorizing the training data instead of generalizing well to new data).
 
-- **`batch_size`** - Batch size refers to the number of training samples processed before the model updates its weights.
+- **`batch_size`** - Batch size refers to the number of training images processed before the model updates its weights.
                      Smaller batch sizes → More frequent updates, more generalization, but slower training.
                      Larger batch sizes → Faster training, but may lead to less generalization.
 
