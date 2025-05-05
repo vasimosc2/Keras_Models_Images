@@ -28,6 +28,7 @@ class EvolutionarySearch:
     def _load_data(self,augmentation_technique: Union[Dict, bool]):
         """Loads the dataset using the get_dataset function from data_processing.py"""
         num_classes = self.config["model_search_space"]["refiner_block"]["num_output_classes"]
+        print(num_classes)
         return get_dataset(output_classes=num_classes, augementation_technique=augmentation_technique)
     
     def _initialize_population(self):
