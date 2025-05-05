@@ -23,7 +23,11 @@ class EvolutionarySearch:
         self.crossover_rate = crossover_rate
         self.population: List[TakuNetModel] = []
         self.embeedingList:Union[List[np.ndarray],None ] = None
-        self.x_train, self.y_train, self.x_test, self.y_test = self._load_data(augmentation_technique=augmentation_techinque)
+        self.x_train = None
+        self.y_train = None
+        self.x_test = None
+        self.y_test = None
+        self.augmentaion = augmentation_techinque
     
     def _load_data(self,augmentation_technique: Union[Dict, bool]):
         """Loads the dataset using the get_dataset function from data_processing.py"""
@@ -31,7 +35,7 @@ class EvolutionarySearch:
 
         return get_dataset(output_classes=num_classes, augementation_technique=augmentation_technique)
     
-    def _initialize_population(self):
+    def _initialize_population(self)->None:
         """ Creates the initial population of models, 
             skipping untrainable ones,
             Train trainable ones!"""
@@ -55,10 +59,7 @@ class EvolutionarySearch:
                                  y_test=None,
                                  folder="NAS")
             self.embeedingList.append(model.embedded)
-            model.train(x_train=self.x_train,
-                        y_train=self.y_train,
-                        x_test=self.x_test,
-                        y_test=self.y_test)
+
 
             if model.results.train_accuracy is not None:
                 self.population.append(model)
@@ -69,6 +70,15 @@ class EvolutionarySearch:
 
         if created < self.population_size:
             print(f"⚠️ Only {created}/{self.population_size} models were valid after {attempts} attempts.")
+
+        self.x_train, self.y_train, self.x_test, self.y_test = get_dataset( output_classes= self.config["model_search_space"]["refiner_block"]["num_output_classes"], 
+                                                augementation_technique=self.augmentaion)
+        for model in self.population:
+            model.train(x_train=self.x_train,
+            y_train=self.y_train,
+            x_test=self.x_test,
+            y_test=self.y_test)
+
             
     
     def _build_ranknet(self):
