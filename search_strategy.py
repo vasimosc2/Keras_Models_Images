@@ -120,25 +120,29 @@ class EvolutionarySearch:
             # If 3 models left at the end, do a 3-way match
             if i + 2 == len(shuffled):
                 trio = shuffled[i:i+3]
+                print(f"📌 Comparing {trio[i].model_name}, {trio[i+1].model_name}, and {trio[i+2].model_name} ....\n")
                 best:TakuNetModel = self._ranknet_best(trio)
-
-                if best.is_trainable is False:
-                    best.train(x_train=self.x_train,
-                               y_train=self.y_train,
-                               x_test=self.x_test,
-                               y_test=self.y_test)
+                print(f"The winner is {best.model_name} 🏆\n")
+                if best.is_trainable is True:
+                    if best.is_trained is False:
+                        best.train( x_train=self.x_train,
+                                    y_train=self.y_train,
+                                    x_test=self.x_test,
+                                    y_test=self.y_test)
 
                 selected_parents.append(best)
                 break
             else:
                 model1, model2 = shuffled[i], shuffled[i+1]
+                print(f"📌 Comparing {model1.model_name} with {model2.model_name}....\n")
                 best = self._ranknet_better(model1, model2)
-                
-                if best.is_trainable is False:
-                    best.train(x_train=self.x_train,
-                               y_train=self.y_train,
-                               x_test=self.x_test,
-                               y_test=self.y_test)
+                print(f"The winner is {best.model_name} 🏆\n")
+                if best.is_trainable is True:
+                    if best.is_trained is False:
+                        best.train( x_train=self.x_train,
+                                    y_train=self.y_train,
+                                    x_test=self.x_test,
+                                    y_test=self.y_test)
 
                 selected_parents.append(best)
                 i += 2

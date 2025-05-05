@@ -432,7 +432,7 @@ class TakuNetModel:
         if self.results.ModelRam * 1024 > ram_limit  :
             print(f"🚨 Model not trainable: Flash usage ({ self.results.ModelRam:.2f} KB) exceeds limit ({ram_limit / 1024:.2f} KB). \n")
             return False
-        
+        print(f"✅ Model: {self.model_name} is Trainable as it fits inside Arduino\n")
         return True
     
     
