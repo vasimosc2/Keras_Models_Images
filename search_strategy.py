@@ -100,7 +100,7 @@ class EvolutionarySearch:
                 model_i = self.population[i]
                 model_j = self.population[j]
 
-                pairs.append((model_i.embedded, model_j.embedded))
+                pairs.append(( simple_architecture_embedding(model_i.model_params),  simple_architecture_embedding(model_j.model_params)))
                 better = 1 if self._fitness(model_i) >= self._fitness(model_j) else 0
                 labels.append(better)
 

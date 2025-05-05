@@ -534,8 +534,8 @@ class TakuNetModel:
         total_epochs_trained = len(history.history['loss'])
 
         # **Check if we should continue training**
-        if best_test_acc > 0.50:
-            print(f"\n🚀 Best test accuracy ({best_test_acc:.4f}) exceeded 50%. Continuing training for 100 more epochs.\n")
+        if best_test_acc > 0.60 and total_epochs_trained == self.train_params["num_epochs"]:
+            print(f"\n🚀 Best test accuracy ({best_test_acc:.4f}) exceeded 60%. Continuing training for 100 more epochs.\n")
             
             already_used_epochs = self.epochs if self.epochs else self.train_params["num_epochs"]
             
@@ -731,21 +731,19 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
 
         if isinstance(self.model_instance.adaptive_dropout_stem, AdaptiveDropout) :
             dropout_layers.append(self.model_instance.adaptive_dropout_stem)
-
         if self.model_instance.adaptive_dropout_taku is not None:
             dropout_layers.extend([d for d in self.model_instance.adaptive_dropout_taku if isinstance(d, AdaptiveDropout)])
-
         if self.model_instance.adaptive_dropout_refiner is not None:
             dropout_layers.extend([d for d in self.model_instance.adaptive_dropout_refiner if isinstance(d, AdaptiveDropout)])
 
         for layer in dropout_layers:
             if "stem" in layer.name:
                 initial_rate = 0.02
-                layer.addtion = 0.02
+                layer.addtion = 0.05
                 layer.max_rate = 0.15
             elif "taku" in layer.name:
                 initial_rate = 0.03
-                layer.addtion = 0.03
+                layer.addtion = 0.05
                 layer.max_rate = 0.4
             elif "refiner1" in layer.name:
                 initial_rate = 0.05
@@ -757,7 +755,7 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
                 layer.max_rate = 0.5
             else:
                 initial_rate = 0.05
-                layer.addtion = 0.03
+                layer.addtion = 0.05
                 layer.max_rate = 0.3
 
             layer.rate.assign(initial_rate)
@@ -767,21 +765,24 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
 
     def _increase_one_dropout(self):
         dropout_layers:List[AdaptiveDropout] = []
-
+        weights = []
         if self.model_instance.adaptive_dropout_stem is not None:
             dropout_layers.append(self.model_instance.adaptive_dropout_stem)
+            weights.append(1)
 
         if self.model_instance.adaptive_dropout_taku is not None:
             dropout_layers.extend([d for d in self.model_instance.adaptive_dropout_taku if d is not None])
+            weights.append(1)
 
         if self.model_instance.adaptive_dropout_refiner is not None:
             dropout_layers.extend([d for d in self.model_instance.adaptive_dropout_refiner if d is not None])
+            weights.append(4)
 
         if not dropout_layers:
             print("⚠️ No AdaptiveDropout layers found to adjust.")
             return
 
-        chosen_layer:AdaptiveDropout = random.choice(dropout_layers)
+        chosen_layer:AdaptiveDropout = random.choice(dropout_layers, weights=weights, k=1 )
         old_rate = float(chosen_layer.rate.numpy())
         new_rate = max(0.05, min(old_rate + chosen_layer.addtion, chosen_layer.max_rate)) 
         chosen_layer.rate.assign(new_rate)
