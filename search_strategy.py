@@ -45,7 +45,7 @@ class EvolutionarySearch:
         print("🚀 Initializing population...")
         created = 0
         attempts = 0
-        max_attempts = self.population_size * 10  # Prevent infinite loop in rare cases
+        max_attempts = self.population_size * 30  # Prevent infinite loop in rare cases
 
         while created < self.population_size and attempts < max_attempts:
             attempts += 1
@@ -296,7 +296,7 @@ class EvolutionarySearch:
                             gc.collect()
                             mutant_params = self._mutate(mutant_params)
                     new_population.append(child)
-                    
+
             tf.keras.backend.clear_session()
             gc.collect()
 
