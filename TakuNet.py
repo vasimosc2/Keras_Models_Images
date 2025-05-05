@@ -3,7 +3,7 @@ import time
 import os
 import tensorflow as tf
 from tensorflow.keras import layers, Model
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 from sklearn.metrics import precision_score, recall_score, f1_score
 from tensorflow.keras.callbacks import Callback, EarlyStopping, ModelCheckpoint
 from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop
@@ -41,7 +41,7 @@ class TakuNetModel:
         self.y_test: Optional[tf.Tensor] = y_test
         
         self.is_trained:bool = False
-        self.embedded: np.ndarray | None = simple_architecture_embedding(model_params) if model_params else None
+        self.embedded: Union[np.ndarray,None] = simple_architecture_embedding(model_params) if model_params else None
         self.folderName:str = folder if folder is not None else "."
         self.epochs:int = None
         self.learningRate:Optional[float] = 0.0005 if given_model else None

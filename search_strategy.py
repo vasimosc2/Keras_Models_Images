@@ -22,7 +22,7 @@ class EvolutionarySearch:
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
         self.population: List[TakuNetModel] = []
-        self.embeedingList:List[np.ndarray] | None = None
+        self.embeedingList:Union[List[np.ndarray],None ] = None
         self.x_train, self.y_train, self.x_test, self.y_test = self._load_data(augmentation_technique=augmentation_techinque)
     
     def _load_data(self,augmentation_technique: Union[Dict, bool]):
@@ -98,7 +98,7 @@ class EvolutionarySearch:
         labels = np.array(labels)
         return pairs, labels
 
-    def _fitness(self, model: TakuNetModel) -> float | None:
+    def _fitness(self, model: TakuNetModel) ->Union[float,None]:
         return model.results.test_accuracy if model.results.test_accuracy else None
     
     def _select_parents(self) -> List[TakuNetModel]:
