@@ -23,7 +23,7 @@ class EvolutionarySearch:
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
         self.population: List[TakuNetModel] = []
-        self.embeedingList:Union[List[np.ndarray],None ] = None
+        self.embeedingList:Union[List[np.ndarray],None ] = []
         self.x_train = None
         self.y_train = None
         self.x_test = None
