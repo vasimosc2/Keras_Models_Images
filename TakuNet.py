@@ -45,7 +45,7 @@ class TakuNetModel:
         self.epochs:int = None
         self.learningRate:Optional[float] = 0.0005 if given_model else None
         self.results: TrainingResults = TrainingResults()
-        self.test:bool = True
+        self.test:bool = False
         self.is_trainable: bool = self.check_trainability() if self.test is False else True
 
   
