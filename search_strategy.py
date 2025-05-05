@@ -5,6 +5,7 @@ import json
 from typing import Iterator, List, Dict, Tuple, Union
 
 import numpy as np
+import tensorflow as tf
 from SurrogateComparisson.Embedding import simple_architecture_embedding
 from TakuNet import TakuNetModel
 from data_processing import get_dataset
@@ -204,6 +205,9 @@ class EvolutionarySearch:
                 return child
             else:
                 print(f"❌ Crossover {model_name} failed due to memory limits. Retrying...")
+                del child
+                tf.keras.backend.clear_session()
+                gc.collect()
                 child_params = self._crossover(child_params)
     
 
@@ -287,9 +291,14 @@ class EvolutionarySearch:
                             break
                         else:
                             print(f"❌ Mutation {model_name} failed due to memory limits. Retrying...")
+                            del mutant
+                            tf.keras.backend.clear_session()
+                            gc.collect()
                             mutant_params = self._mutate(mutant_params)
                     new_population.append(child)
-
+                    
+            tf.keras.backend.clear_session()
+            gc.collect()
 
             # update the population
             self.population = new_population
