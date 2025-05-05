@@ -1,3 +1,4 @@
+import gc
 import random
 import copy
 import json
@@ -54,21 +55,20 @@ class EvolutionarySearch:
                                  input_shape=(32, 32, 3), 
                                  model_params=model_params, 
                                  train_params=train_params, 
-                                 x_train=None, 
-                                 y_train=None, 
-                                 x_test=None, 
-                                 y_test=None,
                                  folder="NAS")
             
-            self.embeedingList.append(simple_architecture_embedding(model_params))
-
-
             if model.check_trainability():
                 self.population.append(model)
+                self.embeedingList.append(simple_architecture_embedding(model_params))
                 created += 1
                 print(f"✅ Added model {model.model_name} to population (total: {created})")
             else:
                 print(f"❌ Skipping model {model.model_name} due to memory limits")
+                del model
+
+        gc.collect()
+        print("🧹 Garbage collection triggered after population initialization loop.")
+
 
         if created < self.population_size:
             print(f"⚠️ Only {created}/{self.population_size} models were valid after {attempts} attempts.")
