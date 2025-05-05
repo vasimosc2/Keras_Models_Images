@@ -41,7 +41,6 @@ class TakuNetModel:
         self.y_test: Optional[tf.Tensor] = y_test
         
         self.is_trained:bool = False
-        self.embedded: Union[np.ndarray,None] = simple_architecture_embedding(model_params) if model_params else None
         self.folderName:str = folder if folder is not None else "."
         self.epochs:int = None
         self.learningRate:Optional[float] = 0.0005 if given_model else None

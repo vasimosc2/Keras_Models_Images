@@ -4,6 +4,7 @@ import json
 from typing import Iterator, List, Dict, Tuple, Union
 
 import numpy as np
+from SurrogateComparisson.Embedding import simple_architecture_embedding
 from TakuNet import TakuNetModel
 from data_processing import get_dataset
 import time
@@ -58,7 +59,8 @@ class EvolutionarySearch:
                                  x_test=None, 
                                  y_test=None,
                                  folder="NAS")
-            self.embeedingList.append(model.embedded)
+            
+            self.embeedingList.append(simple_architecture_embedding(model_params))
 
 
             if model.results.train_accuracy is not None:
