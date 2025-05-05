@@ -485,7 +485,7 @@ class TakuNetModel:
 
         midway_callback = MidwayStopCallback(total_epochs=self.train_params["num_epochs"], 
                                              divider=self.train_params["divider"], 
-                                             threshold=0.30)
+                                             threshold=15e-2) # 15% 
         
         learning_rate_callback = SmartLearningRateScheduler(manual_threshold=2e-3,
                                                             manual_factor=0.5,

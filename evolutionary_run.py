@@ -31,7 +31,7 @@ CONFIG_PATH = "config.json"
 # Set evolutionary search parameters
 
 POPULATION_SIZE:int = 4  # Number of models per generation
-TIME:float = 3.0  # Number of hours to run
+TIME:float = 2.0  # Number of hours to run
 MUTATION_RATE:float = 0.2  # Probability of mutation per model
 CROSSOVER_RATE:float = 0.3  # Probability of crossover between two models
 

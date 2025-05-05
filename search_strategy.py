@@ -120,7 +120,7 @@ class EvolutionarySearch:
             # If 3 models left at the end, do a 3-way match
             if i + 2 == len(shuffled):
                 trio = shuffled[i:i+3]
-                print(f"📌 Comparing {trio[i].model_name}, {trio[i+1].model_name}, and {trio[i+2].model_name} ....\n")
+                print(f"📌 Comparing {trio[0].model_name}, {trio[1].model_name}, and {trio[2].model_name} ....\n")
                 best:TakuNetModel = self._ranknet_best(trio)
                 print(f"The winner is {best.model_name} 🏆\n")
                 if best.is_trainable is True:
