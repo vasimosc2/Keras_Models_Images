@@ -40,11 +40,15 @@ os.makedirs(f'{Folder}/saved_models', exist_ok=True)
 os.makedirs(f'{Folder}/results', exist_ok=True)
 
 
-augmentation_techique = False
+default_augementaion_technique ={ "apply_standard":False,
+                            "apply_color":False,
+                            "apply_geometric":False,
+                            "apply_mixup": False,
+                            "apply_cutmix": False}
 
 # Initialize evolutionary search
 evo_search = EvolutionarySearch(config_path=CONFIG_PATH, population_size=POPULATION_SIZE, time=TIME,
-                                mutation_rate=MUTATION_RATE, crossover_rate=CROSSOVER_RATE, augmentation_techinque=False)
+                                mutation_rate=MUTATION_RATE, crossover_rate=CROSSOVER_RATE, augmentation_techinque=default_augementaion_technique)
 
 # Run evolutionary search
 best_models_data = []
