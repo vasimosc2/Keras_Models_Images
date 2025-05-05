@@ -28,7 +28,7 @@ class EvolutionarySearch:
     def _load_data(self,augmentation_technique: Union[Dict, bool]):
         """Loads the dataset using the get_dataset function from data_processing.py"""
         num_classes = self.config["model_search_space"]["refiner_block"]["num_output_classes"]
-        print(num_classes)
+
         return get_dataset(output_classes=num_classes, augementation_technique=augmentation_technique)
     
     def _initialize_population(self):
@@ -49,13 +49,16 @@ class EvolutionarySearch:
                                  input_shape=(32, 32, 3), 
                                  model_params=model_params, 
                                  train_params=train_params, 
-                                 x_train=self.x_train, 
-                                 y_train=self.y_train, 
-                                 x_test=self.x_test, 
-                                 y_test=self.y_test,
+                                 x_train=None, 
+                                 y_train=None, 
+                                 x_test=None, 
+                                 y_test=None,
                                  folder="NAS")
             self.embeedingList.append(model.embedded)
-            model.train()
+            model.train(x_train=self.x_train,
+                        y_train=self.y_train,
+                        x_test=self.x_test,
+                        y_test=self.y_test)
 
             if model.results.train_accuracy is not None:
                 self.population.append(model)
@@ -107,7 +110,10 @@ class EvolutionarySearch:
                 best:TakuNetModel = self._ranknet_best(trio)
 
                 if best.is_trainable is False:
-                    best.train()
+                    best.train(x_train=self.x_train,
+                               y_train=self.y_train,
+                               x_test=self.x_test,
+                               y_test=self.y_test)
 
                 selected_parents.append(best)
                 break
@@ -116,7 +122,10 @@ class EvolutionarySearch:
                 best = self._ranknet_better(model1, model2)
                 
                 if best.is_trainable is False:
-                    best.train()
+                    best.train(x_train=self.x_train,
+                               y_train=self.y_train,
+                               x_test=self.x_test,
+                               y_test=self.y_test)
 
                 selected_parents.append(best)
                 i += 2
@@ -174,10 +183,10 @@ class EvolutionarySearch:
                                  input_shape=(32, 32, 3), 
                                  model_params=child_params, 
                                  train_params=train_params, 
-                                 x_train=self.x_train, 
-                                 y_train=self.y_train, 
-                                 x_test=self.x_test, 
-                                 y_test=self.y_test,
+                                 x_train=None, 
+                                 y_train=None, 
+                                 x_test=None, 
+                                 y_test=None,
                                  folder="NAS")
             if child.is_trainable:
                 return child
@@ -256,10 +265,10 @@ class EvolutionarySearch:
                                               input_shape=(32, 32, 3),
                                               model_params=mutant_params,
                                               train_params=train_params,
-                                              x_train=self.x_train,
-                                              y_train=self.y_train,
-                                              x_test=self.x_test,
-                                              y_test=self.y_test,
+                                              x_train=None,
+                                              y_train=None,
+                                              x_test=None,
+                                              y_test=None,
                                               folder="NAS")
                         if mutant.is_trainable:
                             child:TakuNetModel = mutant
