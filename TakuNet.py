@@ -10,7 +10,7 @@ from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop
 from utils import memoryEstimator
 import math
 import random
-
+from SurrogateComparisson.Embedding import simple_architecture_embedding
 class TakuNetModel:
     def __init__(self, 
                 model_name:str, 
@@ -41,6 +41,7 @@ class TakuNetModel:
         self.y_test: Optional[tf.Tensor] = y_test
         
         self.is_trained:bool = False
+        self.embedded: np.ndarray | None = simple_architecture_embedding(model_params) if model_params else None
         self.folderName:str = folder if folder is not None else "."
         self.epochs:int = None
         self.learningRate:Optional[float] = 0.0005 if given_model else None

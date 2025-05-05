@@ -43,7 +43,8 @@ os.makedirs(f'{Folder}/results', exist_ok=True)
 augmentation_techique = False
 
 # Initialize evolutionary search
-evo_search = EvolutionarySearch(config_path=CONFIG_PATH, population_size=POPULATION_SIZE, time=TIME, mutation_rate=MUTATION_RATE, crossover_rate=CROSSOVER_RATE, augmentation_techinque=False)
+evo_search = EvolutionarySearch(config_path=CONFIG_PATH, population_size=POPULATION_SIZE, time=TIME,
+                                mutation_rate=MUTATION_RATE, crossover_rate=CROSSOVER_RATE, augmentation_techinque=False)
 
 # Run evolutionary search
 best_models_data = []
@@ -63,6 +64,8 @@ for generation, best_model in enumerate(evo_search.evolve(), start=1):
         "Recall": best_model.results.recall,
         "F1 Score": best_model.results.f1_score,
         "Estimated Max RAM Usage (KB)": best_model.results.estimatedMaxRam,
+        "Accurate Max RAM Usage (KB)": best_model.results.AccurateMaxRam,
+        "Model RAM (KB)": best_model.results.ModelRam,
         "Estimated Flash Memory (KB)": best_model.results.estimatedFlash,        
         "TFlite size(KB)": best_model.results.tflite_size,
         "Flop Number": best_model.results.flops,
