@@ -63,7 +63,7 @@ class EvolutionarySearch:
             self.embeedingList.append(simple_architecture_embedding(model_params))
 
 
-            if model.results.train_accuracy is not None:
+            if model.check_trainability():
                 self.population.append(model)
                 created += 1
                 print(f"✅ Added model {model.model_name} to population (total: {created})")
