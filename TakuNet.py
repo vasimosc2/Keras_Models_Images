@@ -782,7 +782,7 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
             print("⚠️ No AdaptiveDropout layers found to adjust.")
             return
 
-        chosen_layer:AdaptiveDropout = random.choice(dropout_layers, weights=weights, k=1 )
+        chosen_layer:AdaptiveDropout = random.choices(dropout_layers, weights=weights, k=1)[0]
         old_rate = float(chosen_layer.rate.numpy())
         new_rate = max(0.05, min(old_rate + chosen_layer.addtion, chosen_layer.max_rate)) 
         chosen_layer.rate.assign(new_rate)

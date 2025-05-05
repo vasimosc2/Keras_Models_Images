@@ -213,8 +213,8 @@ class EvolutionarySearch:
 
     def _ranknet_better(self, model1: TakuNetModel, model2: TakuNetModel) -> TakuNetModel:
         """Predict which model is better using RankNet."""
-        embed1 = np.expand_dims(model1.embedded, axis=0)
-        embed2 = np.expand_dims(model2.embedded, axis=0)
+        embed1 = np.expand_dims(simple_architecture_embedding(model1.model_params), axis=0)
+        embed2 = np.expand_dims(simple_architecture_embedding(model2.model_params), axis=0)
         pred = self.ranknet.predict([embed1, embed2], verbose=0)
         return model1 if pred[0][0] > 0.5 else model2
 
@@ -225,8 +225,8 @@ class EvolutionarySearch:
         for i in range(len(models)):
             for j in range(len(models)):
                 if i != j:
-                    embed_i = np.expand_dims(models[i].embedded, axis=0)
-                    embed_j = np.expand_dims(models[j].embedded, axis=0)
+                    embed_i = np.expand_dims(simple_architecture_embedding(models[i].model_params), axis=0)
+                    embed_j = np.expand_dims(simple_architecture_embedding(models[j].model_params), axis=0)
                     pred = self.ranknet.predict([embed_i, embed_j], verbose=0)
                     if pred[0][0] > 0.5:
                         win_counts[i] += 1
