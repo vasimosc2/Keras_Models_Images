@@ -499,12 +499,15 @@ class TakuNetModel:
         
         adjust_dropout = AdjustDropoutCallback(model_instance=self,
                                                overfitting_threshold=self.train_params["overfitting"],
-                                               cooldown=3,
-                                               start_dropout_epoch=20)
+                                               cooldown=3)
+        
+        performanceCallback = PerformanceStopping()
 
         # **Train Model with Timing**
         start_time = time.time()
         print(f"✅Start training of {self.model_name}\n")
+        print(f"✅Accurate RAM Memory: {self.results.AccurateMaxRam} KB\n")
+        print(f"✅Flash Memory Ram: {self.results.estimatedFlash} KB\n")
 
         history = self.model.fit(
             x_train, y_train,
@@ -512,7 +515,7 @@ class TakuNetModel:
             batch_size=self.train_params["batch_size"],
             validation_data=(x_test, y_test),
             verbose=2,
-            callbacks=[midway_callback, early_stopping_acc, checkpoint, adjust_dropout, learning_rate_callback]
+            callbacks=[midway_callback, early_stopping_acc, checkpoint, adjust_dropout, learning_rate_callback, performanceCallback]
         )
 
         training_time = time.time() - start_time
@@ -544,7 +547,7 @@ class TakuNetModel:
                 batch_size=self.train_params["batch_size"],
                 validation_data=(x_test, y_test),
                 verbose=2,
-                callbacks=[midway_callback, early_stopping_acc, checkpoint, adjust_dropout, learning_rate_callback]
+                callbacks=[midway_callback, early_stopping_acc, checkpoint, adjust_dropout, performanceCallback, learning_rate_callback]
             )
             
             # Update best accuracy after extra training
@@ -587,10 +590,13 @@ class TakuNetModel:
         print(f"📊 Estimated FLOPs: {self.results.flops:,}")
 
         # **Evaluate the TFLite Model**
-        tflite_acc = self._evaluate_tflite_model(x_test=x_test,
-                                                 y_test=y_test)
-        self.results.tflite_accuracy = tflite_acc
-        print(f"Test Accuracy (TFLite): {tflite_acc:.4f}")
+        try:
+            self.results.tflite_accuracy = self._evaluate_tflite_model(x_test=x_test, y_test=y_test)
+        except Exception as e:
+            print(f"❌ TFLite evaluation failed: {e}")
+            self.results.tflite_accuracy = 0.0
+
+        print(f"Test Accuracy (TFLite): {self.results.tflite_accuracy:.4f}")
 
         # **File Size Reporting**
         keras_size_kb = os.path.getsize(checkpoint_path) / 1024
@@ -684,33 +690,15 @@ class AdaptiveDropout(tf.keras.layers.Layer):
 
 
 class AdjustDropoutCallback(tf.keras.callbacks.Callback):
-    def __init__(self, model_instance:TakuNetModel, overfitting_threshold:float=0.1,
-                 cooldown:int=3, start_dropout_epoch:int=15):
+    def __init__(self, model_instance: TakuNetModel, overfitting_threshold: float = 0.1, cooldown: int = 3):
         super().__init__()
         self.model_instance = model_instance
         self.overfitting_threshold = overfitting_threshold
         self.cooldown = cooldown
-        self.start_dropout_epoch = start_dropout_epoch
         self.cooldown_counter = 0
-        self.dropout_initialized = False
+        self.dropout_initialized = False  # No manual start_epoch anymore
 
     def on_epoch_end(self, epoch, logs=None):
-        # 🔵 Step 1: Initialize Dropout after a specific epoch
-        if not self.dropout_initialized and epoch >= self.start_dropout_epoch:
-            print(f"\n🚀 Initializing Dropout rates at Epoch {epoch}")
-            self._initialize_dropout_rates()
-            self.dropout_initialized = True
-
-        # If still warming up for overfitting detection, skip
-        if epoch < self.start_dropout_epoch:
-            return
-
-        # If still in cooldown after last adjustment, skip
-        if self.cooldown_counter > 0:
-            self.cooldown_counter -= 1
-            return
-
-        # 🔵 Step 2: Normal overfitting detection
         train_acc = logs.get('accuracy')
         val_acc = logs.get('val_accuracy')
 
@@ -719,10 +707,24 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
 
         gap = train_acc - val_acc
 
-        if gap > self.overfitting_threshold:
-            print(f"\n⚠️ Overfitting detected! Train Acc - Val Acc = {gap:.3f} > {self.overfitting_threshold}")
-            self._increase_one_dropout()
-            self.cooldown_counter = self.cooldown  # Reset cooldown after adjusting
+        if not self.dropout_initialized and gap > self.overfitting_threshold:
+            # 🚀 First overfitting detected — initialize dropouts now
+            print(f"\n🚀 Initializing Dropout rates at Epoch {epoch} due to overfitting!")
+            self.model_instance._initialize_dropout_rates()
+            self.dropout_initialized = True
+            self.cooldown_counter = self.cooldown  # start cooldown
+            return
+
+        if self.dropout_initialized:
+            if self.cooldown_counter > 0:
+                self.cooldown_counter -= 1
+                return
+
+            if gap > self.overfitting_threshold:
+                print(f"\n⚠️ Overfitting detected! Train Acc - Val Acc = {gap:.3f} > {self.overfitting_threshold}")
+                self.model_instance._increase_one_dropout()
+                self.cooldown_counter = self.cooldown
+
 
     def _initialize_dropout_rates(self):
         dropout_layers: List[AdaptiveDropout] = []
@@ -747,11 +749,11 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
                 layer.max_rate = 0.4
             elif "refiner1" in layer.name:
                 initial_rate = 0.05
-                layer.addtion = 0.03
+                layer.addtion = 0.05
                 layer.max_rate = 0.4
             elif "refiner2" in layer.name:
                 initial_rate = 0.1
-                layer.addtion = 0.03
+                layer.addtion = 0.05
                 layer.max_rate = 0.5
             else:
                 initial_rate = 0.05
@@ -802,6 +804,28 @@ class MidwayStopCallback(Callback):
             print(f"\nMidway Epoch {epoch}: Training Acc = {train_acc}, Validation Acc = {val_acc}")
             if val_acc < self.threshold:  
                 print(f"\n🚨 Stopping early: Training accuracy is below {self.threshold} at epoch {epoch}")
+                self.model.stop_training = True
+
+class PerformanceStopping(tf.keras.callbacks.Callback):
+    def __init__(self, patience=10, min_improvement=0.05):
+        super().__init__()
+        self.patience = patience
+        self.min_improvement = min_improvement
+        self.best_val_acc = 0.0
+        self.wait = 0
+
+    def on_epoch_end(self, epoch, logs=None):
+        current_val_acc = logs.get('val_accuracy')
+        if current_val_acc is None:
+            return
+
+        if current_val_acc > self.best_val_acc * (1 + self.min_improvement):
+            self.best_val_acc = current_val_acc
+            self.wait = 0  # Reset wait
+        else:
+            self.wait += 1
+            if self.wait >= self.patience:
+                print(f"\n🚨 Early stopping: No val_acc improvement >{self.min_improvement*100:.1f}% in {self.patience} epochs.")
                 self.model.stop_training = True
 
 
