@@ -145,8 +145,8 @@ class EvolutionarySearch:
         labels = np.array(labels)
         return pairs, labels
 
-    def _fitness(self, model: TakuNetModel) ->Union[float,None]:
-        return model.results.test_accuracy if model.results.test_accuracy else None
+    def _fitness(self, model: TakuNetModel)-> float:
+        return model.results.test_accuracy if model.results.test_accuracy else -1
     
     def _select_parents(self) -> List[TakuNetModel]:
         """Selects parents using 1v1 tournament style; last 3 form a mini-tournament if population is odd."""
@@ -162,23 +162,29 @@ class EvolutionarySearch:
                 trio = shuffled[i:i+3]
                 print(f"📌 Comparing {trio[0].model_name}, {trio[1].model_name}, and {trio[2].model_name} ....\n")
                 best: TakuNetModel = self._ranknet_best(trio)
+                if best.is_trainable and not best.is_trained:
+                    best.train(
+                        x_train=self.x_train,
+                        y_train=self.y_train,
+                        x_test=self.x_test,
+                        y_test=self.y_test
+                    )
                 i += 3
             else:
                 # Normal case: 2 models
                 duo = shuffled[i:i+2]
                 print(f"📌 Comparing {duo[0].model_name} and {duo[1].model_name} ....\n")
-                best: TakuNetModel = self._ranknet_best(duo)
+                best: TakuNetModel = self._ranknet_best(models=duo)
+                if best.is_trainable and not best.is_trained:
+                    best.train(
+                        x_train=self.x_train,
+                        y_train=self.y_train,
+                        x_test=self.x_test,
+                        y_test=self.y_test
+                    )
                 i += 2
 
             print(f"The winner is {best.model_name} 🏆\n")
-
-            if best.is_trainable and not best.is_trained:
-                best.train(
-                    x_train=self.x_train,
-                    y_train=self.y_train,
-                    x_test=self.x_test,
-                    y_test=self.y_test
-                )
 
             parents.append(best)
 
@@ -251,15 +257,28 @@ class EvolutionarySearch:
                 child_params = self._crossover(child_params)
     
 
-    def _ranknet_better(self, model1: TakuNetModel, model2: TakuNetModel) -> TakuNetModel:
+    def _ranknet_better(self, model1: TakuNetModel, model2: TakuNetModel,
+                        x_train,y_train,x_test,y_test) -> TakuNetModel:
         """Predict which model is better using RankNet."""
         embed1 = np.expand_dims(simple_architecture_embedding(model1.model_params), axis=0)
         embed2 = np.expand_dims(simple_architecture_embedding(model2.model_params), axis=0)
         pred = self.ranknet.predict([embed1, embed2], verbose=0)
-        return model1 if pred[0][0] > 0.5 else model2
+        if pred[0][0]>0.5:
+            model1.train(x_train=x_train,
+                         y_train=y_train,
+                         x_test=x_test,
+                         y_test=y_test)
+            return model1 if self._fitness(model=model1)>self._fitness(model=model2) else model2
+        else:
+            model2.train(x_train=x_train,
+            y_train=y_train,
+            x_test=x_test,
+            y_test=y_test)
+            return model1 if self._fitness(model=model1)>self._fitness(model=model2) else model2
 
     def _ranknet_best(self, models: List[TakuNetModel]) -> TakuNetModel:
-        """Select the best model among 3 competitors based on pairwise wins."""
+        """Select the best model among 3 competitors, training as needed and based on real fitness."""
+
         win_counts = [0] * len(models)
 
         for i in range(len(models)):
@@ -268,11 +287,34 @@ class EvolutionarySearch:
                     embed_i = np.expand_dims(simple_architecture_embedding(models[i].model_params), axis=0)
                     embed_j = np.expand_dims(simple_architecture_embedding(models[j].model_params), axis=0)
                     pred = self.ranknet.predict([embed_i, embed_j], verbose=0)
+
                     if pred[0][0] > 0.5:
+                        # RankNet says model i is better
+                        if not models[i].is_trained:
+                            models[i].train(x_train=self.x_train,
+                                            y_train=self.y_train,
+                                            x_test=self.x_test,
+                                            y_test=self.y_test)
+                    else:
+                        # RankNet says model j is better
+                        if not models[j].is_trained:
+                            models[j].train(x_train=self.x_train,
+                                            y_train=self.y_train,
+                                            x_test=self.x_test,
+                                            y_test=self.y_test)
+
+                    # Compare true fitness after training
+                    fitness_i = self._fitness(models[i])
+                    fitness_j = self._fitness(models[j])
+
+                    if fitness_i > fitness_j:
                         win_counts[i] += 1
+                    else:
+                        win_counts[j] += 1
 
         winner_index = np.argmax(win_counts)
         return models[winner_index]
+
 
     
     def evolve(self)->Iterator[TakuNetModel]:
