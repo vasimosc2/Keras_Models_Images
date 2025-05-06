@@ -1,4 +1,5 @@
 import gc
+import os
 import random
 import copy
 import json
@@ -85,12 +86,48 @@ class EvolutionarySearch:
             
     
     def _build_ranknet(self):
-        print("🛠 Building and training initial RankNet surrogate model...")
-        input_dim = self.embeedingList[0].shape[0]
-        self.ranknet = build_ranknet(input_dim)
+        print("🛠 Building or loading RankNet surrogate model...")
 
-        pairs, labels = self._generate_training_pairs()
+        input_dim = self.embeedingList[0].shape[0]
+        model_path = "SurrogateComparisson/ranknet_model"
+        data_path = "SurrogateComparisson/ranknet_training_data.npz"
+
+        # Load or create model
+        if os.path.exists(model_path):
+            print("📦 Loading existing RankNet model...")
+            self.ranknet = tf.keras.models.load_model(model_path)
+        else:
+            print("✨ No saved RankNet found, building a new one...")
+            self.ranknet = build_ranknet(input_dim)
+
+        # Generate new training pairs
+        new_pairs, new_labels = self._generate_training_pairs()
+
+        # Load old training data if exists
+        if os.path.exists(data_path):
+            print("📂 Loading existing RankNet training data...")
+            data = np.load(data_path)
+            old_pairs = data["pairs"]
+            old_labels = data["labels"]
+
+            # Combine old and new data
+            pairs = np.concatenate([old_pairs, new_pairs], axis=0)
+            labels = np.concatenate([old_labels, new_labels], axis=0)
+        else:
+            print("🆕 No old training data found, using only new pairs...")
+            pairs = new_pairs
+            labels = new_labels
+
+        # Save updated training data
+        np.savez_compressed(data_path, pairs=pairs, labels=labels)
+        print(f"💾 Saved training data: {pairs.shape[0]} pairs total.")
+
+        # Train model
         self.ranknet.fit([pairs[:, 0], pairs[:, 1]], labels, epochs=20, batch_size=16, verbose=0)
+
+        # Save updated model
+        self.ranknet.save(model_path)
+        print("💾 RankNet model saved after training.")
     
     def _generate_training_pairs(self)->Tuple[List[Tuple[np.ndarray,np.ndarray]],List[int]]:
         pairs:List[Tuple[np.ndarray,np.ndarray]] = []
@@ -114,7 +151,6 @@ class EvolutionarySearch:
     def _select_parents(self) -> List[TakuNetModel]:
         """Selects parents using 1v1 tournament style; last 3 form a mini-tournament if population is odd."""
         shuffled = random.sample(self.population, len(self.population))  # Random order
-        selected_parents = []
         i = 0
         parents = []
 
@@ -147,7 +183,7 @@ class EvolutionarySearch:
             parents.append(best)
 
 
-        return selected_parents
+        return parents
 
     
     def _mutate(self, model_params: Dict) -> Dict:
