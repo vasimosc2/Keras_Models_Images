@@ -89,7 +89,7 @@ class EvolutionarySearch:
         print("🛠 Building or loading RankNet surrogate model...")
 
         input_dim = self.embeedingList[0].shape[0]
-        model_path = "SurrogateComparisson/ranknet_model"
+        model_path = "SurrogateComparisson/ranknet_model.keras"
         data_path = "SurrogateComparisson/ranknet_training_data.npz"
 
         # Load or create model
