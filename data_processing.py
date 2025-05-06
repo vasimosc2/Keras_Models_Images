@@ -6,14 +6,15 @@ import matplotlib.pyplot as plt
 from utils import getClassLabels
 
 def load_cifar100(output_classes: int) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
-    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar100.load_data()
-    x_train, x_test = x_train / 255.0, x_test / 255.0
+    with tf.device('/CPU:0'):
+        (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar100.load_data()
+
+        # First cast to float32, then divide
+        x_train = tf.cast(x_train, tf.float32) / 255.0
+        x_test = tf.cast(x_test, tf.float32) / 255.0
 
     y_train = tf.keras.utils.to_categorical(y_train, output_classes)
     y_test = tf.keras.utils.to_categorical(y_test, output_classes)
-
-    x_train = tf.cast(x_train, tf.float32)
-    x_test = tf.cast(x_test, tf.float32)
 
     return x_train, y_train, x_test, y_test
 
