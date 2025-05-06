@@ -254,7 +254,7 @@ class EvolutionarySearch:
                 del child
                 tf.keras.backend.clear_session()
                 gc.collect()
-                child_params = self._crossover(child_params)
+                child_params = self._crossover(parent1=parent1, parent2=parent2, model_number=model_name)
     
 
     def _ranknet_better(self, model1: TakuNetModel, model2: TakuNetModel,
@@ -351,11 +351,11 @@ class EvolutionarySearch:
                 if random.random() < 0.5:
                     model_number = model_number + 1
                     parent1, parent2 = random.sample(parents, 2)
-                    child:TakuNetModel = self._crossover(parent1, parent2, model_number)
-                    new_population.append(self._crossover(parent1, parent2, model_number))
+                    child:TakuNetModel = self._crossover(parent1=parent1, parent2=parent2, model_number=model_number)
+                    new_population.append(child)
                 else:
                     model_number = model_number + 1
-                    mutant_params = self._mutate(copy.deepcopy(random.choice(parents).model_params))
+                    mutant_params = self._mutate(model_params=copy.deepcopy(random.choice(parents).model_params))
                     train_params = copy.deepcopy(parents[0].train_params)
                     model_name = f"TakuNet_Mutant_{model_number}"
                     while True:
@@ -376,7 +376,7 @@ class EvolutionarySearch:
                             del mutant
                             tf.keras.backend.clear_session()
                             gc.collect()
-                            mutant_params = self._mutate(mutant_params)
+                            mutant_params = self._mutate(model_params=mutant_params)
                     new_population.append(child)
 
             tf.keras.backend.clear_session()
