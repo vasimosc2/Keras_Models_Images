@@ -215,46 +215,51 @@ class EvolutionarySearch:
         return model_params
 
     def _crossover(self, parent1: TakuNetModel, parent2: TakuNetModel, model_number: int) -> TakuNetModel:
-        """ In this crossover, the child is a deep copy of the first parent and based on the probabilistic,
-            random.random() < self.crossover_rate, it will get the parent's 2 parameter
-            For all possible Model Search Parameters"""
-        child_params = copy.deepcopy(parent1.model_params)
+        """ Perform crossover between two parent models to produce a child model. """
         
-        for block in child_params:
-            if isinstance(child_params[block], dict):
-                for subBlock in child_params[block]:
-                    if isinstance(child_params[block][subBlock], dict):
-                        for param in child_params[block][subBlock]:
-                            if random.random() < self.crossover_rate:
-                                child_params[block][subBlock][param] = parent2.model_params[block][subBlock][param]
-                    else:
-                        if random.random() < self.crossover_rate:
-                            child_params[block][subBlock] = parent2.model_params[block][subBlock]
-            else:
-                if random.random() < self.crossover_rate:
-                    child_params[block] = parent2.model_params[block]
-
-        train_params = copy.deepcopy(parent1.train_params)
         model_name = f"TakuNet_Crossover_{model_number}"
+        train_params = copy.deepcopy(parent1.train_params) # Does not matter which training params I am getting
 
         while True:
+            # 1. Start from parent1 parameters
+            child_params = copy.deepcopy(parent1.model_params)
+
+            # 2. Crossover: randomly swap parameters from parent2
+            for block in child_params:
+                if isinstance(child_params[block], dict):
+                    for subBlock in child_params[block]:
+                        if isinstance(child_params[block][subBlock], dict):
+                            for param in child_params[block][subBlock]:
+                                if random.random() < self.crossover_rate:
+                                    child_params[block][subBlock][param] = parent2.model_params[block][subBlock][param]
+                        else:
+                            if random.random() < self.crossover_rate:
+                                child_params[block][subBlock] = parent2.model_params[block][subBlock]
+                else:
+                    if random.random() < self.crossover_rate:
+                        child_params[block] = parent2.model_params[block]
+
+            # 3. Try to create a child model
             child = TakuNetModel(model_name=model_name, 
-                                 input_shape=(32, 32, 3), 
-                                 model_params=child_params, 
-                                 train_params=train_params, 
-                                 x_train=None, 
-                                 y_train=None, 
-                                 x_test=None, 
-                                 y_test=None,
-                                 folder="NAS")
+                                input_shape=(32, 32, 3), 
+                                model_params=child_params, 
+                                train_params=train_params, 
+                                x_train=None, 
+                                y_train=None, 
+                                x_test=None, 
+                                y_test=None,
+                                folder="NAS")
+
+            # 4. If trainable, return it
             if child.is_trainable:
                 return child
             else:
+                # 5. Otherwise, retry (create new random crossover parameters again)
                 print(f"❌ Crossover {model_name} failed due to memory limits. Retrying...")
                 del child
                 tf.keras.backend.clear_session()
                 gc.collect()
-                child_params = self._crossover(parent1=parent1, parent2=parent2, model_number=model_name)
+
     
 
     def _ranknet_better(self, model1: TakuNetModel, model2: TakuNetModel,
