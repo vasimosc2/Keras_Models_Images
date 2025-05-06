@@ -116,36 +116,36 @@ class EvolutionarySearch:
         shuffled = random.sample(self.population, len(self.population))  # Random order
         selected_parents = []
         i = 0
-        while i < len(shuffled) - 1:
-            # If 3 models left at the end, do a 3-way match
-            if i + 2 == len(shuffled):
+        parents = []
+
+        while i < len(shuffled):
+            remaining = len(shuffled) - i
+
+            if remaining == 3:
+                # Special case: 3 models left
                 trio = shuffled[i:i+3]
                 print(f"📌 Comparing {trio[0].model_name}, {trio[1].model_name}, and {trio[2].model_name} ....\n")
-                best:TakuNetModel = self._ranknet_best(trio)
-                print(f"The winner is {best.model_name} 🏆\n")
-                if best.is_trainable is True:
-                    if best.is_trained is False:
-                        best.train( x_train=self.x_train,
-                                    y_train=self.y_train,
-                                    x_test=self.x_test,
-                                    y_test=self.y_test)
-
-                selected_parents.append(best)
-                break
+                best: TakuNetModel = self._ranknet_best(trio)
+                i += 3
             else:
-                model1, model2 = shuffled[i], shuffled[i+1]
-                print(f"📌 Comparing {model1.model_name} with {model2.model_name}....\n")
-                best = self._ranknet_better(model1, model2)
-                print(f"The winner is {best.model_name} 🏆\n")
-                if best.is_trainable is True:
-                    if best.is_trained is False:
-                        best.train( x_train=self.x_train,
-                                    y_train=self.y_train,
-                                    x_test=self.x_test,
-                                    y_test=self.y_test)
-
-                selected_parents.append(best)
+                # Normal case: 2 models
+                duo = shuffled[i:i+2]
+                print(f"📌 Comparing {duo[0].model_name} and {duo[1].model_name} ....\n")
+                best: TakuNetModel = self._ranknet_best(duo)
                 i += 2
+
+            print(f"The winner is {best.model_name} 🏆\n")
+
+            if best.is_trainable and not best.is_trained:
+                best.train(
+                    x_train=self.x_train,
+                    y_train=self.y_train,
+                    x_test=self.x_test,
+                    y_test=self.y_test
+                )
+
+            parents.append(best)
+
 
         return selected_parents
 
