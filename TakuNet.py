@@ -771,12 +771,14 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
             weights.append(1)
 
         if self.model_instance.adaptive_dropout_taku is not None:
-            dropout_layers.extend([d for d in self.model_instance.adaptive_dropout_taku if d is not None])
-            weights.append(1)
+            layers = [d for d in self.model_instance.adaptive_dropout_taku if d is not None]
+            dropout_layers.extend(layers)
+            weights.extend([1] * len(layers))
 
         if self.model_instance.adaptive_dropout_refiner is not None:
-            dropout_layers.extend([d for d in self.model_instance.adaptive_dropout_refiner if d is not None])
-            weights.append(4)
+            layers = [d for d in self.model_instance.adaptive_dropout_refiner if d is not None]
+            dropout_layers.extend(layers)
+            weights.extend([4] * len(layers))
 
         if not dropout_layers:
             print("⚠️ No AdaptiveDropout layers found to adjust.")
