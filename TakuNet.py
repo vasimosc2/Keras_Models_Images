@@ -548,7 +548,7 @@ class TakuNetModel:
                 x_train, y_train,
                 epochs=already_used_epochs + 50,
                 initial_epoch=already_used_epochs,
-                batch_size=self.train_params["batch_size"] * 2,
+                batch_size=self.train_params["batch_size"] / 2,
                 validation_data=(x_test, y_test),
                 verbose=2,
                 callbacks=[early_stopping_acc, checkpoint, adjust_dropout]
