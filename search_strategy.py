@@ -260,27 +260,6 @@ class EvolutionarySearch:
                 tf.keras.backend.clear_session()
                 gc.collect()
 
-    
-
-    def _ranknet_better(self, model1: TakuNetModel, model2: TakuNetModel,
-                        x_train,y_train,x_test,y_test) -> TakuNetModel:
-        """Predict which model is better using RankNet."""
-        embed1 = np.expand_dims(simple_architecture_embedding(model1.model_params), axis=0)
-        embed2 = np.expand_dims(simple_architecture_embedding(model2.model_params), axis=0)
-        pred = self.ranknet.predict([embed1, embed2], verbose=0)
-        if pred[0][0]>0.5:
-            model1.train(x_train=x_train,
-                         y_train=y_train,
-                         x_test=x_test,
-                         y_test=y_test)
-            return model1 if self._fitness(model=model1)>self._fitness(model=model2) else model2
-        else:
-            model2.train(x_train=x_train,
-            y_train=y_train,
-            x_test=x_test,
-            y_test=y_test)
-            return model1 if self._fitness(model=model1)>self._fitness(model=model2) else model2
-
     def _ranknet_best(self, models: List[TakuNetModel]) -> TakuNetModel:
         """Select the best model among 3 competitors, training as needed and based on real fitness."""
 
