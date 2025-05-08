@@ -162,6 +162,8 @@ class EvolutionarySearch:
                 trio = shuffled[i:i+3]
                 print(f"📌 Comparing {trio[0].model_name}, {trio[1].model_name}, and {trio[2].model_name} ....\n")
                 best: TakuNetModel = self._ranknet_best(trio)
+                print(f"The winner is {best.model_name} 🏆\n")
+
                 if best.is_trainable and not best.is_trained:
                     best.train(
                         x_train=self.x_train,
@@ -175,6 +177,8 @@ class EvolutionarySearch:
                 duo = shuffled[i:i+2]
                 print(f"📌 Comparing {duo[0].model_name} and {duo[1].model_name} ....\n")
                 best: TakuNetModel = self._ranknet_best(models=duo)
+                print(f"The winner is {best.model_name} 🏆\n")
+
                 if best.is_trainable and not best.is_trained:
                     best.train(
                         x_train=self.x_train,
@@ -183,8 +187,6 @@ class EvolutionarySearch:
                         y_test=self.y_test
                     )
                 i += 2
-
-            print(f"The winner is {best.model_name} 🏆\n")
 
             parents.append(best)
 

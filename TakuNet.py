@@ -814,7 +814,7 @@ class MidwayStopCallback(Callback):
                 self.model.stop_training = True
 
 class PerformanceStopping(tf.keras.callbacks.Callback):
-    def __init__(self, patience=10, min_improvement=0.05):
+    def __init__(self, patience=10, min_improvement=0.02):
         super().__init__()
         self.patience = patience
         self.min_improvement = min_improvement
