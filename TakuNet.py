@@ -891,11 +891,10 @@ class SmartLearningRateScheduler(tf.keras.callbacks.Callback):
         current_lr = self._get_current_lr()
         current_val_acc = logs.get('val_accuracy')
 
-        # --- Manual LR Scheduling ---
-        epoch_decades = epoch // self.manual_start_epoch
-        if epoch_decades >= 1 and epoch_decades <= 2:
-            if current_lr >= self.manual_threshold / epoch_decades:
-                new_lr = current_lr * self.manual_factor
+        # --- Manual LR Scheduling (revised) ---
+        if epoch >= self.manual_start_epoch and epoch % 10 == 0:
+            if current_lr > self.smart_min_lr:
+                new_lr = max(current_lr * self.manual_factor, self.smart_min_lr)
                 self._set_current_lr(new_lr)
                 if self.verbose:
                     print(f"\n🔧 [Manual LR Scheduler] Epoch {epoch}: LR adjusted from {current_lr:.6f} → {new_lr:.6f}")

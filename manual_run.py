@@ -11,6 +11,10 @@ import argparse
 import gc
 from utils import getSearchSpaceParameters, getTrainingParameters
 
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="keras.src.backend.tensorflow.trainer")
+
+
 parser = argparse.ArgumentParser(description="Train TakuNet models with sampled hyperparameters.")
 parser.add_argument("--num_models", type=int, default=5, help="Number of models to train (default: 5)")
 args = parser.parse_args()
