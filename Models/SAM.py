@@ -9,12 +9,10 @@ class SAMModel(Model):
 
     def call(self, inputs, training=False):
         return self.base_model(inputs, training=training)
-        
+
     def compile(self, optimizer, loss, metrics=None, **kwargs):
         super().compile(optimizer=optimizer, loss=loss, metrics=metrics, **kwargs)
-        self.loss_fn = loss
-        self.train_metrics = metrics or []
-
+        self.loss_fn = loss  # needed for custom gradient computation
 
     def train_step(self, data):
         x, y = data
@@ -46,9 +44,8 @@ class SAMModel(Model):
         # Apply gradients
         self.optimizer.apply_gradients(zip(gradients, self.base_model.trainable_variables))
 
-        # Update metrics
-        for metric in self.train_metrics:
-            metric.update_state(y, predictions)
+        # Let Keras handle metrics
+        self.compiled_metrics.update_state(y, predictions)
 
-        # Return a dictionary mapping metric names to current value
-        return {m.name: m.result() for m in self.train_metrics}
+        # Return a dictionary mapping metric names to current values
+        return {m.name: m.result() for m in self.compiled_metrics.metrics}
