@@ -23,11 +23,10 @@ class SAMModel(Model):
             loss = self.loss_fn(y, predictions)
         gradients = tape.gradient(loss, self.base_model.trainable_variables)
 
-        # Compute the perturbation
+        # Compute perturbation
         grad_norm = tf.linalg.global_norm(gradients)
         epsilon = [g * (self.rho / (grad_norm + 1e-12)) for g in gradients]
 
-        # Apply perturbation
         for var, eps in zip(self.base_model.trainable_variables, epsilon):
             var.assign_add(eps)
 
@@ -37,15 +36,11 @@ class SAMModel(Model):
             loss = self.loss_fn(y, predictions)
         gradients = tape.gradient(loss, self.base_model.trainable_variables)
 
-        # Restore original weights
         for var, eps in zip(self.base_model.trainable_variables, epsilon):
             var.assign_sub(eps)
 
-        # Apply gradients
         self.optimizer.apply_gradients(zip(gradients, self.base_model.trainable_variables))
 
-        # Let Keras handle metrics
+        # ✅ Modern metric tracking
         self.compiled_metrics.update_state(y, predictions)
-
-        # Return a dictionary mapping metric names to current values
-        return {m.name: m.result() for m in self.compiled_metrics.metrics}
+        return {m.name: m.result() for m in self.metrics}
