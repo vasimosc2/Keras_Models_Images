@@ -461,8 +461,8 @@ class TakuNetModel:
             # Works Perfect:
             # optimizer = get_optimizer(name=self.train_params["optimizer"], 
             #                           learning_rate=self.train_params["learning_rate"] if self.learningRate is None else self.learningRate)
-            optimizer = SGD(learning_rate=0.2, momentum=0.9)
-            
+            optimizer = SGD(learning_rate=0.05, momentum=0.9)
+
             loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=self.train_params["label_smothing"])
             self.model.compile( optimizer = optimizer, 
                                 loss = loss,
