@@ -47,8 +47,8 @@ class SAMModel(Model):
         self.optimizer.apply_gradients(zip(gradients, self.base_model.trainable_variables))
 
         # Update metrics
-        for metric in self.metrics_list:
+        for metric in self.train_metrics:
             metric.update_state(y, predictions)
 
         # Return a dictionary mapping metric names to current value
-        return {m.name: m.result() for m in self.metrics_list}
+        return {m.name: m.result() for m in self.train_metrics}

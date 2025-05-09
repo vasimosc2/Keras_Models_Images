@@ -470,7 +470,9 @@ class TakuNetModel:
             optimizer = SGD(learning_rate=0.05, momentum=0.9)
             loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=self.train_params["label_smothing"])
             sam_model = SAMModel(self.model, rho=0.05)
-            sam_model.compile(optimizer=optimizer, loss=loss, metrics=[tf.keras.metrics.CategoricalAccuracy()])
+            sam_model.compile(optimizer=optimizer, 
+                              loss=loss, 
+                              metrics=[tf.keras.metrics.CategoricalAccuracy()])
             self.model = sam_model
         """
         Label smoothing: [0,0,1,0,0] -> [a/(C-1), a/(C-1), 1-a, a/(C-1), a/(C-1)] = [0.025, 0.025, 0.9, 0.025, 0.025] ,
