@@ -7,6 +7,9 @@ class SAMModel(Model):
         self.base_model = base_model
         self.rho = rho
 
+    def call(self, inputs, training=False):
+        return self.base_model(inputs, training=training)
+    
     def compile(self, optimizer, loss_fn, metrics=None):
         super(SAMModel, self).compile()
         self.optimizer = optimizer
