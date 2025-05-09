@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from sklearn.metrics import precision_score, recall_score, f1_score
 from tensorflow.keras.callbacks import Callback, EarlyStopping, ModelCheckpoint
 from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop
+from Models.SAM import SAMModel
 from utils import memoryEstimator
 import math
 import random
@@ -249,7 +250,9 @@ class TakuNetModel:
 
     def _convert_to_tflite(self,x_train:Optional[tf.Tensor] = None)->None:
         """Converts a trained model to TFLite with full-integer quantization."""
-        converter = tf.lite.TFLiteConverter.from_keras_model(self.model)
+        model_to_convert = self.model.base_model if hasattr(self.model, 'base_model') else self.model
+        converter = tf.lite.TFLiteConverter.from_keras_model(model_to_convert)
+        # converter = tf.lite.TFLiteConverter.from_keras_model(self.model)
 
         # **Enable optimizations and quantization**
         converter.optimizations = [tf.lite.Optimize.DEFAULT]
@@ -455,13 +458,20 @@ class TakuNetModel:
 
         # **Compile Model**
         if not self.is_trained:
-
-            optimizer = get_optimizer(name=self.train_params["optimizer"], 
-                                      learning_rate=self.train_params["learning_rate"] if self.learningRate is None else self.learningRate)
+            # Works Perfect:
+            # optimizer = get_optimizer(name=self.train_params["optimizer"], 
+            #                           learning_rate=self.train_params["learning_rate"] if self.learningRate is None else self.learningRate)
             
-            self.model.compile( optimizer = optimizer, 
-                                loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=self.train_params["label_smothing"]),
-                                metrics = ['accuracy'])
+            # self.model.compile( optimizer = optimizer, 
+            #                     loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=self.train_params["label_smothing"]),
+            #                     metrics = ['accuracy'])
+            
+            # Test this 
+            optimizer = SGD(learning_rate=0.05, momentum=0.9)
+            loss_fn = tf.keras.losses.CategoricalCrossentropy(label_smoothing=self.train_params["label_smothing"])
+            sam_model = SAMModel(self.model, rho=0.05)
+            sam_model.compile(optimizer=optimizer, loss_fn=loss_fn, metrics=[tf.keras.metrics.CategoricalAccuracy()])
+            self.model = sam_model
         """
         Label smoothing: [0,0,1,0,0] -> [a/(C-1), a/(C-1), 1-a, a/(C-1), a/(C-1)] = [0.025, 0.025, 0.9, 0.025, 0.025] ,
                         where C is the number of Classes and a = label_smoothing
