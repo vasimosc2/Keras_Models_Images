@@ -9,12 +9,12 @@ class SAMModel(Model):
 
     def call(self, inputs, training=False):
         return self.base_model(inputs, training=training)
-    
-    def compile(self, optimizer, loss_fn, metrics=None):
-        super(SAMModel, self).compile()
-        self.optimizer = optimizer
-        self.loss_fn = loss_fn
-        self.metrics_list = metrics or []
+        
+    def compile(self, optimizer, loss, metrics=None, **kwargs):
+        super().compile(optimizer=optimizer, loss=loss, metrics=metrics, **kwargs)
+        self.loss_fn = loss
+        self.train_metrics = metrics or []
+
 
     def train_step(self, data):
         x, y = data
