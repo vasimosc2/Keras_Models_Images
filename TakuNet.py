@@ -472,7 +472,7 @@ class TakuNetModel:
             sam_model = SAMModel(self.model, rho=0.05)
             sam_model.compile(optimizer=optimizer, 
                               loss=loss, 
-                              metrics=[tf.keras.metrics.CategoricalAccuracy()])
+                              metrics=[tf.keras.metrics.CategoricalAccuracy(name='accuracy')])
             self.model = sam_model
         """
         Label smoothing: [0,0,1,0,0] -> [a/(C-1), a/(C-1), 1-a, a/(C-1), a/(C-1)] = [0.025, 0.025, 0.9, 0.025, 0.025] ,
