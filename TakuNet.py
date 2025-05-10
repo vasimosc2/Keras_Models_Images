@@ -459,21 +459,24 @@ class TakuNetModel:
         # **Compile Model**
         if not self.is_trained:
             # Works Perfect:
+
             # optimizer = get_optimizer(name=self.train_params["optimizer"], 
             #                           learning_rate=self.train_params["learning_rate"] if self.learningRate is None else self.learningRate)
+
             optimizer = SGD(learning_rate=0.05, momentum=0.9)
 
             loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=self.train_params["label_smothing"])
-            self.model.compile( optimizer = optimizer, 
-                                loss = loss,
-                                metrics = ['accuracy'])
+
+            # self.model.compile( optimizer = optimizer, 
+            #                     loss = loss,
+            #                     metrics = ['accuracy'])
             
             
-            # sam_model = SAMModel(self.model, rho=0.05)
-            # sam_model.compile(optimizer=optimizer, 
-            #                   loss=loss, 
-            #                   metrics=[tf.keras.metrics.CategoricalAccuracy(name='accuracy')])
-            # self.model = sam_model
+            sam_model = SAMModel(self.model, rho=0.05)
+            sam_model.compile(optimizer=optimizer, 
+                              loss=loss, 
+                              metrics=[tf.keras.metrics.CategoricalAccuracy(name='accuracy')])
+            self.model = sam_model
         """
         Label smoothing: [0,0,1,0,0] -> [a/(C-1), a/(C-1), 1-a, a/(C-1), a/(C-1)] = [0.025, 0.025, 0.9, 0.025, 0.025] ,
                         where C is the number of Classes and a = label_smoothing

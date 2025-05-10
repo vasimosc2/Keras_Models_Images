@@ -4,6 +4,9 @@ import time
 import pandas as pd
 import tensorflow as tf
 from tensorflow.keras import backend as K # type: ignore
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="keras.src.backend.tensorflow.trainer")
+
 
 
 Folder ='NAS'
