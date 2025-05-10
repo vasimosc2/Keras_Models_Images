@@ -465,29 +465,31 @@ class TakuNetModel:
             total_epochs:int = self.epochs if self.epochs else self.train_params["num_epochs"]
             loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=self.train_params["label_smothing"])
             batchSize:int = max(8, int(self.train_params["batch_size"] / 2))
+            initial_lr:float = 0.05
             steps_per_epoch = len(x_train) // batchSize
             print(f"The steps per epoch are {steps_per_epoch}\n")
 
-            initial_lr:float = 0.05
-            lr_schedule = CosineDecay(
-                initial_learning_rate=initial_lr,
-                decay_steps=total_epochs * total_epochs,
-                alpha=0.0001  # minimum learning rate is 0.01% of initial
-            )
 
-            # def cosine_annealing_with_warmup(epoch)->float:
-            #     if epoch < warmup_epochs:
-            #         return float(initial_lr * (epoch + 1) / warmup_epochs)
-            #     else:
-            #         cosine_decay = 0.5 * (1 + tf.math.cos(np.pi * (epoch - warmup_epochs) / (total_epochs - warmup_epochs)))
-            #         return float(initial_lr * cosine_decay)
+            # lr_schedule = CosineDecay(
+            #     initial_learning_rate=initial_lr,
+            #     decay_steps=total_epochs * total_epochs,
+            #     alpha=0.0001  # minimum learning rate is 0.01% of initial
+            # )
 
-            # lr_schedule = tf.keras.callbacks.LearningRateScheduler(cosine_annealing_with_warmup, verbose=1)
+            warmup_epochs = 5
+            def cosine_annealing_with_warmup(epoch)->float:
+                if epoch < warmup_epochs:
+                    return float(initial_lr * (epoch + 1) / warmup_epochs)
+                else:
+                    cosine_decay = 0.5 * (1 + tf.math.cos(np.pi * (epoch - warmup_epochs) / (total_epochs - warmup_epochs)))
+                    return float(initial_lr * cosine_decay)
+
+
 
             # optimizer = get_optimizer(name=self.train_params["optimizer"], 
             #                           learning_rate=self.train_params["learning_rate"] if self.learningRate is None else self.learningRate)
 
-            optimizer = SGD(learning_rate = lr_schedule , momentum=0.9)
+            optimizer = SGD(learning_rate = initial_lr , momentum=0.9)
 
 
 
@@ -496,7 +498,7 @@ class TakuNetModel:
             #                     metrics = ['accuracy'])
             
             
-            sam_model = SAMModel(self.model, rho=0.05)
+            sam_model = SAMModel(self.model)
             sam_model.compile(optimizer=optimizer, 
                               loss=loss, 
                               metrics=[tf.keras.metrics.CategoricalAccuracy(name='accuracy')])
@@ -541,6 +543,7 @@ class TakuNetModel:
                                                cooldown=3)
         
         performanceCallback = PerformanceStopping()
+        lr_schedule = tf.keras.callbacks.LearningRateScheduler(cosine_annealing_with_warmup, verbose=1)
 
         # **Train Model with Timing**
         start_time = time.time()
@@ -554,7 +557,7 @@ class TakuNetModel:
             batch_size = batchSize,
             validation_data=(x_test, y_test),
             verbose=2,
-            callbacks=[midway_callback, early_stopping_acc, checkpoint, adjust_dropout, performanceCallback]
+            callbacks=[midway_callback, early_stopping_acc, checkpoint, adjust_dropout, performanceCallback,lr_schedule ]
         )
 
         training_time = time.time() - start_time
