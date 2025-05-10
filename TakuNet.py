@@ -671,7 +671,7 @@ class TakuNetModel:
         return self.model.evaluate(x_test, y_test, verbose=2)
     
     def apply_swa(self,checkpoint_path:str, swa_start_epoch=29):
-        if self.history is None or len(self.history.history['accuracy']) <= swa_start_epoch:
+        if self.history is None or len(self.results.history.history['accuracy']) <= swa_start_epoch:
             print("Not enough epochs for SWA.")
             return
 
