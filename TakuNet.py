@@ -468,12 +468,12 @@ class TakuNetModel:
             warmup_epochs:int = 5
             initial_lr:float = 0.05
 
-            def cosine_annealing_with_warmup(epoch):
+            def cosine_annealing_with_warmup(epoch)->float:
                 if epoch < warmup_epochs:
-                    return initial_lr * (epoch + 1) / warmup_epochs
+                    return float(initial_lr * (epoch + 1) / warmup_epochs)
                 else:
                     cosine_decay = 0.5 * (1 + tf.math.cos(np.pi * (epoch - warmup_epochs) / (total_epochs - warmup_epochs)))
-                    return initial_lr * cosine_decay
+                    return float(initial_lr * cosine_decay)
 
             lr_schedule = tf.keras.callbacks.LearningRateScheduler(cosine_annealing_with_warmup, verbose=1)
 
