@@ -458,14 +458,31 @@ class TakuNetModel:
 
         # **Compile Model**
         if not self.is_trained:
-            # Works Perfect:
+
+             # === Hyperparameters ===
+
+            total_epochs:int = self.epochs if self.epochs else self.train_params["num_epochs"]
+            loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=self.train_params["label_smothing"])
+            batchSize:int = max(8, int(self.train_params["batch_size"] / 2))
+
+            warmup_epochs:int = 5
+            initial_lr:float = 0.05
+
+            def cosine_annealing_with_warmup(epoch):
+                if epoch < warmup_epochs:
+                    return initial_lr * (epoch + 1) / warmup_epochs
+                else:
+                    cosine_decay = 0.5 * (1 + tf.math.cos(np.pi * (epoch - warmup_epochs) / (total_epochs - warmup_epochs)))
+                    return initial_lr * cosine_decay
+
+            lr_schedule = tf.keras.callbacks.LearningRateScheduler(cosine_annealing_with_warmup, verbose=1)
 
             # optimizer = get_optimizer(name=self.train_params["optimizer"], 
             #                           learning_rate=self.train_params["learning_rate"] if self.learningRate is None else self.learningRate)
 
-            optimizer = SGD(learning_rate=0.05, momentum=0.9)
+            optimizer = SGD(learning_rate = initial_lr , momentum=0.9)
 
-            loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=self.train_params["label_smothing"])
+
 
             # self.model.compile( optimizer = optimizer, 
             #                     loss = loss,
@@ -526,11 +543,11 @@ class TakuNetModel:
 
         history = self.model.fit(
             x_train, y_train,
-            epochs = self.epochs if self.epochs else self.train_params["num_epochs"],
-            batch_size=self.train_params["batch_size"],
+            epochs = total_epochs,
+            batch_size = batchSize,
             validation_data=(x_test, y_test),
             verbose=2,
-            callbacks=[midway_callback, early_stopping_acc, checkpoint, adjust_dropout, learning_rate_callback, performanceCallback]
+            callbacks=[midway_callback, early_stopping_acc, checkpoint, adjust_dropout, lr_schedule, performanceCallback]
         )
 
         training_time = time.time() - start_time
