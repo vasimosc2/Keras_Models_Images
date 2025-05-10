@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from sklearn.metrics import precision_score, recall_score, f1_score
 from tensorflow.keras.callbacks import Callback, EarlyStopping, ModelCheckpoint
 from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop
-from tensorflow.keras.optimizers.schedules import CosineDecayRestarts
+from tensorflow.keras.optimizers.schedules import CosineDecay
 from Models.SAM import SAMModel
 from utils import memoryEstimator
 import math
@@ -467,13 +467,13 @@ class TakuNetModel:
             batchSize:int = max(8, int(self.train_params["batch_size"] / 2))
             steps_per_epoch = len(x_train) // batchSize
             print(f"The steps per epoch are {steps_per_epoch}\n")
-            warmup_epochs:int = 5
+
             initial_lr:float = 0.05
-            lr_schedule = CosineDecayRestarts(initial_learning_rate=initial_lr,
-                                              first_decay_steps=steps_per_epoch * 10,  # First cycle: 10 epochs
-                                              t_mul=2.0,
-                                              m_mul=1.0,
-                                              alpha=0.0)
+            lr_schedule = CosineDecay(
+                initial_learning_rate=initial_lr,
+                decay_steps=total_epochs * total_epochs,
+                alpha=0.0001  # minimum learning rate is 0.01% of initial
+            )
 
             # def cosine_annealing_with_warmup(epoch)->float:
             #     if epoch < warmup_epochs:
@@ -674,7 +674,7 @@ class TakuNetModel:
 
         print("\nApplying Stochastic Weight Averaging (SWA)...")
         weights_list = []
-        for epoch in range(swa_start_epoch, len(self.history.history['accuracy'])):
+        for epoch in range(swa_start_epoch, len(self.results.history.history['accuracy'])):
             self.model.load_weights(checkpoint_path)
             weights_list.append(self.model.get_weights())
 
