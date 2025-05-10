@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from sklearn.metrics import precision_score, recall_score, f1_score
 from tensorflow.keras.callbacks import Callback, EarlyStopping, ModelCheckpoint
 from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop
+from tensorflow.keras.optimizers.schedules import CosineDecayRestarts
 from Models.SAM import SAMModel
 from utils import memoryEstimator
 import math
@@ -464,23 +465,29 @@ class TakuNetModel:
             total_epochs:int = self.epochs if self.epochs else self.train_params["num_epochs"]
             loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=self.train_params["label_smothing"])
             batchSize:int = max(8, int(self.train_params["batch_size"] / 2))
-
+            steps_per_epoch = len(x_train) // batchSize
+            print(f"The steps per epoch are {steps_per_epoch}\n")
             warmup_epochs:int = 5
             initial_lr:float = 0.05
+            lr_schedule = CosineDecayRestarts(initial_learning_rate=initial_lr,
+                                              first_decay_steps=steps_per_epoch * 10,  # First cycle: 10 epochs
+                                              t_mul=2.0,
+                                              m_mul=1.0,
+                                              alpha=0.0)
 
-            def cosine_annealing_with_warmup(epoch)->float:
-                if epoch < warmup_epochs:
-                    return float(initial_lr * (epoch + 1) / warmup_epochs)
-                else:
-                    cosine_decay = 0.5 * (1 + tf.math.cos(np.pi * (epoch - warmup_epochs) / (total_epochs - warmup_epochs)))
-                    return float(initial_lr * cosine_decay)
+            # def cosine_annealing_with_warmup(epoch)->float:
+            #     if epoch < warmup_epochs:
+            #         return float(initial_lr * (epoch + 1) / warmup_epochs)
+            #     else:
+            #         cosine_decay = 0.5 * (1 + tf.math.cos(np.pi * (epoch - warmup_epochs) / (total_epochs - warmup_epochs)))
+            #         return float(initial_lr * cosine_decay)
 
-            lr_schedule = tf.keras.callbacks.LearningRateScheduler(cosine_annealing_with_warmup, verbose=1)
+            # lr_schedule = tf.keras.callbacks.LearningRateScheduler(cosine_annealing_with_warmup, verbose=1)
 
             # optimizer = get_optimizer(name=self.train_params["optimizer"], 
             #                           learning_rate=self.train_params["learning_rate"] if self.learningRate is None else self.learningRate)
 
-            optimizer = SGD(learning_rate = initial_lr , momentum=0.9)
+            optimizer = SGD(learning_rate = lr_schedule , momentum=0.9)
 
 
 
@@ -547,7 +554,7 @@ class TakuNetModel:
             batch_size = batchSize,
             validation_data=(x_test, y_test),
             verbose=2,
-            callbacks=[midway_callback, early_stopping_acc, checkpoint, adjust_dropout, lr_schedule, performanceCallback]
+            callbacks=[midway_callback, early_stopping_acc, checkpoint, adjust_dropout, performanceCallback]
         )
 
         training_time = time.time() - start_time
@@ -645,12 +652,38 @@ class TakuNetModel:
         print(f"TFLite Model Size: {tflite_size_kb:.2f} KB")
         print(f"C Array File Size: {c_array_size_kb:.2f} KB")
 
+        print("Running the last evaluation\n")
+        self.evaluate(x_test=x_test, y_test=y_test)
 
+        print("Apply SWA and ReEvaluate\n")
+        self.apply_swa(checkpoint_path=checkpoint_path)
+        self.evaluate(x_test=x_test, y_test=y_test)
         print("\n✅ Training complete. Best model and metrics stored in `self.results`.\n")
     
 
     def summary(self):
         self.model.summary()
+
+    def evaluate(self, x_test, y_test):
+        return self.model.evaluate(x_test, y_test, verbose=2)
+    
+    def apply_swa(self,checkpoint_path:str, swa_start_epoch=29):
+        if self.history is None or len(self.history.history['accuracy']) <= swa_start_epoch:
+            print("Not enough epochs for SWA.")
+            return
+
+        print("\nApplying Stochastic Weight Averaging (SWA)...")
+        weights_list = []
+        for epoch in range(swa_start_epoch, len(self.history.history['accuracy'])):
+            self.model.load_weights(checkpoint_path)
+            weights_list.append(self.model.get_weights())
+
+        new_weights = []
+        for weights in zip(*weights_list):
+            new_weights.append(np.mean(weights, axis=0))
+
+        self.model.set_weights(new_weights)
+        print("✅ SWA applied!")
     
     def get_model(self):
         return self.model
