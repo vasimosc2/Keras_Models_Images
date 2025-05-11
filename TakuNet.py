@@ -596,7 +596,8 @@ class TakuNetModel:
         print(f"✅ Final Best model restored from {checkpoint_path}\n")
 
         print("\n🔄 Applying Moving Average (SWA) weights...\n")
-        _,swa_val_accuracy = swa_callback.apply_swa_weights()
+        swa_callback.apply_swa_weights()
+        _, swa_val_accuracy = self.evaluate(x_test, y_test)
         print("✅ SWA weights applied!\n")
 
         # **Predictions & Metrics**
