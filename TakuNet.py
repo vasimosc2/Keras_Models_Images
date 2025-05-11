@@ -893,12 +893,12 @@ class SWACallback(tf.keras.callbacks.Callback):
     def __init__(self, model, swa_start=10):
         super().__init__()
         self.swa_start = swa_start
-        self.model = model
+        self._model_ref = model  # ✅ fix: avoid clashing with built-in .model
         self.weights_accumulator = []
 
     def on_epoch_end(self, epoch, logs=None):
         if epoch >= self.swa_start:
-            self.weights_accumulator.append(self.model.get_weights())
+            self.weights_accumulator.append(self._model_ref.get_weights())
 
     def apply_swa_weights(self):
         if not self.weights_accumulator:
@@ -909,8 +909,9 @@ class SWACallback(tf.keras.callbacks.Callback):
         for weights in zip(*self.weights_accumulator):
             avg_weights.append(np.mean(weights, axis=0))
 
-        self.model.set_weights(avg_weights)
+        self._model_ref.set_weights(avg_weights)
         print("✅ Manual SWA weights applied.")
+
 
 
 
