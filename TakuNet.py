@@ -7,7 +7,6 @@ from typing import Dict, List, Optional, Tuple, Union
 from sklearn.metrics import precision_score, recall_score, f1_score
 from tensorflow.keras.callbacks import Callback, EarlyStopping, ModelCheckpoint
 from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop
-import tensorflow_addons as tfa
 from Models.SAM import SAMModel
 from utils import memoryEstimator
 import math
@@ -491,7 +490,6 @@ class TakuNetModel:
             #                           learning_rate=self.train_params["learning_rate"] if self.learningRate is None else self.learningRate)
 
             optimizer = SGD(learning_rate = initial_lr , momentum=0.9)
-            optimizer = tfa.optimizers.MovingAverage(optimizer)
 
 
             # self.model.compile( optimizer = optimizer, 
@@ -544,7 +542,11 @@ class TakuNetModel:
                                                cooldown=3)
         
         performanceCallback = PerformanceStopping()
+
         lr_schedule = tf.keras.callbacks.LearningRateScheduler(cosine_annealing_with_warmup, verbose=1)
+
+        swa_callback = SWACallback(self.model, swa_start=10)
+
 
         # **Train Model with Timing**
         start_time = time.time()
@@ -558,7 +560,7 @@ class TakuNetModel:
             batch_size = batchSize,
             validation_data=(x_test, y_test),
             verbose=2,
-            callbacks=[midway_callback, early_stopping_acc, checkpoint, adjust_dropout, performanceCallback,lr_schedule ]
+            callbacks=[midway_callback, early_stopping_acc, checkpoint, adjust_dropout, performanceCallback, lr_schedule, swa_callback ]
         )
 
         training_time = time.time() - start_time
@@ -660,7 +662,7 @@ class TakuNetModel:
         self.evaluate(x_test, y_test)
 
         print("\n🔄 Applying Moving Average (SWA) weights...")
-        self.model.optimizer.assign_average_vars(self.model.variables)
+        swa_callback.apply_swa_weights()
         print("✅ SWA weights applied!")
 
         print("\n📊 Evaluation AFTER applying SWA weights:")
@@ -886,6 +888,30 @@ class PerformanceStopping(tf.keras.callbacks.Callback):
             if self.wait >= self.patience:
                 print(f"\n🚨 Early stopping: No val_acc improvement >{self.min_improvement*100:.1f}% in {self.patience} epochs.")
                 self.model.stop_training = True
+
+class SWACallback(tf.keras.callbacks.Callback):
+    def __init__(self, model, swa_start=10):
+        super().__init__()
+        self.swa_start = swa_start
+        self.model = model
+        self.weights_accumulator = []
+
+    def on_epoch_end(self, epoch, logs=None):
+        if epoch >= self.swa_start:
+            self.weights_accumulator.append(self.model.get_weights())
+
+    def apply_swa_weights(self):
+        if not self.weights_accumulator:
+            print("⚠️ No SWA weights to average.")
+            return
+
+        avg_weights = []
+        for weights in zip(*self.weights_accumulator):
+            avg_weights.append(np.mean(weights, axis=0))
+
+        self.model.set_weights(avg_weights)
+        print("✅ Manual SWA weights applied.")
+
 
 
 class SmartLearningRateScheduler(tf.keras.callbacks.Callback):
