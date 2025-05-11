@@ -139,6 +139,7 @@ for model in models_to_train:
             "Model": model.model_name,
             "Best Train Accuracy": model.results.train_accuracy,
             "Best Test Accuracy": model.results.test_accuracy,
+            "Swa Test Accuracy": model.results.SWA_test_accuracy,
             "TFlite Test Accuracy": model.results.tflite_accuracy,
             "Precision": model.results.precision,
             "Recall": model.results.recall,

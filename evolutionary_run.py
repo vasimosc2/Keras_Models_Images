@@ -66,6 +66,7 @@ for generation, best_model in enumerate(evo_search.evolve(), start=1):
         "Model": best_model.model_name,
         "Best Train Accuracy": best_model.results.train_accuracy,
         "Best Test Accuracy": best_model.results.test_accuracy,
+        "Swa Test Accuracy": best_model.results.SWA_test_accuracy,
         "TFlite Test Accuracy": best_model.results.tflite_accuracy,
         "Precision": best_model.results.precision,
         "Recall": best_model.results.recall,

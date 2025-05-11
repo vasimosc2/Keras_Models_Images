@@ -47,6 +47,7 @@ class TakuNetModel:
         self.learningRate:Optional[float] = 0.0005 if given_model else None
         self.results: TrainingResults = TrainingResults()
         self.test:bool = False
+        self.modelType:str = "SAM"
         self.is_trainable: bool = self.check_trainability() if self.test is False else True
 
   
@@ -464,18 +465,10 @@ class TakuNetModel:
             total_epochs:int = self.epochs if self.epochs else self.train_params["num_epochs"]
             loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=self.train_params["label_smothing"])
             batchSize:int = max(8, int(self.train_params["batch_size"] / 2))
-            initial_lr:float = 0.05
+            initial_lr:float = float(self.train_params["learning_rate"]) if self.learningRate is None else self.learningRate
             steps_per_epoch = len(x_train) // batchSize
             warmup_epochs = 5
             print(f"The steps per epoch are {steps_per_epoch}\n")
-
-
-            # lr_schedule = CosineDecay(
-            #     initial_learning_rate=initial_lr,
-            #     decay_steps=total_epochs * total_epochs,
-            #     alpha=0.0001  # minimum learning rate is 0.01% of initial
-            # )
-
 
             def cosine_annealing_with_warmup(epoch)->float:
                 if epoch < warmup_epochs:
@@ -486,22 +479,20 @@ class TakuNetModel:
 
 
 
-            # optimizer = get_optimizer(name=self.train_params["optimizer"], 
-            #                           learning_rate=self.train_params["learning_rate"] if self.learningRate is None else self.learningRate)
+            optimizer = get_optimizer(name=self.train_params["optimizer"], 
+                                      learning_rate=self.train_params["learning_rate"] if self.learningRate is None else self.learningRate)
 
-            optimizer = SGD(learning_rate = initial_lr , momentum=0.9)
+            if self.modelType.lower() == "sam":
+                sam_model = SAMModel(self.model)
+                sam_model.compile(optimizer=optimizer, 
+                                loss=loss, 
+                                metrics=[tf.keras.metrics.CategoricalAccuracy(name='accuracy')])
+                self.model = sam_model
+            else:
+                self.model.compile( optimizer = optimizer, 
+                                    loss = loss,
+                                    metrics = ['accuracy'])
 
-
-            # self.model.compile( optimizer = optimizer, 
-            #                     loss = loss,
-            #                     metrics = ['accuracy'])
-            
-            
-            sam_model = SAMModel(self.model)
-            sam_model.compile(optimizer=optimizer, 
-                              loss=loss, 
-                              metrics=[tf.keras.metrics.CategoricalAccuracy(name='accuracy')])
-            self.model = sam_model
         """
         Label smoothing: [0,0,1,0,0] -> [a/(C-1), a/(C-1), 1-a, a/(C-1), a/(C-1)] = [0.025, 0.025, 0.9, 0.025, 0.025] ,
                         where C is the number of Classes and a = label_smoothing
@@ -526,16 +517,6 @@ class TakuNetModel:
         midway_callback = MidwayStopCallback(total_epochs=self.train_params["num_epochs"], 
                                              divider=self.train_params["divider"], 
                                              threshold=15e-2) # 15% 
-        
-        learning_rate_callback = SmartLearningRateScheduler(manual_threshold=2e-3,
-                                                            manual_factor=0.5,
-                                                            manual_start_epoch=10,
-                                                            smart_factor=0.5,
-                                                            smart_patience=8,
-                                                            smart_min_delta=4e-2,
-                                                            smart_min_lr=1e-4,
-                                                            smart_start_epoch=15,
-                                                            verbose=True)
         
         adjust_dropout = AdjustDropoutCallback(model_instance=self,
                                                overfitting_threshold=self.train_params["overfitting"],
@@ -596,7 +577,7 @@ class TakuNetModel:
                 batch_size=self.train_params["batch_size"] / 2,
                 validation_data=(x_test, y_test),
                 verbose=2,
-                callbacks=[early_stopping_acc, checkpoint, adjust_dropout]
+                callbacks=[early_stopping_acc, checkpoint, adjust_dropout, swa_callback ]
             )
 
             # Merge histories
@@ -614,6 +595,10 @@ class TakuNetModel:
         self.model.load_weights(checkpoint_path)
         print(f"✅ Final Best model restored from {checkpoint_path}\n")
 
+        print("\n🔄 Applying Moving Average (SWA) weights...\n")
+        _,swa_val_accuracy = swa_callback.apply_swa_weights()
+        print("✅ SWA weights applied!\n")
+
         # **Predictions & Metrics**
         y_test_pred = self.model.predict(x_test)
         y_test_pred_classes = np.argmax(y_test_pred, axis=1)
@@ -624,6 +609,7 @@ class TakuNetModel:
         self.results.epochs_trained = total_epochs_trained
         self.results.train_accuracy = max(full_history.history['accuracy'])
         self.results.test_accuracy = best_test_acc
+        self.results.SWA_test_accuracy = swa_val_accuracy
         self.results.precision = precision_score(y_true_classes, y_test_pred_classes, average='macro')
         self.results.recall = recall_score(y_true_classes, y_test_pred_classes, average='macro')
         self.results.f1_score = f1_score(y_true_classes, y_test_pred_classes, average='macro')
@@ -658,16 +644,6 @@ class TakuNetModel:
         print(f"TFLite Model Size: {tflite_size_kb:.2f} KB")
         print(f"C Array File Size: {c_array_size_kb:.2f} KB")
 
-        print("\n📊 Evaluation BEFORE applying SWA weights:")
-        self.evaluate(x_test, y_test)
-
-        print("\n🔄 Applying Moving Average (SWA) weights...")
-        swa_callback.apply_swa_weights()
-        print("✅ SWA weights applied!")
-
-        print("\n📊 Evaluation AFTER applying SWA weights:")
-        self.evaluate(x_test, y_test)
-
     def summary(self):
         self.model.summary()
 
@@ -680,19 +656,17 @@ class TakuNetModel:
 
 
 
-
-
 # Helpers
 
-def get_optimizer(name, learning_rate, weight_decay=1e-4):
+def get_optimizer(name, learning_rate):
     """Returns the optimizer instance based on the name."""
     optimizers = {
         "adam": Adam(learning_rate=learning_rate),
-        "adamw": AdamW(learning_rate=learning_rate, weight_decay=weight_decay),
-        "sgd": SGD(learning_rate=learning_rate),
+        "adamw": AdamW(learning_rate=learning_rate, weight_decay=1e-4),
+        "sgd": SGD(learning_rate=learning_rate, momentum=0.9),
         "rmsprop": RMSprop(learning_rate=learning_rate)
     }
-    return optimizers.get(name.lower(), Adam(learning_rate=learning_rate))  # If the name is not found return Adam by default
+    return optimizers.get(name.lower(), Adam(learning_rate=learning_rate))
 
 
 def find_nearest_valid_groups(desired_groups:int, input_channels:int) -> int:
@@ -912,97 +886,13 @@ class SWACallback(tf.keras.callbacks.Callback):
         self._model_ref.set_weights(avg_weights)
         print("✅ Manual SWA weights applied.")
 
-
-
-
-class SmartLearningRateScheduler(tf.keras.callbacks.Callback):
-    def __init__(self, 
-                 manual_threshold=2e-3, 
-                 manual_factor=0.5, 
-                 manual_start_epoch=10,
-                 smart_factor=0.5,
-                 smart_patience=8,
-                 smart_min_delta=4e-2,
-                 smart_min_lr=1e-4,
-                 smart_start_epoch=15,
-                 verbose=True):
-        """
-        Combines Manual LR scheduling and Smart ReduceLROnPlateau into one callback.
-        
-        manual_threshold: threshold for manual decay
-        manual_factor: factor for manual decay
-        manual_start_epoch: when to start manual decay
-        smart_factor: factor for smart decay
-        smart_patience: patience for smart decay
-        smart_min_delta: min improvement for smart decay
-        smart_min_lr: minimum learning rate allowed
-        smart_start_epoch: when to activate smart decay
-        verbose: print messages
-        """
-        super().__init__()
-        self.manual_threshold = manual_threshold
-        self.manual_factor = manual_factor
-        self.manual_start_epoch = manual_start_epoch
-
-        self.smart_factor = smart_factor
-        self.smart_patience = smart_patience
-        self.smart_min_delta = smart_min_delta
-        self.smart_min_lr = smart_min_lr
-        self.smart_start_epoch = smart_start_epoch
-
-        self.verbose = verbose
-        self.best_val_acc = 0.0
-        self.wait = 0
-
-    def on_epoch_end(self, epoch, logs=None):
-        current_lr = self._get_current_lr()
-        current_val_acc = logs.get('val_accuracy')
-
-        # --- Manual LR Scheduling (revised) ---
-        if epoch >= self.manual_start_epoch and epoch % 10 == 0:
-            if current_lr > self.smart_min_lr:
-                new_lr = max(current_lr * self.manual_factor, self.smart_min_lr)
-                self._set_current_lr(new_lr)
-                if self.verbose:
-                    print(f"\n🔧 [Manual LR Scheduler] Epoch {epoch}: LR adjusted from {current_lr:.6f} → {new_lr:.6f}")
-
-        # --- Smart Reduce on Plateau ---
-        if epoch >= self.smart_start_epoch:
-            if current_val_acc is not None:
-                if current_val_acc > self.best_val_acc + self.smart_min_delta:
-                    self.best_val_acc = current_val_acc
-                    self.wait = 0  # Reset wait counter
-                else:
-                    self.wait += 1
-                    if self.wait >= self.smart_patience:
-                        if current_lr > self.smart_min_lr:
-                            new_lr = max(current_lr * self.smart_factor, self.smart_min_lr)
-                            self._set_current_lr(new_lr)
-                            if self.verbose:
-                                print(f"\n🔻 [SmartReduceLROnPlateau] Reducing learning rate from {current_lr:.6f} to {new_lr:.6f}")
-                        self.wait = 0  # Reset wait counter
-
-    def _get_current_lr(self):
-        lr = self.model.optimizer.learning_rate
-        if isinstance(lr, tf.Variable):
-            return float(tf.keras.backend.get_value(lr))
-        else:
-            return float(lr)
-
-    def _set_current_lr(self, new_lr):
-        lr = self.model.optimizer.learning_rate
-        if hasattr(lr, 'assign'):
-            lr.assign(new_lr)
-        else:
-            self.model.optimizer.learning_rate = new_lr
-
-
 class TrainingResults:
     """Class to store training and evaluation results."""
     def __init__(self):
         self.history = None
         self.train_accuracy = None
         self.test_accuracy = None
+        self.SWA_test_accuracy = None
         self.precision = None
         self.recall = None
         self.f1_score = None
@@ -1021,6 +911,7 @@ class TrainingResults:
         return (f"TrainingResults(\n"
                 f"  Train Accuracy: {self.train_accuracy:.4f}\n"
                 f"  Test Accuracy: {self.test_accuracy:.4f}\n"
+                f"  Swa Test Accuracy: {self.SWA_test_accuracy:.4f}\n"
                 f"  TFlite Test Accuracy: {self.tflite_accuracy:.4f}\n"
                 f"  Precision: {self.precision:.4f}\n"
                 f"  Recall: {self.recall:.4f}\n"
