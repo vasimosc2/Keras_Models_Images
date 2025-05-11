@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from sklearn.metrics import precision_score, recall_score, f1_score
 from tensorflow.keras.callbacks import Callback, EarlyStopping, ModelCheckpoint
 from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop
-from tensorflow.keras.optimizers.schedules import CosineDecay
+import tensorflow_addons as tfa
 from Models.SAM import SAMModel
 from utils import memoryEstimator
 import math
@@ -467,6 +467,7 @@ class TakuNetModel:
             batchSize:int = max(8, int(self.train_params["batch_size"] / 2))
             initial_lr:float = 0.05
             steps_per_epoch = len(x_train) // batchSize
+            warmup_epochs = 5
             print(f"The steps per epoch are {steps_per_epoch}\n")
 
 
@@ -476,7 +477,7 @@ class TakuNetModel:
             #     alpha=0.0001  # minimum learning rate is 0.01% of initial
             # )
 
-            warmup_epochs = 5
+
             def cosine_annealing_with_warmup(epoch)->float:
                 if epoch < warmup_epochs:
                     return float(initial_lr * (epoch + 1) / warmup_epochs)
@@ -490,7 +491,7 @@ class TakuNetModel:
             #                           learning_rate=self.train_params["learning_rate"] if self.learningRate is None else self.learningRate)
 
             optimizer = SGD(learning_rate = initial_lr , momentum=0.9)
-
+            optimizer = tfa.optimizers.MovingAverage(optimizer)
 
 
             # self.model.compile( optimizer = optimizer, 
@@ -655,38 +656,21 @@ class TakuNetModel:
         print(f"TFLite Model Size: {tflite_size_kb:.2f} KB")
         print(f"C Array File Size: {c_array_size_kb:.2f} KB")
 
-        print("Running the last evaluation\n")
-        self.evaluate(x_test=x_test, y_test=y_test)
+        print("\n📊 Evaluation BEFORE applying SWA weights:")
+        self.evaluate(x_test, y_test)
 
-        print("Apply SWA and ReEvaluate\n")
-        self.apply_swa(checkpoint_path=checkpoint_path)
-        self.evaluate(x_test=x_test, y_test=y_test)
-        print("\n✅ Training complete. Best model and metrics stored in `self.results`.\n")
-    
+        print("\n🔄 Applying Moving Average (SWA) weights...")
+        self.model.optimizer.assign_average_vars(self.model.variables)
+        print("✅ SWA weights applied!")
+
+        print("\n📊 Evaluation AFTER applying SWA weights:")
+        self.evaluate(x_test, y_test)
 
     def summary(self):
         self.model.summary()
 
     def evaluate(self, x_test, y_test):
         return self.model.evaluate(x_test, y_test, verbose=2)
-    
-    def apply_swa(self,checkpoint_path:str, swa_start_epoch=29):
-        if self.results.history is None or len(self.results.history.history['accuracy']) <= swa_start_epoch:
-            print("Not enough epochs for SWA.")
-            return
-
-        print("\nApplying Stochastic Weight Averaging (SWA)...")
-        weights_list = []
-        for epoch in range(swa_start_epoch, len(self.results.history.history['accuracy'])):
-            self.model.load_weights(checkpoint_path)
-            weights_list.append(self.model.get_weights())
-
-        new_weights = []
-        for weights in zip(*weights_list):
-            new_weights.append(np.mean(weights, axis=0))
-
-        self.model.set_weights(new_weights)
-        print("✅ SWA applied!")
     
     def get_model(self):
         return self.model
