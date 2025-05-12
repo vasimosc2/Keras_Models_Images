@@ -84,9 +84,9 @@ def retrain_model(base_model, x_train, y_train, x_test, y_test,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Retrain a model with optional SAM support")
-    parser.add_argument("--name", type=str, default="TakuNet_Init_2.keras", help="Model file name")
-    parser.add_argument("--folder", type=str, default="NAS", help="Model folder")
-    parser.add_argument("--sam", type=str, default="true", help="Use SAMModel: true or false")
+    parser.add_argument("--name", type=str, default="TakuNet_Init_0.keras", help="Model file name")
+    parser.add_argument("--folder", type=str, default="Manual_Run", help="Model folder")
+    parser.add_argument("--sam", type=str, default="false", help="Use SAMModel: true or false")
     args = parser.parse_args()
 
     use_sam = args.sam.lower() == "true"

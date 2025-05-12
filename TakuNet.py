@@ -594,7 +594,7 @@ class TakuNetModel:
             print(f"\n🔁 Continued Training Complete. New Best Test Accuracy: {best_test_acc:.4f}\n")
 
         # **Load final Best Model**
-        self.model.load_weights(checkpoint_path)
+        self.model.load_weights(checkpoint_path) # I want here to bring the best model back in order to convert it
         print(f"✅ Final Best model restored from {checkpoint_path}\n")
 
         print("\n🔄 Applying Moving Average (SWA) weights...\n")
@@ -641,7 +641,7 @@ class TakuNetModel:
         tflite_size_kb = os.path.getsize(f"{self.folderName}/TfLiteModels/{self.model_name}.tflite") / 1024
         c_array_size_kb = os.path.getsize(f"{self.folderName}/HeaderFiles/{self.model_name}.h") / 1024
         save_config_to_file(self.model_params, f"{self.folderName}/saved_configs/model_params/{self.model_name}_model_params.json")
-        save_config_to_file(self.train_params, f"{self.folderName}/configs/train_params/{self.model_name}_train_params.json")
+        save_config_to_file(self.train_params, f"{self.folderName}/saved_configs/train_params/{self.model_name}_train_params.json")
 
         self.results.tflite_size = tflite_size_kb
         
