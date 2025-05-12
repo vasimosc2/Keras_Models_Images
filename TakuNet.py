@@ -12,7 +12,7 @@ from Models.SAM import SAMModel
 from utils import memoryEstimator
 import math
 import random
-
+from keras.saving import register_keras_serializable
 
 class TakuNetModel:
     def __init__(self, 
@@ -694,7 +694,7 @@ def find_nearest_valid_groups(desired_groups:int, input_channels:int) -> int:
 
 
 
-
+@register_keras_serializable()
 class AdaptiveDropout(tf.keras.layers.Layer):
     def __init__(self, initial_rate=0.1, **kwargs):
         super().__init__(**kwargs)

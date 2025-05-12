@@ -11,6 +11,8 @@ from tensorflow.keras.losses import deserialize as deserialize_loss
 from tensorflow.keras.metrics import deserialize as deserialize_metric
 import warnings
 
+from TakuNet import AdaptiveDropout
+
 warnings.filterwarnings("ignore", category=UserWarning, module="keras.src.backend.tensorflow.trainer")
 
 from Models.SAM import SAMModel
@@ -93,7 +95,7 @@ if __name__ == "__main__":
     model_path = f"/zhome/02/e/181021/Desktop/Keras_Models_Images/{args.folder}/saved_models/{args.name}"
 
     print(f"📦 Loading model from: {model_path}")
-    base_model = load_model(model_path, custom_objects={"SAMModel": SAMModel})
+    base_model = load_model(model_path, custom_objects={"SAMModel": SAMModel, "AdaptiveDropout": AdaptiveDropout})
 
     compile_config = base_model.get_config().get("compile_config", None)
 
