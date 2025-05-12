@@ -88,20 +88,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Retrain a model with optional SAM support")
     parser.add_argument("--name", type=str, default="TakuNet_Init_2.keras", help="Model file name")
     parser.add_argument("--folder", type=str, default="NAS", help="Model folder")
-    parser.add_argument("--sam", type=str, default="false", help="Use SAMModel: true or false")
+    parser.add_argument("--sam", type=str, default="true", help="Use SAMModel: true or false")
     args = parser.parse_args()
 
-    use_sam = args.sam.lower() == "true"
-    use_original_config = not use_sam
+    use_original_config = not args.sam
 
     h5_path = f"/zhome/02/e/181021/Desktop/Keras_Models_Images/{args.folder}/saved_models/{args.name}"
 
     x_train, y_train, x_test, y_test = load_dummy_cifar100()  # 🔁 Replace with your actual data loader
 
-    model, compile_config = load_model_with_original_config(h5_path, use_sam=use_sam)
+    model, compile_config = load_model_with_original_config(h5_path, use_sam=args.sam)
     model.summary()
 
     retrain_model(model, x_train, y_train, x_test, y_test,
-                  use_sam=use_sam,
+                  use_sam=args.sam,
                   use_original_config=use_original_config,
                   compile_config=compile_config)

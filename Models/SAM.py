@@ -1,6 +1,8 @@
 import tensorflow as tf
 from tensorflow.keras import Model
+from keras.saving import register_keras_serializable
 
+@register_keras_serializable()
 class SAMModel(Model):
     def __init__(self, base_model, rho=0.05, **kwargs):
         super(SAMModel, self).__init__(**kwargs)
