@@ -25,6 +25,7 @@ class TakuNetModel:
                 x_test: Optional[tf.Tensor] = None, 
                 y_test: Optional[tf.Tensor] = None,
                 folder:Optional[str] = None,
+                epochs:Optional[int] = None,
                 given_model:Optional[tf.keras.Model] = None
                 ):
         
@@ -45,7 +46,7 @@ class TakuNetModel:
         
         self.is_trained:bool = False
         self.folderName:str = folder if folder is not None else "."
-        self.epochs:int = None
+        self.epochs:int = epochs
         self.learningRate:Optional[float] = 0.0005 if given_model else None
         self.results: TrainingResults = TrainingResults()
         self.test:bool = False

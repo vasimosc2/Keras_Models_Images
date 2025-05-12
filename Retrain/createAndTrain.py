@@ -3,7 +3,7 @@ import json
 import tensorflow as tf
 from TakuNet import TakuNetModel
 from data_processing import get_dataset
-Folder="Manual_Run"
+Folder="Manual_Run/Retraining"
 def load_config(model_name: str):
     with open(f"{Folder}/saved_configs/model_params/{model_name}_model_params.json" ,"r") as f:
         model_params = json.load(f)
@@ -27,7 +27,8 @@ def train_from_saved_config(model_name: str):
         y_train=None,
         x_test= None,
         y_test=None,
-        folder=Folder
+        folder=Folder,
+        epochs=30
     )
     
     default_augementaion_technique ={ "apply_standard":False,
@@ -46,7 +47,6 @@ def train_from_saved_config(model_name: str):
                 y_test=y_test)  # Train the model
 
     print("✅ Training completed!")
-    model.summary()
 
 if __name__ == "__main__":
     train_from_saved_config(model_name="TakuNet_Random_0")
