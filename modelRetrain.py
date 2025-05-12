@@ -80,7 +80,6 @@ if __name__ == "__main__":
     parser.add_argument("--name", type=str, default="TakuNet_Init_2.keras", help="The name of the model")
     parser.add_argument("--folder", type=str, default="NAS", help="The folder of the model")
     args = parser.parse_args()
-    number_of_models = args.num_models
 
     h5_path = f"/zhome/02/e/181021/Desktop/Keras_Models_Images/{args.folder}/saved_models/{args.name}"
     #save_path = "retrained_model.keras"         # 👈 Optional: Save final model
