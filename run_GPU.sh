@@ -12,4 +12,4 @@ source venv/bin/activate
 python3 manual_run.py --num_models 2 # This manually creates TakuNetModels
 python3 evolutionary_run.py # This Runs the Actual Nas with Genetic Algorythm
 python3 TrainBestModels.py # This was able to re-train and existing Model
-python3 Retrain/createAndTrain.py
+python -m Retrain.createAndTrain

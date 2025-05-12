@@ -2,6 +2,7 @@ import os
 import json
 import tensorflow as tf
 from TakuNet import TakuNetModel
+from data_processing import get_dataset
 Folder="Manual_Run"
 def load_config(model_name: str):
     with open(f"{Folder}/saved_configs/model_params/{model_name}_model_params.json" ,"r") as f:
@@ -28,9 +29,21 @@ def train_from_saved_config(model_name: str):
         y_test=None,
         folder=Folder
     )
+    
+    default_augementaion_technique ={ "apply_standard":False,
+                                "apply_color":False,
+                                "apply_geometric":False,
+                                "apply_mixup": False,
+                                "apply_cutmix": False}
+    x_train, y_train, x_test, y_test = get_dataset( output_classes= model_params["refiner_block"]["num_output_classes"], 
+                                                augementation_technique=default_augementaion_technique)
 
     print("🚀 Starting training")
-    model.train()
+    
+    model.train(x_train=x_train,
+                y_train=y_train,
+                x_test=x_test,
+                y_test=y_test)  # Train the model
 
     print("✅ Training completed!")
     model.summary()
