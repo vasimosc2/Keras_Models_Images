@@ -1,7 +1,7 @@
 import os
 import json
 import tensorflow as tf
-from ..TakuNet import TakuNetModel
+from TakuNet import TakuNetModel
 Folder="Manual_Run"
 def load_config(model_name: str):
     with open(f"{Folder}/saved_configs/model_params/{model_name}_model_params.json" "r") as f:
