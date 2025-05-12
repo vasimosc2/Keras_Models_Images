@@ -49,7 +49,7 @@ class TakuNetModel:
         self.learningRate:Optional[float] = 0.0005 if given_model else None
         self.results: TrainingResults = TrainingResults()
         self.test:bool = False
-        self.modelType:str = "SAM"
+        self.modelType:str = "normal" #"SAM"
         self.is_trainable: bool = self.check_trainability() if self.test is False else True
 
   
@@ -508,8 +508,8 @@ class TakuNetModel:
                                      monitor='val_accuracy', 
                                      save_best_only=True, 
                                      mode='max', 
-                                     verbose=0,  
-                                     save_weights_only=True)
+                                     verbose=1,  
+                                     save_weights_only=False)
         
         early_stopping_acc = EarlyStopping(monitor='val_accuracy', 
                                            patience=self.train_params["stop_patience"], # We stop the training if for "stop_patience" we have no improvement
