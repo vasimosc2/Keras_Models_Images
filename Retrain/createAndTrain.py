@@ -1,9 +1,12 @@
 import argparse
 import json
+import os
 import pandas as pd
 from TakuNet import TakuNetModel
 from data_processing import get_dataset
 Folder="Manual_Run/Retraining"
+os.makedirs(f'{Folder}/results', exist_ok=True)
+
 def load_config(model_name: str):
     with open(f"{Folder}/saved_configs/model_params/{model_name}_model_params.json" ,"r") as f:
         model_params = json.load(f)
