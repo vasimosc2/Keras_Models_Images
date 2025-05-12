@@ -7,6 +7,9 @@ from tensorflow.keras.models import load_model, model_from_json, model_from_conf
 from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, LearningRateScheduler
+from tensorflow.keras.optimizers import deserialize as deserialize_optimizer
+from tensorflow.keras.losses import deserialize as deserialize_loss
+from tensorflow.keras.metrics import deserialize as deserialize_metric
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="keras.src.backend.tensorflow.trainer")
 
@@ -48,7 +51,10 @@ def retrain_model(model, x_train, y_train, x_test, y_test, use_sam=False, use_or
 
     if use_original_config and compile_config is not None:
         print("🔁 Using original compile configuration")
-        model.compile(**model_from_config({'class_name': 'Model', 'config': compile_config}).get_config()["compile_config"])
+        optimizer = deserialize_optimizer(compile_config['optimizer'])
+        loss = deserialize_loss(compile_config['loss'])
+        metrics = [deserialize_metric(m) for m in compile_config.get('metrics', [])]
+        model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
     else:
         print("⚙️ Using custom training configuration")
         model.compile(optimizer=SGD(learning_rate=initial_lr, momentum=0.9),
