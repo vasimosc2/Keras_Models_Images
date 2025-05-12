@@ -50,12 +50,12 @@ def retrain_model(model, x_train, y_train, x_test, y_test, save_path=None):
 
     callbacks = [
         EarlyStopping(monitor='val_accuracy', patience=10, restore_best_weights=True),
+        tf.keras.callbacks.LearningRateScheduler(cosine_annealing_with_warmup, verbose=1)
     ]
 
     if save_path:
         callbacks.append(
-            ModelCheckpoint(filepath=save_path, save_best_only=True, monitor='val_accuracy', mode='max'),
-            tf.keras.callbacks.LearningRateScheduler(cosine_annealing_with_warmup, verbose=1)
+            ModelCheckpoint(filepath=save_path, save_best_only=True, monitor='val_accuracy', mode='max')
         )
 
     model.fit(
