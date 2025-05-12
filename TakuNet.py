@@ -507,7 +507,7 @@ class TakuNetModel:
                                      save_best_only=True, 
                                      mode='max', 
                                      verbose=0,  
-                                     save_weights_only=False)
+                                     save_weights_only=True)
         
         early_stopping_acc = EarlyStopping(monitor='val_accuracy', 
                                            patience=self.train_params["stop_patience"], # We stop the training if for "stop_patience" we have no improvement
