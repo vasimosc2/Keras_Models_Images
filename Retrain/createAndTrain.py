@@ -4,10 +4,10 @@ import tensorflow as tf
 from TakuNet import TakuNetModel
 Folder="Manual_Run"
 def load_config(model_name: str):
-    with open(f"{Folder}/saved_configs/model_params/{model_name}_model_params.json" "r") as f:
+    with open(f"{Folder}/saved_configs/model_params/{model_name}_model_params.json" ,"r") as f:
         model_params = json.load(f)
 
-    with open(f"{Folder}/saved_configs/train_params/{model_name}_train_params.json" "r") as f:
+    with open(f"{Folder}/saved_configs/train_params/{model_name}_train_params.json", "r") as f:
         train_params = json.load(f)
 
     return model_params, train_params
