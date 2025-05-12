@@ -3,7 +3,7 @@ import os
 import random
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.models import load_model, model_from_json, model_from_config
+from tensorflow.keras.models import load_model, model_from_json
 from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, LearningRateScheduler
