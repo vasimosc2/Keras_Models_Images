@@ -1,7 +1,6 @@
-import os
+import argparse
 import json
 import pandas as pd
-import tensorflow as tf
 from TakuNet import TakuNetModel
 from data_processing import get_dataset
 Folder="Manual_Run/Retraining"
@@ -15,7 +14,7 @@ def load_config(model_name: str):
     return model_params, train_params
 
 
-def train_from_saved_config(model_name: str):
+def train_from_saved_config(model_name: str, epochs:int):
     print(f"🔍 Loading saved configs for model: {model_name}")
     model_params, train_params = load_config(model_name)
     print("🧠 Creating new TakuNet model")
@@ -29,7 +28,7 @@ def train_from_saved_config(model_name: str):
         x_test= None,
         y_test=None,
         folder=Folder,
-        epochs=30
+        epochs=epochs
     )
     
     default_augementaion_technique ={ "apply_standard":False,
@@ -54,4 +53,9 @@ def train_from_saved_config(model_name: str):
     print("✅ Training completed!")
 
 if __name__ == "__main__":
-    train_from_saved_config(model_name="TakuNet_Random_0")
+    parser = argparse.ArgumentParser(description="Retrain a model with optional SAM support")
+    parser.add_argument("--name", type=str, default="TakuNet_Random_0", help="Model file name")
+    parser.add_argument("--epochs", type=int, default=50, help="Model folder")
+
+    args = parser.parse_args()
+    train_from_saved_config(model_name=args.name,epochs=args.epochs)
