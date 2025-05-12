@@ -36,4 +36,4 @@ def train_from_saved_config(model_name: str):
     model.summary()
 
 if __name__ == "__main__":
-    train_from_saved_config(model_name="TakuNet_Init_0")
+    train_from_saved_config(model_name="TakuNet_Random_0")
