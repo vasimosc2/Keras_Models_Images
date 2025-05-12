@@ -1,5 +1,6 @@
 import os
 import json
+import pandas as pd
 import tensorflow as tf
 from TakuNet import TakuNetModel
 from data_processing import get_dataset
@@ -45,6 +46,10 @@ def train_from_saved_config(model_name: str):
                 y_train=y_train,
                 x_test=x_test,
                 y_test=y_test)  # Train the model
+    hist_df = pd.DataFrame(model.results.history.history)
+    hist_path = f'{Folder}/results/{model.model_name}_history.csv'
+    hist_df.to_csv(hist_path, index=False)
+    print(f"📊 Training history saved to: {hist_path}")
 
     print("✅ Training completed!")
 

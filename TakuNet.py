@@ -588,7 +588,6 @@ class TakuNetModel:
                 full_history.history[key].extend(history_extra.history[key])
 
             # Update best accuracy after extra training
-            best_test_acc = max(full_history.history['val_accuracy'])
 
             total_epochs_trained = len(full_history.history['loss'])
 
@@ -612,7 +611,7 @@ class TakuNetModel:
         self.results.history = full_history
         self.results.epochs_trained = total_epochs_trained
         self.results.train_accuracy = max(full_history.history['accuracy'])
-        self.results.test_accuracy = best_test_acc
+        self.results.test_accuracy = max(full_history.history['val_accuracy'])
         self.results.SWA_test_accuracy = swa_val_accuracy
         self.results.precision = precision_score(y_true_classes, y_test_pred_classes, average='macro')
         self.results.recall = recall_score(y_true_classes, y_test_pred_classes, average='macro')
