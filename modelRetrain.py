@@ -1,9 +1,8 @@
 import argparse
 import os
-import random
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.models import load_model, model_from_json
+from tensorflow.keras.models import load_model
 from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, LearningRateScheduler
@@ -11,20 +10,11 @@ from tensorflow.keras.optimizers import deserialize as deserialize_optimizer
 from tensorflow.keras.losses import deserialize as deserialize_loss
 from tensorflow.keras.metrics import deserialize as deserialize_metric
 import warnings
+
 warnings.filterwarnings("ignore", category=UserWarning, module="keras.src.backend.tensorflow.trainer")
 
-# ✅ Import SAMModel (you must have it in Models/SAM.py)
 from Models.SAM import SAMModel
 
-# 🔁 Load model and optionally extract original compile config
-def load_model_with_original_config(h5_path, use_sam=False):
-    model = load_model(h5_path, custom_objects={"SAMModel": SAMModel} if use_sam else {})
-    json_config = model.to_json()
-    model_reset = model_from_json(json_config, custom_objects={"SAMModel": SAMModel} if use_sam else {})
-    compile_config = model.get_config().get("compile_config", None)
-    return model_reset, compile_config
-
-# Dummy CIFAR-100 loader (replace with your own dataset)
 def load_dummy_cifar100():
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar100.load_data(label_mode='fine')
     x_train, x_test = x_train / 255.0, x_test / 255.0
@@ -32,12 +22,12 @@ def load_dummy_cifar100():
     y_test = tf.keras.utils.to_categorical(y_test, 100)
     return x_train, y_train, x_test, y_test
 
-# 🚀 Retrain model
-def retrain_model(model, x_train, y_train, x_test, y_test, use_sam=False, use_original_config=False, compile_config=None, save_path=None):
+def retrain_model(base_model, x_train, y_train, x_test, y_test,
+                  use_sam=False, compile_config=None, save_path=None):
     warmup_epochs = 5
     initial_lr = 0.05
     total_epochs = 50
-    batchSize = 16
+    batch_size = 16
 
     def cosine_annealing_with_warmup(epoch):
         if epoch < warmup_epochs:
@@ -47,9 +37,11 @@ def retrain_model(model, x_train, y_train, x_test, y_test, use_sam=False, use_or
             return float(initial_lr * cosine_decay)
 
     if use_sam:
-        model = SAMModel(model)
+        model = SAMModel(base_model)
+    else:
+        model = base_model
 
-    if use_original_config and compile_config is not None:
+    if compile_config is not None:
         print("🔁 Using original compile configuration")
         optimizer = deserialize_optimizer(compile_config['optimizer'])
         loss = deserialize_loss(compile_config['loss'])
@@ -57,9 +49,11 @@ def retrain_model(model, x_train, y_train, x_test, y_test, use_sam=False, use_or
         model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
     else:
         print("⚙️ Using custom training configuration")
-        model.compile(optimizer=SGD(learning_rate=initial_lr, momentum=0.9),
-                      loss=CategoricalCrossentropy(label_smoothing=0.1),
-                      metrics=['accuracy'])
+        model.compile(
+            optimizer=SGD(learning_rate=initial_lr, momentum=0.9),
+            loss=CategoricalCrossentropy(label_smoothing=0.1),
+            metrics=['accuracy']
+        )
 
     callbacks = [
         EarlyStopping(monitor='val_accuracy', patience=10, restore_best_weights=True),
@@ -67,12 +61,13 @@ def retrain_model(model, x_train, y_train, x_test, y_test, use_sam=False, use_or
     ]
 
     if save_path:
-        callbacks.append(ModelCheckpoint(filepath=save_path, save_best_only=True, monitor='val_accuracy', mode='max'))
+        callbacks.append(ModelCheckpoint(filepath=save_path, save_best_only=True,
+                                         monitor='val_accuracy', mode='max'))
 
     model.fit(
         x_train, y_train,
         validation_data=(x_test, y_test),
-        batch_size=batchSize,
+        batch_size=batch_size,
         epochs=total_epochs,
         shuffle=True,
         callbacks=callbacks,
@@ -81,9 +76,12 @@ def retrain_model(model, x_train, y_train, x_test, y_test, use_sam=False, use_or
 
     loss, acc = model.evaluate(x_test, y_test, verbose=2)
     print(f"✅ Final test accuracy: {acc:.4f}")
+
+    if save_path:
+        model.save(save_path, save_format="keras")
+
     return model
 
-# 🧠 Main logic
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Retrain a model with optional SAM support")
     parser.add_argument("--name", type=str, default="TakuNet_Init_2.keras", help="Model file name")
@@ -91,16 +89,18 @@ if __name__ == "__main__":
     parser.add_argument("--sam", type=str, default="true", help="Use SAMModel: true or false")
     args = parser.parse_args()
 
-    use_original_config = not args.sam
+    use_sam = args.sam.lower() == "true"
+    model_path = f"/zhome/02/e/181021/Desktop/Keras_Models_Images/{args.folder}/saved_models/{args.name}"
 
-    h5_path = f"/zhome/02/e/181021/Desktop/Keras_Models_Images/{args.folder}/saved_models/{args.name}"
+    print(f"📦 Loading model from: {model_path}")
+    base_model = load_model(model_path, custom_objects={"SAMModel": SAMModel})
 
-    x_train, y_train, x_test, y_test = load_dummy_cifar100()  # 🔁 Replace with your actual data loader
+    compile_config = base_model.get_config().get("compile_config", None)
 
-    model, compile_config = load_model_with_original_config(h5_path, use_sam=args.sam)
-    model.summary()
+    x_train, y_train, x_test, y_test = load_dummy_cifar100()
+    base_model.summary()
 
-    retrain_model(model, x_train, y_train, x_test, y_test,
-                  use_sam=args.sam,
-                  use_original_config=use_original_config,
-                  compile_config=compile_config)
+    retrain_model(base_model, x_train, y_train, x_test, y_test,
+                  use_sam=use_sam,
+                  compile_config=compile_config,
+                  save_path=model_path)

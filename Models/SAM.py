@@ -46,3 +46,16 @@ class SAMModel(Model):
         # ✅ Modern metric tracking
         self.compiled_metrics.update_state(y, predictions)
         return {m.name: m.result() for m in self.metrics}
+    
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            "rho": self.rho,
+            "base_model": tf.keras.saving.serialize_keras_object(self.base_model)
+        })
+        return config
+
+    @classmethod
+    def from_config(cls, config):
+        base_model = tf.keras.saving.deserialize_keras_object(config.pop("base_model"))
+        return cls(base_model=base_model, **config)

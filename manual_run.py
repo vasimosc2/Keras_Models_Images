@@ -25,7 +25,7 @@ Folder="Manual_Run"
 
 
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # 0 = all logs, 1 = INFO, 2 = WARNING, 3 = ERROR
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # 0 = all logs, 1 = INFO, 2 = WARNING, 3 = ERROR
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
     try:
@@ -74,25 +74,8 @@ default_augementaion_technique ={ "apply_standard":False,
 while trainable_models_count < number_of_models:  # Train number_of_models with random hyperparameters
     model_params = getSearchSpaceParameters.sample_from_search_space(config["model_search_space"])
     train_params = getTrainingParameters.sample_from_train_and_evaluate(config["train_and_evaluate"])
-
-    # aug_type = random.choice(['standard', 'geometric', 'mixup'])
-
-    # apply_standard = aug_type == 'standard'
-    # apply_geometric = aug_type == 'geometric'
-    # apply_mixup = aug_type == 'mixup'
-
-    # augmentation_technique = {  "apply_standard":apply_standard,
-    #                             "apply_color":False,
-    #                             "apply_geometric":apply_geometric,
-    #                             "apply_mixup": apply_mixup,
-    #                             "apply_cutmix": False
-    #                                 }
-    # print(f"\n🎲 Randomly selected augmentation for model {trainable_models_count}: {aug_type}\n")
-
-
     
     model_name = f"TakuNet_Random_{trainable_models_count}"
-    #print(f"\n🔍 Selected hyperparameters for {model_name}:\n{json.dumps(model_params, indent=4)}")
     taku_model: TakuNetModel = TakuNetModel(model_name=model_name, 
                                             input_shape=(32, 32, 3), 
                                             model_params=model_params, 
@@ -102,6 +85,7 @@ while trainable_models_count < number_of_models:  # Train number_of_models with 
                                             x_test=None, 
                                             y_test=None,
                                             folder=Folder)
+    
     if taku_model.is_trainable:
         models_to_train.append(taku_model)
         trainable_models_count += 1
@@ -110,8 +94,6 @@ while trainable_models_count < number_of_models:  # Train number_of_models with 
     else:
         print(f"❌ Model {model_name} rejected due to memory constraints \n")
     
-    
-    #del taku_model, x_train, y_train, x_test, y_test
     tf.keras.backend.clear_session()
     gc.collect()
 

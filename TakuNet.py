@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import time
 import os
@@ -11,7 +12,8 @@ from Models.SAM import SAMModel
 from utils import memoryEstimator
 import math
 import random
-from SurrogateComparisson.Embedding import simple_architecture_embedding
+
+
 class TakuNetModel:
     def __init__(self, 
                 model_name:str, 
@@ -638,6 +640,8 @@ class TakuNetModel:
         keras_size_kb = os.path.getsize(checkpoint_path) / 1024
         tflite_size_kb = os.path.getsize(f"{self.folderName}/TfLiteModels/{self.model_name}.tflite") / 1024
         c_array_size_kb = os.path.getsize(f"{self.folderName}/HeaderFiles/{self.model_name}.h") / 1024
+        save_config_to_file(self.model_params, f"{self.folderName}/saved_configs/model_params/{self.model_name}_model_params.json")
+        save_config_to_file(self.train_params, f"{self.folderName}/configs/train_params/{self.model_name}_train_params.json")
 
         self.results.tflite_size = tflite_size_kb
         
@@ -658,6 +662,10 @@ class TakuNetModel:
 
 
 # Helpers
+def save_config_to_file(config: dict, path: str):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(config, f, indent=4)
 
 def get_optimizer(name, learning_rate):
     """Returns the optimizer instance based on the name."""
