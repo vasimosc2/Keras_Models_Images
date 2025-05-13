@@ -70,8 +70,8 @@ def save_ram_model():
     plt.scatter(df[ACCURATE_COL], y, color='blue', label="Accurate RAM vs Measured")
 
     # Perfect y=x line
-    line_range = np.linspace(min(df[ACCURATE_COL].min(), y.min()), max(df[ACCURATE_COL].max(), y.max()), 100)
-    plt.plot(line_range, line_range, color='grey', linestyle='--', label="Perfect Line (y=x)")
+    #line_range = np.linspace(min(df[ACCURATE_COL].min(), y.min()), max(df[ACCURATE_COL].max(), y.max()), 100)
+    #plt.plot(line_range, line_range, color='grey', linestyle='--', label="Perfect Line (y=x)")
 
     # Linear Regression Line (Accurate RAM)
     plt.plot(df[ACCURATE_COL], model.predict(X_accurate), color='blue', linestyle='-', label="Regression Line (Accurate)")
@@ -141,7 +141,7 @@ def save_inference_time_model():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train Flash or RAM regression model.")
-    parser.add_argument("--memory_type", default="time", choices=["flash", "ram", "time"], help="Memory type to process")
+    parser.add_argument("--memory_type", default="ram", choices=["flash", "ram", "time"], help="Memory type to process")
     args = parser.parse_args()
 
     if args.memory_type.lower() == "flash":
