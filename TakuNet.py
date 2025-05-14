@@ -119,7 +119,7 @@ class TakuNetModel:
         se = layers.GlobalAveragePooling2D()(inputs)
         se = layers.Dense(filters // ratio, activation='relu', use_bias=False)(se)
         se = layers.Dense(filters, activation='hard_sigmoid', use_bias=False)(se)
-        se = layers.Reshape((1,1,filters))(se)
+        se = tf.expand_dims(tf.expand_dims(se, 1), 1)
         return layers.multiply([inputs, se])
     
     def _downsampler_block(self, inputs:tuple, curr_stage_number:int):
