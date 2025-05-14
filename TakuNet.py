@@ -118,7 +118,7 @@ class TakuNetModel:
         filters = inputs.shape[-1]
         se = layers.GlobalAveragePooling2D()(inputs)
         se = layers.Dense(filters // ratio, activation='relu', use_bias=False)(se)
-        se = layers.Dense(filters, activation='sigmoid', use_bias=False)(se)
+        se = layers.Dense(filters, activation='hard_sigmoid', use_bias=False)(se)
         se = layers.Reshape((1,1,filters))(se)
         return layers.multiply([inputs, se])
     
