@@ -119,7 +119,7 @@ class TakuNetModel:
         se = layers.GlobalAveragePooling2D()(inputs)
         se = layers.Dense(filters // ratio, activation='relu', use_bias=False)(se)
         se = layers.Dense(filters, activation='hard_sigmoid', use_bias=False)(se)
-        se = tf.expand_dims(tf.expand_dims(se, 1), 1)
+        se = StaticReshape((1, 1, filters))(se)
         return layers.multiply([inputs, se])
     
     def _downsampler_block(self, inputs:tuple, curr_stage_number:int):
@@ -894,6 +894,16 @@ class SWACallback(tf.keras.callbacks.Callback):
 
         self._model_ref.set_weights(avg_weights)
         print("✅ Manual SWA weights applied.")
+
+
+class StaticReshape(tf.keras.layers.Layer):
+    def __init__(self, target_shape, **kwargs):
+        super().__init__(**kwargs)
+        self.target_shape = target_shape
+
+    def call(self, inputs):
+        return tf.reshape(inputs, (-1,) + self.target_shape)
+
 
 class TrainingResults:
     """Class to store training and evaluation results."""
