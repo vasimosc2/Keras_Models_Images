@@ -562,25 +562,26 @@ class TakuNetModel:
         full_history = history
         total_epochs_trained = len(history.history['loss'])
 
+        goal_val_accuract:float = 0.52
         # **Check if we should continue training**
-        if best_test_acc > 0.52:
-            print(f"\n🚀 Best test accuracy ({best_test_acc:.4f}) exceeded 60%. Continuing training for 100 more epochs.\n")
+        if best_test_acc > goal_val_accuract:
+            extra_epochs:int = 50
+            print(f"\n🚀 Best test accuracy ({best_test_acc:.4f} = {best_test_acc * 100}) exceeded {goal_val_accuract * 100}%. Continuing training for {extra_epochs} more epochs.\n")
             
             already_used_epochs = self.epochs if self.epochs else self.train_params["num_epochs"]
-            # 🔧 Set low learning rate manually
 
             print(f"🔧 Setting learning rate very low for polishing phase...")
-            self.model.optimizer.learning_rate.assign(1e-4)
+            self.model.optimizer.learning_rate.assign(1e-3)
             
             # Extra Training Phase
             history_extra = self.model.fit(
                 x_train, y_train,
-                epochs=already_used_epochs + 50,
+                epochs=already_used_epochs + extra_epochs,
                 initial_epoch=already_used_epochs,
                 batch_size=int(batchSize / 2),
                 validation_data=(x_test, y_test),
                 verbose=2,
-                callbacks=[early_stopping_acc, checkpoint, adjust_dropout, swa_callback ]
+                callbacks=[ checkpoint, adjust_dropout, swa_callback ]
             )
 
             # Merge histories
