@@ -563,7 +563,8 @@ class TakuNetModel:
         total_epochs_trained = len(history.history['loss'])
 
         goal_val_accuract:float = 0.52
-        # **Check if we should continue training**
+
+
         if best_test_acc > goal_val_accuract:
             extra_epochs:int = 50
             print(f"\n🚀 Best test accuracy ({best_test_acc:.4f} = {best_test_acc * 100}) exceeded {goal_val_accuract * 100}%. Continuing training for {extra_epochs} more epochs.\n")
@@ -573,13 +574,11 @@ class TakuNetModel:
             print(f"🔧 Setting learning rate very low for polishing phase...")
             final_lr = self.model.optimizer.learning_rate.numpy()
 
-            # Reduce it moderately for fine-tuning (e.g., 30% of last LR, but with a floor)
-            polishing_lr = max(final_lr * 0.3, 1e-4)
+            polishing_lr = max(final_lr * 0.3, 1e-3)
 
             self.model.optimizer.learning_rate.assign(polishing_lr)
             print(f"🔧 Fine-tuning with learning rate: {polishing_lr:.6f}")
             
-            # Extra Training Phase
             history_extra = self.model.fit(
                 x_train, y_train,
                 epochs=already_used_epochs + extra_epochs,
@@ -590,13 +589,11 @@ class TakuNetModel:
                 callbacks=[ checkpoint, adjust_dropout, swa_callback ]
             )
 
-            # Merge histories
             for key in full_history.history.keys():
                 if key in history_extra.history:
                     full_history.history[key].extend(history_extra.history[key])
                 elif key == "learning_rate":
-                    # Add the fixed learning rate for each extra epoch
-                    fixed_lr = polishing_lr  # You already calculated this earlier
+                    fixed_lr = polishing_lr
                     num_extra_epochs = len(history_extra.history["loss"])
                     full_history.history[key].extend([fixed_lr] * num_extra_epochs)
                     print(f"ℹ️ Filled 'learning_rate' with fixed value {fixed_lr:.6f} for {num_extra_epochs} extra epochs.")
@@ -607,7 +604,7 @@ class TakuNetModel:
             # Update best accuracy after extra training
 
             total_epochs_trained = len(full_history.history['loss'])
-
+            best_test_acc = max(full_history.history['val_accuracy'])
             print(f"\n🔁 Continued Training Complete. New Best Test Accuracy: {best_test_acc:.4f}\n")
 
         # **Load final Best Model**
@@ -628,7 +625,7 @@ class TakuNetModel:
         self.results.history = full_history
         self.results.epochs_trained = total_epochs_trained
         self.results.train_accuracy = max(full_history.history['accuracy'])
-        self.results.test_accuracy = max(full_history.history['val_accuracy'])
+        self.results.test_accuracy = best_test_acc
         self.results.SWA_test_accuracy = swa_val_accuracy
         self.results.precision = precision_score(y_true_classes, y_test_pred_classes, average='macro')
         self.results.recall = recall_score(y_true_classes, y_test_pred_classes, average='macro')
