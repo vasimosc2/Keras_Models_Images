@@ -177,9 +177,9 @@ class EvolutionarySearch:
                 best: TakuNetModel = self._ranknet_best(models=trio)
 
                 print(f"The winner is {best.model_name} with fitness {self._fitness(model=best)} 🏆\n")
-                print(f"The Competitor 0 {trio[0].model_name} with fitness {self._fitness(model=trio[0]) if trio[0].is_trained else "None"}\n")
-                print(f"The Competitor 1 {trio[1].model_name} with fitness {self._fitness(model=trio[1]) if trio[1].is_trained else "None"}\n")
-                print(f"The Competitor 2 {trio[2].model_name} with fitness {self._fitness(model=trio[2]) if trio[2].is_trained else "None"}\n")
+                print(f"The Competitor 0 {trio[0].model_name} with fitness {self._fitness(model=trio[0]) if trio[0].is_trained else 'None'}\n")
+                print(f"The Competitor 1 {trio[1].model_name} with fitness {self._fitness(model=trio[1]) if trio[1].is_trained else 'None'}\n")
+                print(f"The Competitor 2 {trio[2].model_name} with fitness {self._fitness(model=trio[2]) if trio[2].is_trained else 'None'}\n")
 
                 if best.is_trainable and not best.is_trained:
                     print(f"Therotically I am never here :) \n")
@@ -197,8 +197,8 @@ class EvolutionarySearch:
                 best: TakuNetModel = self._ranknet_best(models=duo)
 
                 print(f"The winner is {best.model_name} with fitness {self._fitness(model=best)} 🏆\n")
-                print(f"The Competitor 0 {duo[0].model_name} with fitness {self._fitness(model=duo[0]) if duo[0].is_trained else "None"}\n")
-                print(f"The Competitor 1 {duo[1].model_name} with fitness {self._fitness(model=duo[1]) if duo[1].is_trained else "None"}\n")
+                print(f"The Competitor 0 {duo[0].model_name} with fitness {self._fitness(model=duo[0]) if duo[0].is_trained else 'None'}\n")
+                print(f"The Competitor 1 {duo[1].model_name} with fitness {self._fitness(model=duo[1]) if duo[1].is_trained else 'None'}\n")
 
                 if best.is_trainable and not best.is_trained:
                     print(f"Therotically I am never here :) \n")
