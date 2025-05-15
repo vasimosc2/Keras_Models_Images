@@ -92,3 +92,36 @@ print("✅ Evolutionary search complete!")
 df_results = pd.DataFrame(best_models_data)
 df_results.to_csv(f'{Folder}/results/Best_Models_Results_NAS.csv', index=False)
 print(f"✅ All best models from each generation saved to CSV: {Folder}/results/Best_Models_Results_NAS.csv")
+
+
+# --- Pareto Filtering ---
+
+def is_pareto_efficient(models):
+    pareto_set = []
+    for i, m_i in enumerate(models):
+        dominated = False
+        for j, m_j in enumerate(models):
+            if i != j:
+                if (
+                    m_j["Best Test Accuracy"] >= m_i["Best Test Accuracy"] and
+                    m_j["Model RAM (KB)"] <= m_i["Model RAM (KB)"] and
+                    m_j["Estimated Flash Memory (KB)"] <= m_i["Estimated Flash Memory (KB)"]
+                ):
+                    if (
+                        m_j["Best Test Accuracy"] > m_i["Best Test Accuracy"] or
+                        m_j["Model RAM (KB)"] < m_i["Model RAM (KB)"] or
+                        m_j["Estimated Flash Memory (KB)"] < m_i["Estimated Flash Memory (KB)"]
+                    ):
+                        dominated = True
+                        break
+        if not dominated:
+            pareto_set.append(m_i)
+    return pareto_set
+
+# Filter only Pareto-optimal models
+pareto_models = is_pareto_efficient(best_models_data)
+
+# Save to CSV
+df_results = pd.DataFrame(pareto_models)
+df_results.to_csv(f'{Folder}/results/Pareto_Optimal_Models.csv', index=False)
+print(f"✅ Pareto-optimal models saved to: {Folder}/results/Pareto_Optimal_Models.csv")

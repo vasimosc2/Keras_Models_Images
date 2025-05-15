@@ -145,8 +145,21 @@ class EvolutionarySearch:
         labels = np.array(labels)
         return pairs, labels
 
-    def _fitness(self, model: TakuNetModel)-> float:
-        return model.results.test_accuracy if model.results.test_accuracy else -1
+    def _fitness(self, model: TakuNetModel) -> float:
+        acc = model.results.test_accuracy or 0.0
+        ram = model.results.ModelRam or 1.0  # in KB
+        flash = model.results.estimatedFlash or 1.0  # in KB
+
+        # Fixed maximum capacities (adjust to match your constraints)
+        MAX_RAM:int = self.config["train_and_evaluate"]["evaluation_config"]["max_ram_consumption"] - self.config["train_and_evaluate"]["evaluation_config"]["additional_ram_consumption"]
+        MAX_FLASH:int = self.config["train_and_evaluate"]["evaluation_config"]["max_flash_consumption"] - self.config["train_and_evaluate"]["evaluation_config"]["additional_flash_consumption"]
+
+        # Normalized scores (higher is better)
+        norm_ram_score = max(0.0, 1.0 - ram / MAX_RAM)
+        norm_flash_score = max(0.0, 1.0 - flash / MAX_FLASH)
+
+        # Weighted sum (you can adjust weights)
+        return  acc + norm_ram_score + norm_flash_score
     
     def _select_parents(self) -> List[TakuNetModel]:
         """Selects parents using 1v1 tournament style; last 3 form a mini-tournament if population is odd."""

@@ -562,7 +562,7 @@ class TakuNetModel:
         full_history = history
         total_epochs_trained = len(history.history['loss'])
 
-        goal_val_accuract:float = 0.52
+        goal_val_accuract:float = 0.60
 
 
         if best_test_acc > goal_val_accuract:
