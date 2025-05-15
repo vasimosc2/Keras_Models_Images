@@ -9,3 +9,4 @@ scp s222566@login.hpc.dtu.dk:/zhome/02/e/181021/Desktop/Keras_Models_Images/Manu
 scp s222566@login.hpc.dtu.dk:/zhome/02/e/181021/Desktop/Keras_Models_Images/Manual_Run/HeaderFiles/TakuNet_Random_2.h /mnt/c/Users/mosho/OneDrive/Arduino/First_Attempt/
 
 scp s222566@login.hpc.dtu.dk:/zhome/02/e/181021/Desktop/Keras_Models_Images/NAS/HeaderFiles/TakuNet_Crossover_21.h /mnt/c/Users/mosho/OneDrive/Arduino/First_Attempt/
+scp s222566@login.hpc.dtu.dk:/zhome/02/e/181021/Desktop/Keras_Models_Images/NAS/HeaderFiles/TakuNet_Init_0.h /mnt/c/Users/mosho/OneDrive/Arduino/First_Attempt/

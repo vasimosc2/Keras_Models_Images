@@ -54,43 +54,41 @@ evo_search = EvolutionarySearch(config_path=CONFIG_PATH, population_size=POPULAT
                                 mutation_rate=MUTATION_RATE, crossover_rate=CROSSOVER_RATE, augmentation_techinque=default_augementaion_technique)
 
 # Run evolutionary search
-best_models_data = []
+models_data = []
 
 # Run evolutionary search
-for generation, best_model in enumerate(evo_search.evolve(), start=1):
-    print(f"🔥 Best model of Generation {generation}: {best_model.model_name} with Accuracy: {best_model.results.test_accuracy:.4f}")
+for generation, model in enumerate(evo_search.evolve(), start=1):
 
-    # Save best model's data
-    best_models_data.append({
-        "Generation": generation,
-        "Model": best_model.model_name,
-        "Best Train Accuracy": best_model.results.train_accuracy,
-        "Best Test Accuracy": best_model.results.test_accuracy,
-        "Swa Test Accuracy": best_model.results.SWA_test_accuracy,
-        "TFlite Test Accuracy": best_model.results.tflite_accuracy,
-        "Precision": best_model.results.precision,
-        "Recall": best_model.results.recall,
-        "F1 Score": best_model.results.f1_score,
-        "Estimated Max RAM Usage (KB)": best_model.results.estimatedMaxRam,
-        "Accurate Max RAM Usage (KB)": best_model.results.AccurateMaxRam,
-        "Model RAM (KB)": best_model.results.ModelRam,
-        "Estimated Flash Memory (KB)": best_model.results.estimatedFlash,        
-        "TFlite size(KB)": best_model.results.tflite_size,
-        "Flop Number": best_model.results.flops,
-        "Fitness Score": best_model.results.fitness_score,
-        "Training Time (s)": best_model.results.training_time,
-        "Epochs Trained": best_model.results.epochs_trained
+    # Save  model's data
+    models_data.append({
+        "Model": model.model_name,
+        "Best Train Accuracy": model.results.train_accuracy,
+        "Best Test Accuracy": model.results.test_accuracy,
+        "Swa Test Accuracy": model.results.SWA_test_accuracy,
+        "TFlite Test Accuracy": model.results.tflite_accuracy,
+        "Precision": model.results.precision,
+        "Recall": model.results.recall,
+        "F1 Score": model.results.f1_score,
+        "Estimated Max RAM Usage (KB)": model.results.estimatedMaxRam,
+        "Accurate Max RAM Usage (KB)": model.results.AccurateMaxRam,
+        "Model RAM (KB)": model.results.ModelRam,
+        "Estimated Flash Memory (KB)": model.results.estimatedFlash,        
+        "TFlite size(KB)": model.results.tflite_size,
+        "Flop Number": model.results.flops,
+        "Fitness Score": model.results.fitness_score,
+        "Training Time (s)": model.results.training_time,
+        "Epochs Trained": model.results.epochs_trained
     })
 
-    hist_df = pd.DataFrame(best_model.results.history.history)
-    hist_path = f'{Folder}/results/{best_model.model_name}_history.csv'
+    hist_df = pd.DataFrame(model.results.history.history)
+    hist_path = f'{Folder}/results/History/{model.model_name}_history.csv'
     hist_df.to_csv(hist_path, index=False)
     print(f"📊 Training history saved to: {hist_path}")
 
 print("✅ Evolutionary search complete!")
 
 # Convert best models data to DataFrame and save to CSV
-df_results = pd.DataFrame(best_models_data)
+df_results = pd.DataFrame(models_data)
 df_results.to_csv(f'{Folder}/results/Best_Models_Results_NAS.csv', index=False)
 print(f"✅ All best models from each generation saved to CSV: {Folder}/results/Best_Models_Results_NAS.csv")
 
@@ -120,7 +118,7 @@ def is_pareto_efficient(models):
     return pareto_set
 
 # Filter only Pareto-optimal models
-pareto_models = is_pareto_efficient(best_models_data)
+pareto_models = is_pareto_efficient(models_data)
 
 # Save to CSV
 df_results = pd.DataFrame(pareto_models)

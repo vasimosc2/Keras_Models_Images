@@ -25,6 +25,7 @@ class EvolutionarySearch:
         self.time = time
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
+        self.discoveredModels: List[TakuNetModel] = []
         self.population: List[TakuNetModel] = []
         self.embeedingList:Union[List[np.ndarray],None ] = []
         self.x_train = None
@@ -82,6 +83,9 @@ class EvolutionarySearch:
             y_train=self.y_train,
             x_test=self.x_test,
             y_test=self.y_test)
+
+            model.results.fitness_score = self._fitness(model=model)
+            self.discoveredModels.append(model)
 
             
     
@@ -147,8 +151,8 @@ class EvolutionarySearch:
 
     def _fitness(self, model: TakuNetModel) -> float:
 
-        MAX_RAM:int = self.config["train_and_evaluate"]["evaluation_config"]["max_ram_consumption"] - self.config["train_and_evaluate"]["evaluation_config"]["additional_ram_consumption"]
-        MAX_FLASH:int = self.config["train_and_evaluate"]["evaluation_config"]["max_flash_consumption"] - self.config["train_and_evaluate"]["evaluation_config"]["additional_flash_consumption"]
+        MAX_RAM:int = (self.config["train_and_evaluate"]["evaluation_config"]["max_ram_consumption"] - self.config["train_and_evaluate"]["evaluation_config"]["additional_ram_consumption"])/1024
+        MAX_FLASH:int = (self.config["train_and_evaluate"]["evaluation_config"]["max_flash_consumption"] - self.config["train_and_evaluate"]["evaluation_config"]["additional_flash_consumption"])/1024
 
         acc:int = model.results.test_accuracy or 0.0
         ram:int = model.results.ModelRam or MAX_RAM
@@ -189,6 +193,7 @@ class EvolutionarySearch:
                         x_test=self.x_test,
                         y_test=self.y_test
                     )
+                
                 i += 3
             else:
                 # Normal case: 2 models
@@ -208,6 +213,7 @@ class EvolutionarySearch:
                         x_test=self.x_test,
                         y_test=self.y_test
                     )
+
                 i += 2
 
             parents.append(best)
@@ -326,6 +332,9 @@ class EvolutionarySearch:
             print(f"🚀 RankNet picked {predicted_winner.model_name}. Training now...\n")
             predicted_winner.train(x_train=self.x_train, y_train=self.y_train,
                                 x_test=self.x_test, y_test=self.y_test)
+            
+            predicted_winner.results.fitness_score = self._fitness(model=predicted_winner)
+            self.discoveredModels.append(predicted_winner)
 
         # ✅ Compare with already-trained competitors
         for i, opponent in enumerate(models):
@@ -352,17 +361,13 @@ class EvolutionarySearch:
         self._build_ranknet()
 
         model_number = 0
-        while time.time() - start_time < max_duration_seconds:
-            # TODO , I have to do something with the Pareto Front, to add only the models that do not have another model explicitly better
 
-            current_best_model:TakuNetModel = max(self.population, key=lambda m: self._fitness(m))
-            current_best_model.results.fitness_score = self._fitness( model = current_best_model)
-            print(f"🔥 Yielding best model after population evolution: {current_best_model.model_name}")
-            yield current_best_model
+        while time.time() - start_time < max_duration_seconds:
 
             print(f"\n⏳ Evolving new population (elapsed: {(time.time() - start_time)/60:.2f} min)...")
 
             parents:List[TakuNetModel] = self._select_parents() 
+
             """
             Here we try to Select the Parents with Tournament Selection, we train them and they compete with each other
             Return half of the Population as Parents
@@ -408,3 +413,6 @@ class EvolutionarySearch:
 
             # update the population
             self.population = new_population
+        
+        for i in self.discoveredModels:
+            yield i
