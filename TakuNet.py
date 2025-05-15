@@ -953,5 +953,5 @@ class TrainingResults:
                 f"  Analyzed Max Ram Use: {self.AccurateMaxRam:.4f}\n"
                 f"  Estimated Flash Memory Use: {self.estimatedFlash:.4f}\n"
                 f"  TFlite Memory Use: {self.tflite_size:.4f}\n"
-                f"  Training Time: {self.training_time}\n)"
+                f"  Training Time: {self.training_time}\n"
                 f"  FLOPs: {self.flops:,}\n)")  

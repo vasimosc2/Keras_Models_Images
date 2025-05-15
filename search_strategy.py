@@ -86,7 +86,7 @@ class EvolutionarySearch:
             
     
     def _build_ranknet(self):
-        print("🛠 Building or loading RankNet surrogate model...")
+        print("🛠 Building or loading RankNet surrogate model...\n")
 
         input_dim = self.embeedingList[0].shape[0]
         model_path = "SurrogateComparisson/ranknet_model.keras"
@@ -94,10 +94,10 @@ class EvolutionarySearch:
 
         # Load or create model
         if os.path.exists(model_path):
-            print("📦 Loading existing RankNet model...")
+            print("📦 Loading existing RankNet model...\n")
             self.ranknet = tf.keras.models.load_model(model_path)
         else:
-            print("✨ No saved RankNet found, building a new one...")
+            print("✨ No saved RankNet found, building a new one...\n")
             self.ranknet = build_ranknet(input_dim)
 
         # Generate new training pairs
@@ -105,7 +105,7 @@ class EvolutionarySearch:
 
         # Load old training data if exists
         if os.path.exists(data_path):
-            print("📂 Loading existing RankNet training data...")
+            print("📂 Loading existing RankNet training data...\n")
             data = np.load(data_path)
             old_pairs = data["pairs"]
             old_labels = data["labels"]
@@ -120,7 +120,7 @@ class EvolutionarySearch:
 
         # Save updated training data
         np.savez_compressed(data_path, pairs=pairs, labels=labels)
-        print(f"💾 Saved training data: {pairs.shape[0]} pairs total.")
+        print(f"💾 Saved training data: {pairs.shape[0]} pairs total.\n")
 
         # Train model
         self.ranknet.fit([pairs[:, 0], pairs[:, 1]], labels, epochs=20, batch_size=16, verbose=0)
@@ -146,17 +146,17 @@ class EvolutionarySearch:
         return pairs, labels
 
     def _fitness(self, model: TakuNetModel) -> float:
-        acc = model.results.test_accuracy or 0.0
-        ram = model.results.ModelRam or 1.0  # in KB
-        flash = model.results.estimatedFlash or 1.0  # in KB
 
-        # Fixed maximum capacities (adjust to match your constraints)
         MAX_RAM:int = self.config["train_and_evaluate"]["evaluation_config"]["max_ram_consumption"] - self.config["train_and_evaluate"]["evaluation_config"]["additional_ram_consumption"]
         MAX_FLASH:int = self.config["train_and_evaluate"]["evaluation_config"]["max_flash_consumption"] - self.config["train_and_evaluate"]["evaluation_config"]["additional_flash_consumption"]
 
+        acc:int = model.results.test_accuracy or 0.0
+        ram:int = model.results.ModelRam or MAX_RAM
+        flash:int = model.results.estimatedFlash or MAX_FLASH
+
         # Normalized scores (higher is better)
-        norm_ram_score = max(0.0, 1.0 - ram / MAX_RAM)
-        norm_flash_score = max(0.0, 1.0 - flash / MAX_FLASH)
+        norm_ram_score:float = float(max(0.0, 1.0 - ram / MAX_RAM))
+        norm_flash_score:float = float(max(0.0, 1.0 - flash / MAX_FLASH))
 
         # Weighted sum (you can adjust weights)
         return  acc + norm_ram_score + norm_flash_score
@@ -174,10 +174,15 @@ class EvolutionarySearch:
                 # Special case: 3 models left
                 trio = shuffled[i:i+3]
                 print(f"📌 Comparing {trio[0].model_name}, {trio[1].model_name}, and {trio[2].model_name} ....\n")
-                best: TakuNetModel = self._ranknet_best(trio)
-                print(f"The winner is {best.model_name} 🏆\n")
+                best: TakuNetModel = self._ranknet_best(models=trio)
+
+                print(f"The winner is {best.model_name} with fitness {self._fitness(model=best)} 🏆\n")
+                print(f"The Competitor 0 {trio[0].model_name} with fitness {self._fitness(model=trio[0]) if trio[0].is_trained else "None"}\n")
+                print(f"The Competitor 1 {trio[1].model_name} with fitness {self._fitness(model=trio[1]) if trio[1].is_trained else "None"}\n")
+                print(f"The Competitor 2 {trio[2].model_name} with fitness {self._fitness(model=trio[2]) if trio[2].is_trained else "None"}\n")
 
                 if best.is_trainable and not best.is_trained:
+                    print(f"Therotically I am never here :) \n")
                     best.train(
                         x_train=self.x_train,
                         y_train=self.y_train,
@@ -188,11 +193,15 @@ class EvolutionarySearch:
             else:
                 # Normal case: 2 models
                 duo = shuffled[i:i+2]
-                print(f"📌 Comparing {duo[0].model_name} and {duo[1].model_name} ....\n")
+                print(f"🥊 Comparing {duo[0].model_name} and {duo[1].model_name} ....\n")
                 best: TakuNetModel = self._ranknet_best(models=duo)
-                print(f"The winner is {best.model_name} 🏆\n")
+
+                print(f"The winner is {best.model_name} with fitness {self._fitness(model=best)} 🏆\n")
+                print(f"The Competitor 0 {duo[0].model_name} with fitness {self._fitness(model=duo[0]) if duo[0].is_trained else "None"}\n")
+                print(f"The Competitor 1 {duo[1].model_name} with fitness {self._fitness(model=duo[1]) if duo[1].is_trained else "None"}\n")
 
                 if best.is_trainable and not best.is_trained:
+                    print(f"Therotically I am never here :) \n")
                     best.train(
                         x_train=self.x_train,
                         y_train=self.y_train,
@@ -276,43 +285,61 @@ class EvolutionarySearch:
                 gc.collect()
 
     def _ranknet_best(self, models: List[TakuNetModel]) -> TakuNetModel:
-        """Select the best model among 3 competitors, training as needed and based on real fitness."""
+        """
+        Select the best model among N competitors using RankNet and true fitness.
+        - If all are trained → return one with best fitness.
+        - If none are trained → pick RankNet winner and train only them.
+        - If some are trained:
+            → pick RankNet winner
+            → train only if needed
+            → compare its fitness to trained others
+            → return true best
+        """
+        if len(models) < 2:
+            raise ValueError("At least two models are required for comparison.")
 
-        win_counts = [0] * len(models)
+        # ✅ Case 1: All are trained → pick by fitness
+        if all(m.is_trained for m in models):
+            best_model = max(models, key=lambda m: self._fitness(m))
+            print(f"💪 All Competitors were trained. Selected {best_model.model_name} by fitness.\n")
+            return best_model
 
-        for i in range(len(models)):
-            for j in range(len(models)):
-                if i != j:
-                    embed_i = np.expand_dims(simple_architecture_embedding(models[i].model_params), axis=0)
-                    embed_j = np.expand_dims(simple_architecture_embedding(models[j].model_params), axis=0)
-                    pred = self.ranknet.predict([embed_i, embed_j], verbose=0)
+        # 🔁 Case 2: Use pairwise RankNet votes
+        vote_counts = [0] * len(models)
 
-                    if pred[0][0] > 0.5:
-                        # RankNet says model i is better
-                        if not models[i].is_trained:
-                            models[i].train(x_train=self.x_train,
-                                            y_train=self.y_train,
-                                            x_test=self.x_test,
-                                            y_test=self.y_test)
-                    else:
-                        # RankNet says model j is better
-                        if not models[j].is_trained:
-                            models[j].train(x_train=self.x_train,
-                                            y_train=self.y_train,
-                                            x_test=self.x_test,
-                                            y_test=self.y_test)
+        for i in range(len(models) - 1):
+            for j in range(i + 1, len(models)):
+                embed_i = np.expand_dims(simple_architecture_embedding(models[i].model_params), axis=0)
+                embed_j = np.expand_dims(simple_architecture_embedding(models[j].model_params), axis=0)
+                pred = self.ranknet.predict([embed_i, embed_j], verbose=0)
 
-                    # Compare true fitness after training
-                    fitness_i = self._fitness(models[i])
-                    fitness_j = self._fitness(models[j])
+                if pred[0][0] > 0.5:
+                    vote_counts[i] += 1
+                else:
+                    vote_counts[j] += 1
 
-                    if fitness_i > fitness_j:
-                        win_counts[i] += 1
-                    else:
-                        win_counts[j] += 1
+        winner_index = int(np.argmax(vote_counts))
+        predicted_winner = models[winner_index]
 
-        winner_index = np.argmax(win_counts)
-        return models[winner_index]
+        # 🛠 Train if needed
+        if not predicted_winner.is_trained:
+            print(f"🚀 RankNet picked {predicted_winner.model_name}. Training now...\n")
+            predicted_winner.train(x_train=self.x_train, y_train=self.y_train,
+                                x_test=self.x_test, y_test=self.y_test)
+
+        # ✅ Compare with already-trained competitors
+        for i, opponent in enumerate(models):
+            if i != winner_index and opponent.is_trained:
+                f_winner = self._fitness(predicted_winner)
+                f_opponent = self._fitness(opponent)
+
+                if f_opponent > f_winner:
+                    print(f"❌ RankNet mistake: {opponent.model_name} (fitness={f_opponent:.4f}) "
+                        f"> {predicted_winner.model_name} (fitness={f_winner:.4f})")
+                    return opponent
+
+        return predicted_winner
+
 
 
     
@@ -328,10 +355,8 @@ class EvolutionarySearch:
         while time.time() - start_time < max_duration_seconds:
             # TODO , I have to do something with the Pareto Front, to add only the models that do not have another model explicitly better
 
-            current_best_model:TakuNetModel = max(
-                                    self.population, 
-                                    key=lambda model: model.results.test_accuracy if model.results.test_accuracy is not None else -1)
-            
+            current_best_model:TakuNetModel = max(self.population, key=lambda m: self._fitness(m))
+            current_best_model.results.fitness_score = self._fitness( model = current_best_model)
             print(f"🔥 Yielding best model after population evolution: {current_best_model.model_name}")
             yield current_best_model
 

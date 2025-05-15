@@ -77,6 +77,7 @@ for generation, best_model in enumerate(evo_search.evolve(), start=1):
         "Estimated Flash Memory (KB)": best_model.results.estimatedFlash,        
         "TFlite size(KB)": best_model.results.tflite_size,
         "Flop Number": best_model.results.flops,
+        "Fitness Score": best_model.results.fitness_score,
         "Training Time (s)": best_model.results.training_time,
         "Epochs Trained": best_model.results.epochs_trained
     })
