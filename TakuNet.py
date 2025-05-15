@@ -563,7 +563,7 @@ class TakuNetModel:
         total_epochs_trained = len(history.history['loss'])
 
         # **Check if we should continue training**
-        if best_test_acc > 0.60 and total_epochs_trained == self.train_params["num_epochs"]:
+        if best_test_acc > 0.52 and total_epochs_trained == self.train_params["num_epochs"]:
             print(f"\n🚀 Best test accuracy ({best_test_acc:.4f}) exceeded 60%. Continuing training for 100 more epochs.\n")
             
             already_used_epochs = self.epochs if self.epochs else self.train_params["num_epochs"]
