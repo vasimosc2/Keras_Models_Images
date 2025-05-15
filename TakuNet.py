@@ -571,7 +571,13 @@ class TakuNetModel:
             already_used_epochs = self.epochs if self.epochs else self.train_params["num_epochs"]
 
             print(f"🔧 Setting learning rate very low for polishing phase...")
-            self.model.optimizer.learning_rate.assign(1e-3)
+            final_lr = self.model.optimizer.learning_rate.numpy()
+
+            # Reduce it moderately for fine-tuning (e.g., 30% of last LR, but with a floor)
+            polishing_lr = max(final_lr * 0.3, 1e-4)
+
+            self.model.optimizer.learning_rate.assign(polishing_lr)
+            print(f"🔧 Fine-tuning with learning rate: {polishing_lr:.6f}")
             
             # Extra Training Phase
             history_extra = self.model.fit(
@@ -586,7 +592,17 @@ class TakuNetModel:
 
             # Merge histories
             for key in full_history.history.keys():
-                full_history.history[key].extend(history_extra.history[key])
+                if key in history_extra.history:
+                    full_history.history[key].extend(history_extra.history[key])
+                elif key == "learning_rate":
+                    # Add the fixed learning rate for each extra epoch
+                    fixed_lr = polishing_lr  # You already calculated this earlier
+                    num_extra_epochs = len(history_extra.history["loss"])
+                    full_history.history[key].extend([fixed_lr] * num_extra_epochs)
+                    print(f"ℹ️ Filled 'learning_rate' with fixed value {fixed_lr:.6f} for {num_extra_epochs} extra epochs.")
+                else:
+                    print(f"⚠️ Skipping key '{key}' — not found in extra training history.")
+
 
             # Update best accuracy after extra training
 
