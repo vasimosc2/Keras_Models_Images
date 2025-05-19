@@ -26,7 +26,8 @@ class TakuNetModel:
                 y_test: Optional[tf.Tensor] = None,
                 folder:Optional[str] = None,
                 epochs:Optional[int] = None,
-                given_model:Optional[tf.keras.Model] = None
+                given_model:Optional[tf.keras.Model] = None,
+                enable_dropout: bool = True
                 ):
         
         self.model_name:str = model_name
@@ -43,6 +44,7 @@ class TakuNetModel:
         self.y_train: Optional[tf.Tensor] = y_train
         self.x_test: Optional[tf.Tensor] = x_test
         self.y_test: Optional[tf.Tensor] = y_test
+        self.enable_dropout: bool = enable_dropout
         
         self.is_trained:bool = False
         self.folderName:str = folder if folder is not None else "."
@@ -54,6 +56,20 @@ class TakuNetModel:
         self.is_trainable: bool = self.check_trainability() if self.test is False else True
 
   
+    def _norm_relu6_block(x: tf.Tensor, name: Optional[str] = None) -> tf.Tensor:
+        """
+        Applies BatchNormalization followed by ReLU6 activation.
+
+        Args:
+            x (tf.Tensor): Input tensor.
+            name (Optional[str]): Optional name prefix for layers.
+
+        Returns:
+            tf.Tensor: Output tensor after normalization and activation.
+        """
+        x = layers.BatchNormalization(name=f"{name}_bn" if name else None)(x)
+        x = layers.ReLU(max_value=6.0, name=f"{name}_relu6" if name else None)(x)
+        return x
 
     
     def _stem_block(self, inputs:tuple):
@@ -68,22 +84,22 @@ class TakuNetModel:
                           padding='same', 
                           use_bias=False)(inputs)
         
-        x = layers.BatchNormalization()(x)
-
-        x = layers.ReLU(6.0)(x)
+        x = self._norm_relu6_block(x, name="stem1")
 
         self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=0.0, 
                                                      name="adaptive_dropout_stem")
-        x = self.adaptive_dropout_stem(x)
+        
+        x = self.adaptive_dropout_stem(inputs=x,training=self.enable_dropout)
+        
+        # This part is just like 1 Extra Taku_Block and I dont think it needed
 
-        x = layers.DepthwiseConv2D(kernel_size=self.model_params["stem_block"]["DWConv_kernel"],
-                                   strides=self.model_params["stem_block"]["DWConv_strides"],
-                                   padding='same', 
-                                   use_bias=False)(x)
+        # x = layers.DepthwiseConv2D(kernel_size=self.model_params["stem_block"]["DWConv_kernel"],
+        #                            strides=self.model_params["stem_block"]["DWConv_strides"],
+        #                            padding='same', 
+        #                            use_bias=False)(x)
 
 
-        x = layers.BatchNormalization()(x)
-        x = layers.ReLU(6.0)(x)
+        # x = self._norm_relu6_block(x, name="stem2")
         return x
     
     def _taku_block(self, inputs:tuple, taku_block_number:int, stage_number:int):
@@ -93,34 +109,29 @@ class TakuNetModel:
                                     padding='same', 
                                     use_bias=False)(inputs)
 
-        x = layers.BatchNormalization()(x)
-        x = layers.ReLU(6.0)(x)
+        x = self._norm_relu6_block(x, name=f"Norm_TakuStage{stage_number}_Block{taku_block_number}")
 
-        x = layers.Conv2D(filters=inputs.shape[-1],
-                          kernel_size=1,
-                          padding='same',
-                          use_bias=False)(x)
+        # This is PointWise Conv, it is used in BiblioGraphy after the DepthWiseConv2D,
+        # But in this case we "collect" all the DeptWise into one PointWise in the DownSampler
 
-        x = layers.BatchNormalization()(x)
-        x = layers.ReLU(6.0)(x)
+        # x = layers.Conv2D(filters=inputs.shape[-1],
+        #                   kernel_size=1,
+        #                   padding='same',
+        #                   use_bias=False)(x)
+
+        # x = layers.BatchNormalization()(x)
+        # x = layers.ReLU(6.0)(x)
 
         adaptiveDropout = AdaptiveDropout(initial_rate=0.0,
                                           name=f"adaptive_dropout_taku_stage{stage_number}_block{taku_block_number}")
             
         self.adaptive_dropout_taku.append(adaptiveDropout)
 
-        x = adaptiveDropout(x)
+        x = adaptiveDropout(inputs=x,training=self.enable_dropout)
 
-        return layers.Add()([x, inputs])
+        return layers.Add()([x, inputs]) # This is the SKIP-Connection
     
-    def _se_block(self, inputs, ratio=8):
-        """Squeeze-and-Excitation block."""
-        filters = inputs.shape[-1]
-        se = layers.GlobalAveragePooling2D()(inputs)
-        se = layers.Dense(filters // ratio, activation='relu', use_bias=False)(se)
-        se = layers.Dense(filters, activation='hard_sigmoid', use_bias=False)(se)
-        se = StaticReshape((1, 1, filters))(se)
-        return layers.multiply([inputs, se])
+
     
     def _downsampler_block(self, inputs:tuple, curr_stage_number:int):
 
@@ -159,11 +170,20 @@ class TakuNetModel:
                             groups=groups, 
                             use_bias=False)(inputs)
 
-        x = layers.BatchNormalization()(x)
-        x = layers.ReLU(6.0)(x)
+        x = self._norm_relu6_block(x, name=f"Norm_DownSampler_Block{curr_stage_number}")
 
         pool_layer = layers.MaxPooling2D if curr_stage_number < self.model_params["stages_block"]["stages_number"] else layers.AveragePooling2D
 
+        """
+        MaxPooling2D:   It selects the maximum value from small local
+                        regions (typically 2 × 2 patches), effectively halving both the height and width of
+                        the feature map when using a stride of 2. This results in a 75% reduction in the
+                        number of spatial elements (e.g., (32 × 32) → (16 × 16) )
+
+        AveragePooling2D:
+                        It does exactly the same, but it does not return the maximum value, rather it returns the average number
+                        It diminishes the influence of outliers and noisy activations while retaining a more balanced view of the learned features
+        """
         x = pool_layer(pool_size=self.model_params["stages_block"]["downsampler"]["pool_size"], 
                        strides=self.model_params["stages_block"]["downsampler"]["strides"], 
                        padding='same')(x)
@@ -172,13 +192,29 @@ class TakuNetModel:
         
         return layers.LayerNormalization()(x)
     
+
+    def _se_block(self, inputs, ratio=8):
+        """Squeeze-and-Excitation block."""
+        filters = inputs.shape[-1]
+        """
+        If the input here is (None,32,32,40)
+        """
+        se = layers.GlobalAveragePooling2D()(inputs) # For each of filters, it computes the average -> Output 40
+
+        se = layers.Dense(filters // ratio, activation='relu', use_bias=False)(se) # 
+
+        se = layers.Dense(filters, activation='hard_sigmoid', use_bias=False)(se)
+
+        se = StaticReshape((1, 1, filters))(se)
+        return layers.multiply([inputs, se])
+    
     
     def _stage_block(self, inputs, curr_stage_number):
         x = inputs
         for i in range(self.model_params["stages_block"]["taku_block"]["taku_block_number"]):
             x = self._taku_block(inputs=x, taku_block_number=i, stage_number=curr_stage_number)
 
-        x = layers.Add()([x, inputs])
+        #x = layers.Add()([x, inputs]) I dont think I need a Skip-Connection here between the Input and the Last TakuBlock
         concat = layers.Concatenate()([inputs, x])
         return self._downsampler_block(inputs=concat, curr_stage_number=curr_stage_number)
     
@@ -195,8 +231,12 @@ class TakuNetModel:
                                            name=f"adaptive_dropout_refiner1_after_dw")
         
         self.adaptive_dropout_refiner.append(dropout_after_dw)
+        
+        x = dropout_after_dw(inputs=x,training=self.enable_dropout)
+        # ✅ Add a Pointwise Convolution (1x1) to combine channel information
+        x = layers.Conv2D(filters=x.shape[-1], kernel_size=1, padding='same', use_bias=False)(x)
+        x = self._norm_relu6_block(x)
 
-        x = dropout_after_dw(x)
 
         x = layers.GlobalAveragePooling2D()(x)
 
@@ -205,7 +245,7 @@ class TakuNetModel:
         
         self.adaptive_dropout_refiner.append(dropout_after_gap)
 
-        x = dropout_after_gap(x)
+        x = dropout_after_gap(inputs=x,training=self.enable_dropout)
 
         return layers.Dense(self.model_params["refiner_block"]["num_output_classes"], 
                             activation='softmax')(x)

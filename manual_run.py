@@ -84,7 +84,8 @@ while trainable_models_count < number_of_models:  # Train number_of_models with 
                                             y_train=None, 
                                             x_test=None, 
                                             y_test=None,
-                                            folder=Folder)
+                                            folder=Folder,
+                                            enable_dropout=False)
     
     if taku_model.is_trainable:
         models_to_train.append(taku_model)

@@ -3,7 +3,7 @@
         "stem_block":{
             "filters": [32, 64, 128],
             "Conv_kernel": [3, 5],
-            "Conv_strides": [1, 2],
+            "Conv_strides": [2, 3],
             "DWConv_kernel": [3, 5],
             "DWConv_strides": [1, 2]
         },
