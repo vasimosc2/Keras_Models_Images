@@ -116,12 +116,12 @@ class TakuNetModel:
         # This is PointWise Conv, it is used in BiblioGraphy after the DepthWiseConv2D,
         # But in this case we "collect" all the DeptWise into one PointWise in the DownSampler
 
-        x = layers.Conv2D(filters=inputs.shape[-1],
-                          kernel_size=1,
-                          padding='same',
-                          use_bias=False)(x)
+        # x = layers.Conv2D(filters=inputs.shape[-1],
+        #                   kernel_size=1,
+        #                   padding='same',
+        #                   use_bias=False)(x)
 
-        x = self._norm_relu6_block(x=x, name=f"Norm_TakuStage{stage_number}_PointWise_Block{taku_block_number}")
+        # x = self._norm_relu6_block(x=x, name=f"Norm_TakuStage{stage_number}_PointWise_Block{taku_block_number}")
 
         adaptiveDropout = AdaptiveDropout(initial_rate=0.0,
                                           enabled= self.enable_dropout,
