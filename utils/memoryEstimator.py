@@ -57,20 +57,23 @@ def memoryEstimation_peak_ram_only(model: Model, data_dtype_multiplier: int = 1)
         skip_kbs = sorted(stage_skips.get(stage, []), reverse=True)[:2]
         stage_peak = concat_kb + sum(skip_kbs)
         peak_ram = max(peak_ram, stage_peak)
-
+    print(peak_ram)
     # 4. Stem block RAM
-    stem_kb = sum(
-        kb for name, kb in layer_ram_kb.items()
-        if "adaptive_dropout_stem" in name or "InitialConv" in name
+    stem_kb = max(
+        (kb for name, kb in layer_ram_kb.items()
+         if "adaptive_dropout_stem" in name or "InitialConv" in name),
+        default=0
     )
     peak_ram = max(peak_ram, stem_kb)
-
+    print(peak_ram)
     # 5. Refiner block RAM
-    refiner_kb = sum(
-        kb for name, kb in layer_ram_kb.items()
-        if "Rediner" in name or "Refiner" in name or "Classification" in name or "adaptive_dropout_refiner" in name
+    refiner_kb = max(
+        (kb for name, kb in layer_ram_kb.items()
+         if "Rediner" in name or "Refiner" in name or "Classification" in name or "adaptive_dropout_refiner" in name),
+        default=0
     )
     peak_ram = max(peak_ram, refiner_kb)
+    print(peak_ram)
 
     return round(peak_ram, 2)
 
