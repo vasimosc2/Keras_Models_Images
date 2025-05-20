@@ -111,18 +111,17 @@ class TakuNetModel:
                                     padding='same', 
                                     use_bias=False)(inputs)
 
-        x = self._norm_relu6_block(x, name=f"Norm_TakuStage{stage_number}_Block{taku_block_number}")
+        x = self._norm_relu6_block(x, name=f"Norm_TakuStage{stage_number}_DepthWise_Block{taku_block_number}")
 
         # This is PointWise Conv, it is used in BiblioGraphy after the DepthWiseConv2D,
         # But in this case we "collect" all the DeptWise into one PointWise in the DownSampler
 
-        # x = layers.Conv2D(filters=inputs.shape[-1],
-        #                   kernel_size=1,
-        #                   padding='same',
-        #                   use_bias=False)(x)
+        x = layers.Conv2D(filters=inputs.shape[-1],
+                          kernel_size=1,
+                          padding='same',
+                          use_bias=False)(x)
 
-        # x = layers.BatchNormalization()(x)
-        # x = layers.ReLU(6.0)(x)
+        x = self._norm_relu6_block(x=x, name=f"Norm_TakuStage{stage_number}_PointWise_Block{taku_block_number}")
 
         adaptiveDropout = AdaptiveDropout(initial_rate=0.0,
                                           enable_dropout=self.enable_dropout,
@@ -771,6 +770,7 @@ class AdaptiveDropout(tf.keras.layers.Layer):
 
         """
         if training and self.enable_dropout:
+            print(f"training is {training} and enable_dropout is {self.enable_dropout}")
             input_shape = tf.shape(inputs)
             input_rank = inputs.shape.rank  # static rank if possible
 
