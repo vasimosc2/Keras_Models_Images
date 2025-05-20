@@ -41,9 +41,7 @@ def memoryEstimation_peak_ram_only(model: Model, data_dtype_multiplier: int = 1)
     # 2. Organize by actual stage numbers from naming
     for name, kb in layer_ram_kb.items():
         concat_match = re.match(r"concat_stage(\d+)", name)
-        print(concat_match)
         skip_match = re.match(r"TakuBlock_SkipConnection_stage(\d+)_block(\d+)", name)
-        print(skip_match)
 
         if concat_match:
             stage = int(concat_match.group(1))
