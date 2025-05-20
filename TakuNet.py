@@ -88,11 +88,11 @@ class TakuNetModel:
         
         x = self._norm_relu6_block(x=x, name="stem1")
 
-        # self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=0.0,
-        #                                              enabled= self.enable_dropout,
-        #                                              name="adaptive_dropout_stem")
+        self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=0.0,
+                                                     enabled= self.enable_dropout,
+                                                     name="adaptive_dropout_stem")
         
-        # x = self.adaptive_dropout_stem(x)
+        x = self.adaptive_dropout_stem(x)
         
         # This part is just like 1 Extra Taku_Block and I dont think it needed
 
@@ -127,13 +127,13 @@ class TakuNetModel:
         # x = self._norm_relu6_block(x=x, name=f"Norm_TakuStage{stage_number}_PointWise_Block{taku_block_number}")
 
 
-        # adaptiveDropout = AdaptiveDropout(initial_rate=0.0,
-        #                                   enabled= self.enable_dropout,
-        #                                   name=f"adaptive_dropout_taku_stage{stage_number}_block{taku_block_number}")
+        adaptiveDropout = AdaptiveDropout(initial_rate=0.0,
+                                          enabled= self.enable_dropout,
+                                          name=f"adaptive_dropout_taku_stage{stage_number}_block{taku_block_number}")
             
-        # self.adaptive_dropout_taku.append(adaptiveDropout)
+        self.adaptive_dropout_taku.append(adaptiveDropout)
 
-        # x = adaptiveDropout(x)
+        x = adaptiveDropout(x)
 
         return layers.Add(name=f"TakuBlock_SkipConnection_stage{stage_number}_block{taku_block_number}")([x, inputs]) # This is the SKIP-Connection
     
@@ -240,13 +240,13 @@ class TakuNetModel:
 
         x = layers.BatchNormalization()(x)
 
-        # dropout_after_dw = AdaptiveDropout(initial_rate=0.0,
-        #                                    enabled= self.enable_dropout,
-        #                                    name=f"adaptive_dropout_refiner1_after_dw")
+        dropout_after_dw = AdaptiveDropout(initial_rate=0.0,
+                                           enabled= self.enable_dropout,
+                                           name=f"adaptive_dropout_refiner1_after_dw")
         
-        # self.adaptive_dropout_refiner.append(dropout_after_dw)
+        self.adaptive_dropout_refiner.append(dropout_after_dw)
         
-        # x = dropout_after_dw(x)
+        x = dropout_after_dw(x)
 
         # ✅ Add a Pointwise Convolution (1x1) to combine channel information
         x = layers.Conv2D(filters=x.shape[-1], 
@@ -259,17 +259,34 @@ class TakuNetModel:
 
         x = layers.GlobalAveragePooling2D()(x)
 
-        # dropout_after_gap = AdaptiveDropout(initial_rate = 0.0,
-        #                                     enabled= self.enable_dropout,
-        #                                     name=f"adaptive_dropout_refiner2_after_gap")
+        dropout_after_gap = AdaptiveDropout(initial_rate = 0.0,
+                                            enabled= self.enable_dropout,
+                                            name=f"adaptive_dropout_refiner2_after_gap")
         
-        # self.adaptive_dropout_refiner.append(dropout_after_gap)
+        self.adaptive_dropout_refiner.append(dropout_after_gap)
 
-        # x = dropout_after_gap(x)
+        x = dropout_after_gap(x)
 
         return layers.Dense(self.model_params["refiner_block"]["num_output_classes"],
                             name=f"Classification",
                             activation='softmax')(x)
+    
+    def _freeze_dropout_for_inference(self, rate_override: float = None):
+        """
+        Replace all AdaptiveDropout layers with fixed Dropout(rate) layers for TFLite export.
+        Optionally override the final dropout rate.
+        """
+        def convert_layer(layer):
+            if isinstance(layer, AdaptiveDropout):
+                final_rate = float(rate_override) if rate_override is not None else float(layer.rate.numpy())
+                return tf.keras.layers.Dropout(rate=final_rate, name=layer.name + "_frozen")
+            return layer
+
+        # Create a new model with dropout layers replaced
+        frozen_model = tf.keras.models.clone_model(self.model, clone_function=convert_layer)
+        frozen_model.set_weights(self.model.get_weights())  # Preserve learned weights
+        self.model = frozen_model
+
     
     def _build_model(self) -> tf.keras.Model:
         inputs = tf.keras.Input(shape=self.input_shape)
@@ -607,11 +624,11 @@ class TakuNetModel:
 
         callbacks:list = [midway_callback,early_stopping_acc,checkpoint,performanceCallback,lr_schedule,swa_callback]
 
-        # if self.enable_dropout:
-        #     print("✅ The TakuNet model is trained with Dropout\n")
-        #     callbacks.append(adjust_dropout)
-        # else:
-        #     print("Training happens without Dropout\n")
+        if self.enable_dropout:
+            print("✅ The TakuNet model is trained with Dropout\n")
+            callbacks.append(adjust_dropout)
+        else:
+            print("Training happens without Dropout\n")
 
         history = self.model.fit(
             x_train, y_train,
@@ -655,11 +672,11 @@ class TakuNetModel:
             print(f"🔧 Fine-tuning with learning rate: {polishing_lr:.6f}")
 
             callbacks2 = [ checkpoint, swa_callback ]
-            # if self.enable_dropout:
-            #     print("✅ The TakuNet model is trained with Dropout\n")
-            #     callbacks2.append(adjust_dropout)
-            # else:
-            #     print("Training happens without Dropout\n")
+            if self.enable_dropout:
+                print("✅ The TakuNet model is trained with Dropout\n")
+                callbacks2.append(adjust_dropout)
+            else:
+                print("Training happens without Dropout\n")
             
             history_extra = self.model.fit(
                 x_train, y_train,
@@ -716,7 +733,7 @@ class TakuNetModel:
 
         # ** Declare that this model is trained.
         self.is_trained = True
-
+        self._freeze_dropout_for_inference()
         # **Save Model in Multiple Formats**
         self._convert_to_tflite(x_train=x_train)
         self._convert_tflite_to_c_array()
