@@ -5,6 +5,66 @@ from sklearn.linear_model import LinearRegression
 import tensorflow as tf
 
 
+import re
+import numpy as np
+from tensorflow.keras.models import Model
+
+def memoryEstimation_peak_ram_only(model: Model, data_dtype_multiplier: int = 1) -> float:
+    """
+    Estimate peak RAM usage in KB based on TakuNet's activation dependencies.
+    """
+    layer_ram_kb = {}
+
+    for layer in model.layers:
+        if isinstance(layer.output, list):
+            output_memory = sum(np.prod(out.shape[1:]) * data_dtype_multiplier for out in layer.output)
+        else:
+            output_memory = np.prod(layer.output.shape[1:]) * data_dtype_multiplier
+
+        if isinstance(layer.input, list):
+            input_memory = sum(np.prod(inp.shape[1:]) * data_dtype_multiplier for inp in layer.input)
+        else:
+            input_memory = np.prod(layer.input.shape[1:]) * data_dtype_multiplier
+
+        total_ram_bytes = input_memory + output_memory
+        layer_ram_kb[layer.name] = total_ram_bytes / 1024  # in KB
+
+    peak_ram = 0.0
+    stage_concat = {}
+    stage_skips = {}
+
+    for name, kb in layer_ram_kb.items():
+        if "concatenate" in name:
+            stage = len(stage_concat)
+            stage_concat[stage] = kb
+        elif "add" in name:
+            stage = len(stage_skips)
+            stage_skips.setdefault(stage, []).append(kb)
+
+    for stage in stage_concat:
+        concat_kb = stage_concat.get(stage, 0)
+        skip_kbs = sorted(stage_skips.get(stage, []), reverse=True)[:2]
+        stage_peak = concat_kb + sum(skip_kbs)
+        peak_ram = max(peak_ram, stage_peak)
+
+    # Stem block (initial conv + dwconv + bn + relu)
+    stem_kb = sum(
+        kb for name, kb in layer_ram_kb.items()
+        if "conv2d" in name or "depthwise_conv2d" in name or "re_lu" in name or "batch_normalization" in name
+    )
+    peak_ram = max(peak_ram, stem_kb)
+
+    # Refiner block
+    refiner_kb = sum(
+        kb for name, kb in layer_ram_kb.items()
+        if "dense" in name or "global_average_pooling2d" in name
+    )
+    peak_ram = max(peak_ram, refiner_kb)
+
+    return round(peak_ram, 2)
+
+
+
 def memoryEstimation(model:tf.keras.Model,data_dtype_multiplier: int = 1)-> Tuple[float, float, float]:
     """
     ROM (Read-Only Memory) → Memory used to store layer parameters (weights & biases).
