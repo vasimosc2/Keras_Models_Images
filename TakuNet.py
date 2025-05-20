@@ -88,11 +88,11 @@ class TakuNetModel:
         
         x = self._norm_relu6_block(x=x, name="stem1")
 
-        self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=0.0,
-                                                     enabled= self.enable_dropout,
-                                                     name="adaptive_dropout_stem")
+        # self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=0.0,
+        #                                              enabled= self.enable_dropout,
+        #                                              name="adaptive_dropout_stem")
         
-        x = self.adaptive_dropout_stem(x)
+        # x = self.adaptive_dropout_stem(x)
         
         # This part is just like 1 Extra Taku_Block and I dont think it needed
 
@@ -126,13 +126,14 @@ class TakuNetModel:
 
         # x = self._norm_relu6_block(x=x, name=f"Norm_TakuStage{stage_number}_PointWise_Block{taku_block_number}")
 
-        adaptiveDropout = AdaptiveDropout(initial_rate=0.0,
-                                          enabled= self.enable_dropout,
-                                          name=f"adaptive_dropout_taku_stage{stage_number}_block{taku_block_number}")
-            
-        self.adaptive_dropout_taku.append(adaptiveDropout)
 
-        x = adaptiveDropout(x)
+        # adaptiveDropout = AdaptiveDropout(initial_rate=0.0,
+        #                                   enabled= self.enable_dropout,
+        #                                   name=f"adaptive_dropout_taku_stage{stage_number}_block{taku_block_number}")
+            
+        # self.adaptive_dropout_taku.append(adaptiveDropout)
+
+        # x = adaptiveDropout(x)
 
         return layers.Add(name=f"TakuBlock_SkipConnection_stage{stage_number}_block{taku_block_number}")([x, inputs]) # This is the SKIP-Connection
     
@@ -194,7 +195,7 @@ class TakuNetModel:
                        strides=self.model_params["stages_block"]["downsampler"]["strides"], 
                        padding='same')(x)
         
-        x = self._se_block(x, ratio=8)
+        #x = self._se_block(x, ratio=8)
         
         return layers.LayerNormalization()(x)
     
@@ -239,13 +240,13 @@ class TakuNetModel:
 
         x = layers.BatchNormalization()(x)
 
-        dropout_after_dw = AdaptiveDropout(initial_rate=0.0,
-                                           enabled= self.enable_dropout,
-                                           name=f"adaptive_dropout_refiner1_after_dw")
+        # dropout_after_dw = AdaptiveDropout(initial_rate=0.0,
+        #                                    enabled= self.enable_dropout,
+        #                                    name=f"adaptive_dropout_refiner1_after_dw")
         
-        self.adaptive_dropout_refiner.append(dropout_after_dw)
+        # self.adaptive_dropout_refiner.append(dropout_after_dw)
         
-        x = dropout_after_dw(x)
+        # x = dropout_after_dw(x)
 
         # ✅ Add a Pointwise Convolution (1x1) to combine channel information
         x = layers.Conv2D(filters=x.shape[-1], 
@@ -258,13 +259,13 @@ class TakuNetModel:
 
         x = layers.GlobalAveragePooling2D()(x)
 
-        dropout_after_gap = AdaptiveDropout(initial_rate = 0.0,
-                                            enabled= self.enable_dropout,
-                                            name=f"adaptive_dropout_refiner2_after_gap")
+        # dropout_after_gap = AdaptiveDropout(initial_rate = 0.0,
+        #                                     enabled= self.enable_dropout,
+        #                                     name=f"adaptive_dropout_refiner2_after_gap")
         
-        self.adaptive_dropout_refiner.append(dropout_after_gap)
+        # self.adaptive_dropout_refiner.append(dropout_after_gap)
 
-        x = dropout_after_gap(x)
+        # x = dropout_after_gap(x)
 
         return layers.Dense(self.model_params["refiner_block"]["num_output_classes"],
                             name=f"Classification",
@@ -606,11 +607,11 @@ class TakuNetModel:
 
         callbacks:list = [midway_callback,early_stopping_acc,checkpoint,performanceCallback,lr_schedule,swa_callback]
 
-        if self.enable_dropout:
-            print("✅ The TakuNet model is trained with Dropout\n")
-            callbacks.append(adjust_dropout)
-        else:
-            print("Training happens without Dropout\n")
+        # if self.enable_dropout:
+        #     print("✅ The TakuNet model is trained with Dropout\n")
+        #     callbacks.append(adjust_dropout)
+        # else:
+        #     print("Training happens without Dropout\n")
 
         history = self.model.fit(
             x_train, y_train,
@@ -652,6 +653,13 @@ class TakuNetModel:
 
             self.model.optimizer.learning_rate.assign(polishing_lr)
             print(f"🔧 Fine-tuning with learning rate: {polishing_lr:.6f}")
+
+            callbacks2 = [ checkpoint, swa_callback ]
+            # if self.enable_dropout:
+            #     print("✅ The TakuNet model is trained with Dropout\n")
+            #     callbacks2.append(adjust_dropout)
+            # else:
+            #     print("Training happens without Dropout\n")
             
             history_extra = self.model.fit(
                 x_train, y_train,
@@ -660,7 +668,7 @@ class TakuNetModel:
                 batch_size=int(batchSize / 2),
                 validation_data=(x_test, y_test),
                 verbose=2,
-                callbacks=[ checkpoint, adjust_dropout, swa_callback ]
+                callbacks=callbacks2
             )
 
             for key in full_history.history.keys():
