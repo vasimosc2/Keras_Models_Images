@@ -190,7 +190,7 @@ class TakuNetModel:
                        strides=self.model_params["stages_block"]["downsampler"]["strides"], 
                        padding='same')(x)
         
-        x = self._se_block(x, ratio=8)
+        #x = self._se_block(x, ratio=8)
         
         return layers.LayerNormalization()(x)
     
@@ -516,7 +516,7 @@ class TakuNetModel:
             initial_lr:float = float(self.train_params["learning_rate"]) if self.learningRate is None else self.learningRate
 
             print(f"The initial Learning rate is {initial_lr}\n")
-            
+
             steps_per_epoch = len(x_train) // batchSize
             warmup_epochs = 5
             print(f"The steps per epoch are {steps_per_epoch}\n")
@@ -532,6 +532,8 @@ class TakuNetModel:
 
             optimizer = get_optimizer(name=self.train_params["optimizer"], 
                                       learning_rate=self.train_params["learning_rate"] if self.learningRate is None else self.learningRate)
+            
+            print(f"The selected optimaizer if {optimizer}\n")
 
             if self.modelType.lower() == "sam":
                 sam_model = SAMModel(self.model)
