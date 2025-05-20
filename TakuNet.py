@@ -117,6 +117,7 @@ class TakuNetModel:
 
         # This is PointWise Conv, it is used in BiblioGraphy after the DepthWiseConv2D,
         # But in this case we "collect" all the DeptWise into one PointWise in the DownSampler
+        # Better Performance but More Flash Consumption, 0 RAM consumption
 
         # x = layers.Conv2D(filters=inputs.shape[-1],
         #                   kernel_size=1,
@@ -200,6 +201,10 @@ class TakuNetModel:
 
     def _se_block(self, inputs, ratio=8):
         """Squeeze-and-Excitation block."""
+        """
+        Good in Theory -> Does not seem to produce Better Results
+        
+        """
         filters = inputs.shape[-1]
         """
         If the input here is (None,32,32,40)
@@ -473,9 +478,12 @@ class TakuNetModel:
             print("⚠️ Cannot check trainability: `train_params` is None.")
             return False
 
-        (self.results.estimatedMaxRam, 
-        self.results.estimatedFlash, 
-        self.results.AccurateMaxRam,
+        # (self.results.estimatedMaxRam, 
+        # self.results.estimatedFlash, 
+        # self.results.AccurateMaxRam,
+        # self.results.ModelRam)= memoryEstimator.memoryEstimation(model = self.model, data_dtype_multiplier = self.train_params["data_dtype_multiplier"])
+
+        (self.results.estimatedMaxRam,
         self.results.ModelRam)= memoryEstimator.memoryEstimation(model = self.model, data_dtype_multiplier = self.train_params["data_dtype_multiplier"])
 
         print(f"⚠️ Checking model {self.model_name}.....\n")

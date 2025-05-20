@@ -50,7 +50,8 @@ def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:boo
     print(f"LAYERS MEMORY CONSUMPTION:\n")
 
     compute_layer_ram_usage(taku_model.model, data_dtype_multiplier=1)
-    print(f"The estimated Max Ram is {memoryEstimator.memoryEstimation_peak_ram_only(model=taku_model.model,data_dtype_multiplier=1)}")
+    flash,ram = memoryEstimator.memoryEstimation(model=taku_model.model,data_dtype_multiplier=1)
+    print(f"The estimated Max Ram is {ram} whereas Flash Memory is {flash}")
     if train:
         print("🚀 Starting training\n")
         
