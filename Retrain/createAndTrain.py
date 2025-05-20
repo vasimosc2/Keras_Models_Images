@@ -17,7 +17,7 @@ def load_config(model_name: str):
     return model_params, train_params
 
 
-def train_from_saved_config(model_name: str, epochs:int):
+def train_from_saved_config(model_name: str, epochs:int, dropout:bool):
     print(f"🔍 Loading saved configs for model: {model_name}")
     model_params, train_params = load_config(model_name)
     print("🧠 Creating new TakuNet model")
@@ -32,7 +32,7 @@ def train_from_saved_config(model_name: str, epochs:int):
         y_test=None,
         folder=Folder,
         epochs=epochs,
-        enable_dropout=False
+        enable_dropout=dropout
     )
     
     default_augementaion_technique ={ "apply_standard":False,
@@ -60,6 +60,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Retrain a model with optional SAM support")
     parser.add_argument("--name", type=str, default="TakuNet_Random_0", help="Model file name")
     parser.add_argument("--epochs", type=int, default=50, help="Model folder")
-
+    parser.add_argument("--dropout", type=lambda x: x.lower() == "true", default=True, help="Enable dropout (True/False)")
     args = parser.parse_args()
-    train_from_saved_config(model_name=args.name,epochs=args.epochs)
+
+    train_from_saved_config(model_name=args.name,epochs=args.epochs, dropout = args.dropout)
