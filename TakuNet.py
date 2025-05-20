@@ -87,10 +87,11 @@ class TakuNetModel:
         
         x = self._norm_relu6_block(x=x, name="stem1")
 
-        self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=0.0, 
+        self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=0.0,
+                                                     enable_dropout=self.enable_dropout,
                                                      name="adaptive_dropout_stem")
         
-        x = self.adaptive_dropout_stem(inputs=x,training=self.enable_dropout)
+        x = self.adaptive_dropout_stem(x)
         
         # This part is just like 1 Extra Taku_Block and I dont think it needed
 
@@ -124,11 +125,12 @@ class TakuNetModel:
         # x = layers.ReLU(6.0)(x)
 
         adaptiveDropout = AdaptiveDropout(initial_rate=0.0,
+                                          enable_dropout=self.enable_dropout,
                                           name=f"adaptive_dropout_taku_stage{stage_number}_block{taku_block_number}")
             
         self.adaptive_dropout_taku.append(adaptiveDropout)
 
-        x = adaptiveDropout(inputs=x,training=self.enable_dropout)
+        x = adaptiveDropout(x)
 
         return layers.Add()([x, inputs]) # This is the SKIP-Connection
     
@@ -229,11 +231,13 @@ class TakuNetModel:
         x = layers.BatchNormalization()(x)
 
         dropout_after_dw = AdaptiveDropout(initial_rate=0.0,
+                                           enable_dropout=self.enable_dropout,
                                            name=f"adaptive_dropout_refiner1_after_dw")
         
         self.adaptive_dropout_refiner.append(dropout_after_dw)
         
-        x = dropout_after_dw(inputs=x,training=self.enable_dropout)
+        x = dropout_after_dw(x)
+
         # ✅ Add a Pointwise Convolution (1x1) to combine channel information
         x = layers.Conv2D(filters=x.shape[-1], kernel_size=1, padding='same', use_bias=False)(x)
         x = self._norm_relu6_block(x)
@@ -242,11 +246,12 @@ class TakuNetModel:
         x = layers.GlobalAveragePooling2D()(x)
 
         dropout_after_gap = AdaptiveDropout(initial_rate = 0.0,
+                                            enable_dropout=self.enable_dropout,
                                             name=f"adaptive_dropout_refiner2_after_gap")
         
         self.adaptive_dropout_refiner.append(dropout_after_gap)
 
-        x = dropout_after_gap(inputs=x,training=self.enable_dropout)
+        x = dropout_after_gap(x)
 
         return layers.Dense(self.model_params["refiner_block"]["num_output_classes"], 
                             activation='softmax')(x)
@@ -751,9 +756,10 @@ def find_nearest_valid_groups(desired_groups:int, input_channels:int) -> int:
 
 @register_keras_serializable()
 class AdaptiveDropout(tf.keras.layers.Layer):
-    def __init__(self, initial_rate=0.1, **kwargs):
+    def __init__(self, initial_rate=0.1, enable_dropout=True, **kwargs):
         super().__init__(**kwargs)
         self.initial_rate = initial_rate
+        self.enable_dropout = enable_dropout
         self.rate = tf.Variable(initial_value=initial_rate, trainable=False, dtype=tf.float32)
         self.addtion:float = 0.0
 
@@ -764,7 +770,7 @@ class AdaptiveDropout(tf.keras.layers.Layer):
         Use None to have the original Dropout
 
         """
-        if training:
+        if training and self.enable_dropout:
             input_shape = tf.shape(inputs)
             input_rank = inputs.shape.rank  # static rank if possible
 
