@@ -514,6 +514,9 @@ class TakuNetModel:
             loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=self.train_params["label_smothing"])
             batchSize:int = max(8, int(self.train_params["batch_size"] / 2))
             initial_lr:float = float(self.train_params["learning_rate"]) if self.learningRate is None else self.learningRate
+
+            print(f"The initial Learning rate is {initial_lr}\n")
+            
             steps_per_epoch = len(x_train) // batchSize
             warmup_epochs = 5
             print(f"The steps per epoch are {steps_per_epoch}\n")
