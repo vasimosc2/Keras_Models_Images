@@ -31,7 +31,8 @@ def train_from_saved_config(model_name: str, epochs:int):
         x_test= None,
         y_test=None,
         folder=Folder,
-        epochs=epochs
+        epochs=epochs,
+        enable_dropout=False
     )
     
     default_augementaion_technique ={ "apply_standard":False,

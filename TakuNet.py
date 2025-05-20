@@ -56,7 +56,7 @@ class TakuNetModel:
         self.is_trainable: bool = self.check_trainability() if self.test is False else True
 
   
-    def _norm_relu6_block(x: tf.Tensor, name: Optional[str] = None) -> tf.Tensor:
+    def _norm_relu6_block(self,x: tf.Tensor, name: Optional[str] = None) -> tf.Tensor:
         """
         Applies BatchNormalization followed by ReLU6 activation.
 
@@ -84,7 +84,7 @@ class TakuNetModel:
                           padding='same', 
                           use_bias=False)(inputs)
         
-        x = self._norm_relu6_block(x, name="stem1")
+        x = self._norm_relu6_block(x=x, name="stem1")
 
         self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=0.0, 
                                                      name="adaptive_dropout_stem")
