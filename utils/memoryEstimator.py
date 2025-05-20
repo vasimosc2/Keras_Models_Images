@@ -9,12 +9,17 @@ import re
 import numpy as np
 from tensorflow.keras.models import Model
 
+import re
+from tensorflow.keras.models import Model
+import numpy as np
+
 def memoryEstimation_peak_ram_only(model: Model, data_dtype_multiplier: int = 1) -> float:
     """
-    Estimate peak RAM usage in KB based on TakuNet's activation dependencies.
+    Estimate peak RAM usage in KB based on concurrent activation patterns in TakuNet.
     """
     layer_ram_kb = {}
 
+    # 1. Gather RAM usage for each layer
     for layer in model.layers:
         if isinstance(layer.output, list):
             output_memory = sum(np.prod(out.shape[1:]) * data_dtype_multiplier for out in layer.output)
@@ -27,41 +32,50 @@ def memoryEstimation_peak_ram_only(model: Model, data_dtype_multiplier: int = 1)
             input_memory = np.prod(layer.input.shape[1:]) * data_dtype_multiplier
 
         total_ram_bytes = input_memory + output_memory
-        layer_ram_kb[layer.name] = total_ram_bytes / 1024  # in KB
+        layer_ram_kb[layer.name] = total_ram_bytes / 1024  # Convert to KB
 
     peak_ram = 0.0
-    stage_concat = {}
-    stage_skips = {}
+    stage_concat = {}  # e.g., {0: 15.12}
+    stage_skips = {}   # e.g., {0: [11.34, 11.34, ...]}
 
+    # 2. Organize by actual stage numbers from naming
     for name, kb in layer_ram_kb.items():
-        if "concatenate" in name:
-            stage = len(stage_concat)
-            stage_concat[stage] = kb
-        elif "add" in name:
-            stage = len(stage_skips)
-            stage_skips.setdefault(stage, []).append(kb)
+        concat_match = re.match(r"concat_stage(\d+)", name)
+        print(concat_match)
+        skip_match = re.match(r"TakuBlock_SkipConnection_stage(\d+)_block(\d+)", name)
+        print(skip_match)
 
+        if concat_match:
+            stage = int(concat_match.group(1))
+            stage_concat[stage] = kb
+        elif skip_match:
+            stage = int(skip_match.group(1))
+            stage_skips.setdefault(stage, []).append(kb)
+    print(f"The final stage concat is : {stage_concat}")
+    print(f"The final stage skip_match is : {stage_skips}")
+    # 3. Compute per-stage peak RAM
     for stage in stage_concat:
-        concat_kb = stage_concat.get(stage, 0)
+        concat_kb = stage_concat[stage]
         skip_kbs = sorted(stage_skips.get(stage, []), reverse=True)[:2]
         stage_peak = concat_kb + sum(skip_kbs)
         peak_ram = max(peak_ram, stage_peak)
 
-    # Stem block (initial conv + dwconv + bn + relu)
+    # 4. Stem block RAM
     stem_kb = sum(
         kb for name, kb in layer_ram_kb.items()
-        if "conv2d" in name or "depthwise_conv2d" in name or "re_lu" in name or "batch_normalization" in name
+        if "adaptive_dropout_stem" in name or "InitialConv" in name
     )
     peak_ram = max(peak_ram, stem_kb)
 
-    # Refiner block
+    # 5. Refiner block RAM
     refiner_kb = sum(
         kb for name, kb in layer_ram_kb.items()
-        if "dense" in name or "global_average_pooling2d" in name
+        if "Rediner" in name or "Refiner" in name or "Classification" in name or "adaptive_dropout_refiner" in name
     )
     peak_ram = max(peak_ram, refiner_kb)
 
     return round(peak_ram, 2)
+
 
 
 
