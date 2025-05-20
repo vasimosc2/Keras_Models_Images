@@ -483,7 +483,7 @@ class TakuNetModel:
         # self.results.AccurateMaxRam,
         # self.results.ModelRam)= memoryEstimator.memoryEstimation(model = self.model, data_dtype_multiplier = self.train_params["data_dtype_multiplier"])
 
-        (self.results.estimatedMaxRam,
+        (self.results.estimatedFlash,
         self.results.ModelRam)= memoryEstimator.memoryEstimation(model = self.model, data_dtype_multiplier = self.train_params["data_dtype_multiplier"])
 
         print(f"⚠️ Checking model {self.model_name}.....\n")
@@ -603,7 +603,7 @@ class TakuNetModel:
         # **Train Model with Timing**
         start_time = time.time()
         print(f"✅Start training of {self.model_name}\n")
-        print(f"✅Accurate RAM Memory: {self.results.AccurateMaxRam} KB\n")
+        print(f"✅Accurate RAM Memory: {self.results.ModelRam} KB\n")
         print(f"✅Flash Memory Ram: {self.results.estimatedFlash} KB\n")
 
         callbacks:list = [midway_callback,early_stopping_acc,checkpoint,performanceCallback,lr_schedule,swa_callback]
