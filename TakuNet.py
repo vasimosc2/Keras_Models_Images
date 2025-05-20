@@ -88,7 +88,6 @@ class TakuNetModel:
         x = self._norm_relu6_block(x=x, name="stem1")
 
         self.adaptive_dropout_stem = AdaptiveDropout(initial_rate=0.0,
-                                                     enable_dropout=self.enable_dropout,
                                                      name="adaptive_dropout_stem")
         
         x = self.adaptive_dropout_stem(x)
@@ -124,7 +123,6 @@ class TakuNetModel:
         x = self._norm_relu6_block(x=x, name=f"Norm_TakuStage{stage_number}_PointWise_Block{taku_block_number}")
 
         adaptiveDropout = AdaptiveDropout(initial_rate=0.0,
-                                          enable_dropout=self.enable_dropout,
                                           name=f"adaptive_dropout_taku_stage{stage_number}_block{taku_block_number}")
             
         self.adaptive_dropout_taku.append(adaptiveDropout)
@@ -230,7 +228,6 @@ class TakuNetModel:
         x = layers.BatchNormalization()(x)
 
         dropout_after_dw = AdaptiveDropout(initial_rate=0.0,
-                                           enable_dropout=self.enable_dropout,
                                            name=f"adaptive_dropout_refiner1_after_dw")
         
         self.adaptive_dropout_refiner.append(dropout_after_dw)
@@ -245,7 +242,6 @@ class TakuNetModel:
         x = layers.GlobalAveragePooling2D()(x)
 
         dropout_after_gap = AdaptiveDropout(initial_rate = 0.0,
-                                            enable_dropout=self.enable_dropout,
                                             name=f"adaptive_dropout_refiner2_after_gap")
         
         self.adaptive_dropout_refiner.append(dropout_after_gap)
@@ -583,13 +579,19 @@ class TakuNetModel:
         print(f"✅Accurate RAM Memory: {self.results.AccurateMaxRam} KB\n")
         print(f"✅Flash Memory Ram: {self.results.estimatedFlash} KB\n")
 
+        callbacks:list = [midway_callback,early_stopping_acc,checkpoint,performanceCallback,lr_schedule,swa_callback]
+        if self.enable_dropout:
+            print("✅ The TakuNet model is trained with Dropout\n")
+            callbacks.append(adjust_dropout)
+        else:
+            print("Training happens without Dropout\n")
         history = self.model.fit(
             x_train, y_train,
             epochs = total_epochs,
             batch_size = batchSize,
             validation_data=(x_test, y_test),
             verbose=2,
-            callbacks=[midway_callback, early_stopping_acc, checkpoint, adjust_dropout, performanceCallback, lr_schedule, swa_callback ]
+            callbacks=callbacks
         )
 
         training_time = time.time() - start_time
@@ -755,22 +757,21 @@ def find_nearest_valid_groups(desired_groups:int, input_channels:int) -> int:
 
 @register_keras_serializable()
 class AdaptiveDropout(tf.keras.layers.Layer):
-    def __init__(self, initial_rate=0.1, enable_dropout=True, **kwargs):
+    def __init__(self, initial_rate=0.1, **kwargs):
         super().__init__(**kwargs)
         self.initial_rate = initial_rate
-        self.enable_dropout = enable_dropout
         self.rate = tf.Variable(initial_value=initial_rate, trainable=False, dtype=tf.float32)
         self.addtion:float = 0.0
 
-    def call(self, inputs, training=False):
+    def call(self, inputs, training=True):
         """
 
         Use noise to emulate the SpatialDropout2D 
         Use None to have the original Dropout
 
         """
-        if training and self.enable_dropout:
-            print(f"training is {training} and enable_dropout is {self.enable_dropout}")
+        if training:
+            print("🔧I am here inside the training of the Dropout")
             input_shape = tf.shape(inputs)
             input_rank = inputs.shape.rank  # static rank if possible
 
