@@ -34,6 +34,7 @@ class TakuNetModel:
         self.input_shape: Tuple[int, int, int] = input_shape
         self.model_params: Optional[Dict] = model_params
         self.train_params: Optional[Dict] = train_params
+        self.enable_dropout: bool = enable_dropout
         
         self.adaptive_dropout_stem: AdaptiveDropout = None
         self.adaptive_dropout_taku: List[AdaptiveDropout] = [] # This will have Length As much as the Stages
@@ -44,7 +45,7 @@ class TakuNetModel:
         self.y_train: Optional[tf.Tensor] = y_train
         self.x_test: Optional[tf.Tensor] = x_test
         self.y_test: Optional[tf.Tensor] = y_test
-        self.enable_dropout: bool = enable_dropout
+       
         
         self.is_trained:bool = False
         self.folderName:str = folder if folder is not None else "."
