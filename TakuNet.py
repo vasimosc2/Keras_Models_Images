@@ -68,8 +68,8 @@ class TakuNetModel:
         Returns:
             tf.Tensor: Output tensor after normalization and activation.
         """
-        x = layers.BatchNormalization(name=f"{name}_bn" if name else None)(x)
-        x = layers.ReLU(max_value=6.0, name=f"{name}_relu6" if name else None)(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.ReLU(max_value=6.0)(x)
         return x
 
     
@@ -82,7 +82,8 @@ class TakuNetModel:
         x = layers.Conv2D(filters=self.model_params["stem_block"]["filters"], 
                           kernel_size=self.model_params["stem_block"]["Conv_kernel"],
                           strides=self.model_params["stem_block"]["Conv_strides"], 
-                          padding='same', 
+                          padding='same',
+                          name="InitialConv",
                           use_bias=False)(inputs)
         
         x = self._norm_relu6_block(x=x, name="stem1")
@@ -108,7 +109,8 @@ class TakuNetModel:
 
         x = layers.DepthwiseConv2D( kernel_size=self.model_params["stages_block"]["taku_block"]["DWConv_kernel"], 
                                     strides=self.model_params["stages_block"]["taku_block"]["DWConv_strides"], 
-                                    padding='same', 
+                                    padding='same',
+                                    name=f"DepthWiseConV_TakuStage{stage_number}_DepthWise_Block{taku_block_number}",
                                     use_bias=False)(inputs)
 
         x = self._norm_relu6_block(x, name=f"Norm_TakuStage{stage_number}_DepthWise_Block{taku_block_number}")
@@ -131,7 +133,7 @@ class TakuNetModel:
 
         x = adaptiveDropout(x)
 
-        return layers.Add()([x, inputs]) # This is the SKIP-Connection
+        return layers.Add(name=f"TakuBlock_SkipConnection_stage{stage_number}_block{taku_block_number}")([x, inputs]) # This is the SKIP-Connection
     
 
     
@@ -169,10 +171,11 @@ class TakuNetModel:
         """
         x = layers.Conv2D(  filters=input_channels, 
                             kernel_size=1, 
-                            groups=groups, 
+                            groups=groups,
+                            name=f"GroupedPointWiseConv{curr_stage_number}",
                             use_bias=False)(inputs)
 
-        x = self._norm_relu6_block(x, name=f"Norm_DownSampler_Block{curr_stage_number}")
+        x = self._norm_relu6_block(x)
 
         pool_layer = layers.MaxPooling2D if curr_stage_number < self.model_params["stages_block"]["stages_number"] else layers.AveragePooling2D
 
@@ -190,7 +193,7 @@ class TakuNetModel:
                        strides=self.model_params["stages_block"]["downsampler"]["strides"], 
                        padding='same')(x)
         
-        #x = self._se_block(x, ratio=8)
+        x = self._se_block(x, ratio=8)
         
         return layers.LayerNormalization()(x)
     
@@ -217,14 +220,16 @@ class TakuNetModel:
             x = self._taku_block(inputs=x, taku_block_number=i, stage_number=curr_stage_number)
 
         #x = layers.Add()([x, inputs]) I dont think I need a Skip-Connection here between the Input and the Last TakuBlock
-        concat = layers.Concatenate()([inputs, x])
+        concat = layers.Concatenate(name=f"concat_stage{curr_stage_number}")([inputs, x])
+
         return self._downsampler_block(inputs=concat, curr_stage_number=curr_stage_number)
     
     def _refiner_block(self, inputs):
 
         x = layers.DepthwiseConv2D( kernel_size=self.model_params["refiner_block"]["DWConv_kernel"], 
                                     strides = self.model_params["refiner_block"]["DWConv_strides"], 
-                                    padding='same', 
+                                    padding='same',
+                                    name=f"Rediner_DepthWiseConv",
                                     use_bias=False)(inputs)
 
         x = layers.BatchNormalization()(x)
@@ -238,7 +243,11 @@ class TakuNetModel:
         x = dropout_after_dw(x)
 
         # ✅ Add a Pointwise Convolution (1x1) to combine channel information
-        x = layers.Conv2D(filters=x.shape[-1], kernel_size=1, padding='same', use_bias=False)(x)
+        x = layers.Conv2D(filters=x.shape[-1], 
+                          kernel_size=1, 
+                          padding='same',
+                          name=f"Refiner_PointWiseConv",
+                          use_bias=False)(x)
         x = self._norm_relu6_block(x)
 
 
@@ -252,7 +261,8 @@ class TakuNetModel:
 
         x = dropout_after_gap(x)
 
-        return layers.Dense(self.model_params["refiner_block"]["num_output_classes"], 
+        return layers.Dense(self.model_params["refiner_block"]["num_output_classes"],
+                            name=f"Classification",
                             activation='softmax')(x)
     
     def _build_model(self) -> tf.keras.Model:
