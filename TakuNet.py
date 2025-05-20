@@ -739,7 +739,7 @@ def get_optimizer(name, learning_rate):
     optimizers = {
         "adam": Adam(learning_rate=learning_rate),
         "adamw": AdamW(learning_rate=learning_rate, weight_decay=1e-4),
-        "sgd": SGD(learning_rate=learning_rate, momentum=0.9),
+        "sgd": SGD(learning_rate=learning_rate, momentum=0.9, weight_decay=1e-4),
         "rmsprop": RMSprop(learning_rate=learning_rate)
     }
     return optimizers.get(name.lower(), Adam(learning_rate=learning_rate))
@@ -782,7 +782,6 @@ class AdaptiveDropout(tf.keras.layers.Layer):
             return inputs
         
         if training:
-            print("🔧I am here inside the training of the Dropout")
             input_shape = tf.shape(inputs)
             input_rank = inputs.shape.rank  # static rank if possible
 
