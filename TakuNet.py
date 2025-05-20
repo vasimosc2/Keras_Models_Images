@@ -487,7 +487,7 @@ class TakuNetModel:
         self.results.ModelRam)= memoryEstimator.memoryEstimation(model = self.model, data_dtype_multiplier = self.train_params["data_dtype_multiplier"])
 
         print(f"⚠️ Checking model {self.model_name}.....\n")
-        print(f"Max RAM Usage: {self.results.estimatedMaxRam:.2f} KB\n")
+        print(f"Max RAM Usage: {self.results.ModelRam:.2f} KB\n")
         print(f"Parameter Memory: {self.results.estimatedFlash:.2f} KB\n")
 
         ram_limit = self.train_params["max_ram_consumption"] - self.train_params["additional_ram_consumption"]
