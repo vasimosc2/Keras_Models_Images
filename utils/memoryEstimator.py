@@ -57,7 +57,7 @@ def memoryEstimation_peak_ram_only(model: Model, data_dtype_multiplier: int = 1)
 
     # 3. Identify the stem relu (we take the max of relu-like layers before stage 0)
     stem_relu_kb = max(
-        (kb for name, kb in layer_ram_kb.items() if "ReLu_" in name and "stage" not in name),
+        (kb for name, kb in layer_ram_kb.items() if "ReLu_stem1" in name and "stage" not in name),
         default=0
     )
 
