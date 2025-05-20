@@ -761,6 +761,7 @@ class TakuNetModel:
         print(f"Keras Model Size: {keras_size_kb:.2f} KB")
         print(f"TFLite Model Size: {tflite_size_kb:.2f} KB")
         print(f"C Array File Size: {c_array_size_kb:.2f} KB")
+        print(f"RAM: {self.results.ModelRam:.2f} KB")
 
     def summary(self):
         self.model.summary()
