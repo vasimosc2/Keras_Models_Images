@@ -1010,10 +1010,10 @@ class TrainingResults:
         self.precision = None
         self.recall = None
         self.f1_score = None
-        self.estimatedMaxRam = None
-        self.AccurateMaxRam = None
-        self.ModelRam = None
-        self.estimatedFlash = None
+        self.estimatedMaxRam = 0.0
+        self.AccurateMaxRam = 0.0
+        self.ModelRam = 0.0
+        self.estimatedFlash = 0.0
         self.training_time = None
         self.fitness_score = None
         self.tflite_accuracy = None
