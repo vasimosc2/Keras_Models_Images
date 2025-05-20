@@ -175,7 +175,7 @@ class TakuNetModel:
                             name=f"GroupedPointWiseConv{curr_stage_number}",
                             use_bias=False)(inputs)
 
-        x = self._norm_relu6_block(x)
+        x = self._norm_relu6_block(x,name=f"GroupedPointWiseConv{curr_stage_number}")
 
         pool_layer = layers.MaxPooling2D if curr_stage_number < self.model_params["stages_block"]["stages_number"] else layers.AveragePooling2D
 
@@ -248,7 +248,7 @@ class TakuNetModel:
                           padding='same',
                           name=f"Refiner_PointWiseConv",
                           use_bias=False)(x)
-        x = self._norm_relu6_block(x)
+        x = self._norm_relu6_block(x,name="Refiner_PointWiseConv")
 
 
         x = layers.GlobalAveragePooling2D()(x)
