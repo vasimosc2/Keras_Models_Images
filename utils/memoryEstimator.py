@@ -21,7 +21,7 @@ def memoryEstimation(model: Model, data_dtype_multiplier: int = 1) -> float:
         - For stage >0: concat + last skip + prev stage's last skip
     """
     layer_ram_kb = {}
-
+    total_param_memory: int = 0  
     # 1. Compute RAM usage for each layer
     for layer in model.layers:
 
