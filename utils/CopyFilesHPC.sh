@@ -6,7 +6,7 @@ scp s222566@login.hpc.dtu.dk:/zhome/02/e/181021/Desktop/Keras_Models_Images/Manu
 scp s222566@login.hpc.dtu.dk:/zhome/02/e/181021/Desktop/Keras_Models_Images/Manual_Run/HeaderFiles/*.h /mnt/c/Users/mosho/OneDrive/Arduino/First_Attempt/
 
 #Specific
-scp s222566@login.hpc.dtu.dk:/zhome/02/e/181021/Desktop/Keras_Models_Images/Manual_Run/HeaderFiles/TakuNet_Random_2.h /mnt/c/Users/mosho/OneDrive/Arduino/First_Attempt/
+scp s222566@login.hpc.dtu.dk:/zhome/02/e/181021/Desktop/Keras_Models_Images/Manual_Run/HeaderFiles/TakuNet_Random_0.h /mnt/c/Users/mosho/OneDrive/Arduino/First_Attempt/
 scp s222566@login.hpc.dtu.dk:/zhome/02/e/181021/Desktop/Keras_Models_Images/Manual_Run/Retraining/HeaderFiles/TakuNet_Random_0.h /mnt/c/Users/mosho/OneDrive/Arduino/First_Attempt/
 
 

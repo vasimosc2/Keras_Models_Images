@@ -427,8 +427,6 @@ class TakuNetModel:
             print(f"⚠️ Could not load TFLite model from {tflite_path}: {e}")
             return -1.0
 
-        interpreter.allocate_tensors()
-
         input_details = interpreter.get_input_details()
         output_details = interpreter.get_output_details()
 

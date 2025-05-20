@@ -28,7 +28,7 @@
     },
     "train_and_evaluate":{
         "model_config": {
-            "optimizer": ["sgd"],
+            "optimizer": ["sgd","adamw"],
             "label_smothing": 10e-2,
 
             "divider" : 5,
@@ -37,7 +37,7 @@
                 "stop_patience": [8, 10]
             },
             "learning":{
-                "rate": [0.05],
+                "rate": [0.01],
                 "factor": 0.5,
                 "patience": 5
             },
