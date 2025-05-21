@@ -559,7 +559,7 @@ class TakuNetModel:
 
 
 
-            optimizer = get_optimizer(name=self.train_params["optimizer"], 
+            optimizer = get_optimizer(name=self.model_params["optimizer"], 
                                       learning_rate=self.train_params["learning_rate"] if self.learningRate is None else self.learningRate)
             
             print(f"The selected optimaizer if {optimizer}\n")

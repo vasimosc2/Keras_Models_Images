@@ -265,9 +265,12 @@ class EvolutionarySearch:
                         else:
                             if random.random() < self.crossover_rate:
                                 child_params[block][subBlock] = parent2.model_params[block][subBlock]
-                else:
+                elif isinstance(child_params[block], list):
                     if random.random() < self.crossover_rate:
+                        print("I am mutating optimazer\n")
                         child_params[block] = parent2.model_params[block]
+                else:
+                    raise Exception(f"I failed in the mutation because of {block} and {child_params[block]}\n")
 
             # 3. Try to create a child model
             child = TakuNetModel(model_name=model_name, 

@@ -38,8 +38,20 @@ def simple_architecture_embedding(model_params:Dict) -> np.ndarray:
     features.append(params['refiner_block']['DWConv_kernel'])
     features.append(params['refiner_block']['DWConv_strides'])
 
+    #Optimaizer One Hot encoding
+    optimizer = params['optimizer'].lower()
+
+    # Define available optimizers (order matters)
+    available_optimizers = ["sgd", "adamw"]
+
+    # Create one-hot encoding
+    optimizer_onehot = [1.0 if optimizer == opt else 0.0 for opt in available_optimizers]
+
+    # Append to feature vector
+    features.extend(optimizer_onehot)
+
 
     features = np.array(features, dtype=np.float32)
     features /= np.max(features) + 1e-8 # Neural networks perform best when their inputs are normalized to similar scales.
 
-    return features  # Shape (13,)
+    return features  # Shape (15,)

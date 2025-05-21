@@ -29,5 +29,6 @@ def sample_from_search_space(model_search_space)->Dict:
             "DWConv_kernel": random.choice(model_search_space["refiner_block"]["DWConv_kernel"]),
             "DWConv_strides": random.choice(model_search_space["refiner_block"]["DWConv_strides"]),
             "num_output_classes": model_search_space["refiner_block"]["num_output_classes"]
-        }
+        },
+        "optimizer": random.choice(model_search_space["model_config"]["optimizer"])
     }

@@ -24,11 +24,12 @@
             "DWConv_kernel": [3,5],
             "DWConv_strides": [1, 2],
             "num_output_classes": 100
-        }
+        },
+        "optimizer": ["sgd","adamw"]
     },
     "train_and_evaluate":{
         "model_config": {
-            "optimizer": ["sgd","adamw"],
+            
             "label_smothing": 10e-2,
 
             "divider" : 5,

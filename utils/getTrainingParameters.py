@@ -5,7 +5,6 @@ from typing import Dict
 def sample_from_train_and_evaluate(train_and_evaluate)->Dict:
     """Randomly selects training hyperparameters."""
     return {
-        "optimizer": random.choice(train_and_evaluate["model_config"]["optimizer"]),
         "label_smothing": train_and_evaluate["model_config"]["label_smothing"],
         "divider": train_and_evaluate["model_config"]["divider"],
 
