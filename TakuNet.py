@@ -96,13 +96,13 @@ class TakuNetModel:
         
         # This part is just like 1 Extra Taku_Block and I dont think it needed
 
-        # x = layers.DepthwiseConv2D(kernel_size=self.model_params["stem_block"]["DWConv_kernel"],
-        #                            strides=self.model_params["stem_block"]["DWConv_strides"],
-        #                            padding='same', 
-        #                            use_bias=False)(x)
+        x = layers.DepthwiseConv2D(kernel_size=self.model_params["stem_block"]["DWConv_kernel"],
+                                   strides=self.model_params["stem_block"]["DWConv_strides"],
+                                   padding='same', 
+                                   use_bias=False)(x)
 
 
-        # x = self._norm_relu6_block(x, name="stem2")
+        x = self._norm_relu6_block(x, name="stem2")
         return x
     
     def _taku_block(self, inputs:tuple, taku_block_number:int, stage_number:int):
@@ -114,17 +114,19 @@ class TakuNetModel:
                                     use_bias=False)(inputs)
 
         x = self._norm_relu6_block(x, name=f"Norm_TakuStage{stage_number}_DepthWise_Block{taku_block_number}")
+        """
+        This is PointWise Conv, it is used in BiblioGraphy after the DepthWiseConv2D,
+        But in this case we "collect" all the DeptWise into one PointWise in the DownSampler
+        Better Performance but More Flash Consumption, 0 RAM consumption
 
-        # This is PointWise Conv, it is used in BiblioGraphy after the DepthWiseConv2D,
-        # But in this case we "collect" all the DeptWise into one PointWise in the DownSampler
-        # Better Performance but More Flash Consumption, 0 RAM consumption
+        """
 
-        # x = layers.Conv2D(filters=inputs.shape[-1],
-        #                   kernel_size=1,
-        #                   padding='same',
-        #                   use_bias=False)(x)
+        x = layers.Conv2D(filters=inputs.shape[-1],
+                          kernel_size=1,
+                          padding='same',
+                          use_bias=False)(x)
 
-        # x = self._norm_relu6_block(x=x, name=f"Norm_TakuStage{stage_number}_PointWise_Block{taku_block_number}")
+        x = self._norm_relu6_block(x=x, name=f"Norm_TakuStage{stage_number}_PointWise_Block{taku_block_number}")
 
 
         adaptiveDropout = AdaptiveDropout(initial_rate=0.0,
@@ -195,7 +197,7 @@ class TakuNetModel:
                        strides=self.model_params["stages_block"]["downsampler"]["strides"], 
                        padding='same')(x)
         
-        #x = self._se_block(x, ratio=8)
+        x = self._se_block(x, ratio=8)
         
         return layers.LayerNormalization()(x)
     
