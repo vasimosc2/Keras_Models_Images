@@ -1,17 +1,8 @@
-from typing import List, Tuple
 import joblib
 import numpy as np
 from sklearn.linear_model import LinearRegression
-import tensorflow as tf
-
-
-import re
-import numpy as np
-from tensorflow.keras.models import Model
-
 import re
 from tensorflow.keras.models import Model
-import numpy as np
 
 def memoryEstimation(model: Model, data_dtype_multiplier: int = 1) -> float:
     """
@@ -93,8 +84,11 @@ def memoryEstimation(model: Model, data_dtype_multiplier: int = 1) -> float:
     peak_ram = round(max(peak_ram, refiner_kb),2)
 
     flashModel : LinearRegression = joblib.load("utils/EstimationModels/flash_regression_model.pkl")
+    ramModel : LinearRegression  = joblib.load("utils/EstimationModels/ram_regression_model.pkl")
+
     estimated_flash_kb:float = flashModel.predict([[total_param_memory / 1024]])[0]
-    return estimated_flash_kb, peak_ram
+    modelRAM:float = ramModel.predict([[peak_ram]])[0]
+    return estimated_flash_kb, modelRAM
 
 
 
