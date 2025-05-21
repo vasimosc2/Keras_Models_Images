@@ -41,40 +41,36 @@ def save_flash_model():
     print(f"📷 FLASH Plot saved to: {plot_save_path}")
 
 def save_ram_model():
-    print(f"\n🚀 Training RAM model...")
+    print("\n🚀 Training RAM model...")
 
-    CSV_PATH = "ram_inference_flash.csv"
-    ESTIMATE_COL = "StartingRam(KB)"
+    CSV_PATH = "newRAM.csv"
     ACCURATE_COL = "AccurateRam(KB)"
     ACTUAL_COL = "MeasuredRam(KB)"
 
+    # Read CSV
     df = pd.read_csv(CSV_PATH)
 
-    # Prepare data
-    X_estimated = df[ESTIMATE_COL].values.reshape(-1, 1)
+    # Prepare training data
     X_accurate = df[ACCURATE_COL].values.reshape(-1, 1)
-    y = df[ACTUAL_COL].values
+    y_measured = df[ACTUAL_COL].values
 
-    # Train model on Accurate RAM
+    # Train regression model
     model = LinearRegression()
-    model.fit(X_accurate, y)
+    model.fit(X_accurate, y_measured)
 
+    # Save model
     model_save_path = "ram_regression_model.pkl"
     joblib.dump(model, model_save_path)
     print(f"✅ RAM model saved to: {model_save_path}")
+    print(f"📈 Regression formula: RAM ≈ {model.coef_[0]:.4f} × Accurate + {model.intercept_:.2f}")
 
-    print(f"📈 RAM Regression formula: RAM ≈ {model.coef_[0]:.4f} × Accurate + {model.intercept_:.2f}")
-
-    # === 1st Diagram: Accurate RAM vs Measured RAM ===
+    # Plot: Accurate vs Measured RAM
     plt.figure(figsize=(8, 5))
-    plt.scatter(df[ACCURATE_COL], y, color='blue', label="Accurate RAM vs Measured")
+    plt.scatter(df[ACCURATE_COL], y_measured, color='blue', label="Actual Data")
 
-    # Perfect y=x line
-    #line_range = np.linspace(min(df[ACCURATE_COL].min(), y.min()), max(df[ACCURATE_COL].max(), y.max()), 100)
-    #plt.plot(line_range, line_range, color='grey', linestyle='--', label="Perfect Line (y=x)")
-
-    # Linear Regression Line (Accurate RAM)
-    plt.plot(df[ACCURATE_COL], model.predict(X_accurate), color='blue', linestyle='-', label="Regression Line (Accurate)")
+    # Plot regression line
+    predicted = model.predict(X_accurate)
+    plt.plot(df[ACCURATE_COL], predicted, color='red', linestyle='-', label="Regression Line")
 
     plt.xlabel("Accurate RAM (KB)")
     plt.ylabel("Measured RAM (KB)")
@@ -82,25 +78,11 @@ def save_ram_model():
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig("ram_accurate_vs_measured.png")
-    print(f"📷 Accurate RAM Plot saved to: ram_accurate_vs_measured.png")
 
-    # === 2nd Diagram: Estimated RAM vs Measured RAM ===
-    plt.figure(figsize=(8, 5))
-    plt.scatter(df[ESTIMATE_COL], y, color='red', label="Estimated RAM vs Measured")
-
-    # Perfect y=x line
-    line_range = np.linspace(min(df[ESTIMATE_COL].min(), y.min()), max(df[ESTIMATE_COL].max(), y.max()), 100)
-    plt.plot(line_range, line_range, color='grey', linestyle='--', label="Perfect Line (y=x)")
-
-    plt.xlabel("Estimated RAM (KB)")
-    plt.ylabel("Measured RAM (KB)")
-    plt.title("Estimated RAM vs Measured RAM")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.savefig("ram_estimated_vs_measured.png")
-    print(f"📷 Estimated RAM Plot saved to: ram_estimated_vs_measured.png")
+    plot_path = "ram_accurate_vs_measured.png"
+    plt.savefig(plot_path)
+    plt.close()
+    print(f"📷 Plot saved to: {plot_path}")
 
 
 def save_inference_time_model():
