@@ -240,8 +240,12 @@ class EvolutionarySearch:
                             choices = self.config["model_search_space"][block][subBlock]
                             if isinstance(choices, list):
                                 model_params[block][subBlock] = random.choice(choices)
+            elif isinstance(model_params[block], dict):
+                if random.random() < self.mutation_rate:
+                    choices = self.config["model_search_space"][block]
+                    model_params[block] = random.choice(choices)
             else:
-                raise Exception(f"Unexpected non-dict block at top-level: {block}")
+                raise Exception(f"Unexpected {model_params[block]} block at top-level: {block}")
         return model_params
 
     def _crossover(self, parent1: TakuNetModel, parent2: TakuNetModel, model_number: int) -> TakuNetModel:

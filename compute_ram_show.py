@@ -11,10 +11,6 @@ def compute_layer_ram_usage(model, data_dtype_multiplier=4):
     print("\n=== Layer-wise Maximum RAM Usage (in KB) ===\n")
     
     for layer in model.layers:
-        # Compute parameter memory (weights + biases)
-        layer_params = layer.count_params()  
-        layer_param_memory = layer_params * data_dtype_multiplier  # Convert to bytes
-
         # Compute activation memory (RAM)
         if isinstance(layer.output, list):
             output_memory = sum(np.prod(out.shape[1:]) * data_dtype_multiplier for out in layer.output)
