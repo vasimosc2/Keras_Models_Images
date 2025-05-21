@@ -69,8 +69,6 @@ for generation, model in enumerate(evo_search.evolve(), start=1):
         "Precision": model.results.precision,
         "Recall": model.results.recall,
         "F1 Score": model.results.f1_score,
-        "Estimated Max RAM Usage (KB)": model.results.estimatedMaxRam,
-        "Accurate Max RAM Usage (KB)": model.results.AccurateMaxRam,
         "Model RAM (KB)": model.results.ModelRam,
         "Estimated Flash Memory (KB)": model.results.estimatedFlash,        
         "TFlite size(KB)": model.results.tflite_size,

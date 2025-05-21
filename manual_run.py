@@ -92,7 +92,7 @@ while trainable_models_count < number_of_models:  # Train number_of_models with 
         trainable_models_count += 1
         compute_layer_ram_usage(taku_model.model, data_dtype_multiplier=1)
         print(f"✅ Model {model_name} accepted for training with: \n {taku_model.results.ModelRam}KB RAM and {taku_model.results.estimatedFlash}KB Flash \n")
-        #print(f"✅ Model {model_name} accepted for training with: \n {taku_model.results.estimatedMaxRam} -> {taku_model.results.ModelRam}KB RAM and {taku_model.results.estimatedFlash}KB Flash \n")
+
     else:
         print(f"❌ Model {model_name} rejected due to memory constraints \n")
     
@@ -128,8 +128,6 @@ for model in models_to_train:
             "Precision": model.results.precision,
             "Recall": model.results.recall,
             "F1 Score": model.results.f1_score,
-            "Estimated Max RAM Usage (KB)": model.results.estimatedMaxRam,
-            "Accurate Max RAM Usage (KB)": model.results.AccurateMaxRam,
             "Model RAM (KB)": model.results.ModelRam,
             "Estimated Flash Memory (KB)": model.results.estimatedFlash,
             "TFlite size (KB)": model.results.tflite_size,
