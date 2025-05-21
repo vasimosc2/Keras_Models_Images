@@ -38,7 +38,7 @@
                 "stop_patience": [8, 10]
             },
             "learning":{
-                "rate": [0.05],
+                "rate": [0.00],
                 "factor": 0.5,
                 "patience": 5
             },
