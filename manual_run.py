@@ -125,6 +125,7 @@ for model in models_to_train:
             "Best Test Accuracy": model.results.test_accuracy,
             "Swa Test Accuracy": model.results.SWA_test_accuracy,
             "TFlite Test Accuracy": model.results.tflite_accuracy,
+            "Optimizer":model.model_params["optimizer"],
             "Precision": model.results.precision,
             "Recall": model.results.recall,
             "F1 Score": model.results.f1_score,
