@@ -224,59 +224,60 @@ class EvolutionarySearch:
     
     def _mutate(self, model_params: Dict) -> Dict:
         """
-        In this mutation we go over each Model Search Parameter and based on this : random.random() < self.mutation_rate
-        We either change it or not. The higher the self.mutation_rate, the more parameters will change !
+        Mutate the model parameters based on mutation rate.
+        Handles nested dictionaries and top-level primitives like 'optimizer'.
         """
         for block in model_params:
-            if isinstance(model_params[block], dict):
-                for subBlock in model_params[block]:
-                    if isinstance(model_params[block][subBlock], dict):
-                        for param in model_params[block][subBlock]:
+            try:
+                if isinstance(model_params[block], dict):
+                    for subBlock in model_params[block]:
+                        if isinstance(model_params[block][subBlock], dict):
+                            for param in model_params[block][subBlock]:
+                                if random.random() < self.mutation_rate:
+                                    choices = self.config["model_search_space"][block][subBlock][param]
+                                    model_params[block][subBlock][param] = random.choice(choices)
+                        else:
                             if random.random() < self.mutation_rate:
-                                choices = self.config["model_search_space"][block][subBlock][param]
-                                model_params[block][subBlock][param] = random.choice(choices)
-                    else:
-                        if random.random() < self.mutation_rate:
-                            choices = self.config["model_search_space"][block][subBlock]
-                            if isinstance(choices, list):
+                                choices = self.config["model_search_space"][block][subBlock]
                                 model_params[block][subBlock] = random.choice(choices)
-            elif isinstance(model_params[block], dict):
-                if random.random() < self.mutation_rate:
-                    choices = self.config["model_search_space"][block]
-                    model_params[block] = random.choice(choices)
-            else:
-                raise Exception(f"Unexpected {model_params[block]} block at top-level: {block}")
+                else:
+                    if random.random() < self.mutation_rate:
+                        choices = self.config["model_search_space"][block]
+                        model_params[block] = random.choice(choices)
+            except Exception as e:
+                raise Exception(f"❌ Mutation failed at block '{block}' with value '{model_params[block]}'. Error: {str(e)}")
         return model_params
 
+
     def _crossover(self, parent1: TakuNetModel, parent2: TakuNetModel, model_number: int) -> TakuNetModel:
-        """ Perform crossover between two parent models to produce a child model. """
-        
+        """
+        Perform crossover between two parent models.
+        Preserves exception handling and reports invalid blocks like 'optimizer'.
+        """
         model_name = f"TakuNet_Crossover_{model_number}"
-        train_params = copy.deepcopy(parent1.train_params) # Does not matter which training params I am getting
+        train_params = copy.deepcopy(parent1.train_params)
 
         while True:
-            # 1. Start from parent1 parameters
             child_params = copy.deepcopy(parent1.model_params)
 
-            # 2. Crossover: randomly swap parameters from parent2
-            for block in child_params:
-                if isinstance(child_params[block], dict):
-                    for subBlock in child_params[block]:
-                        if isinstance(child_params[block][subBlock], dict):
-                            for param in child_params[block][subBlock]:
+            try:
+                for block in child_params:
+                    if isinstance(child_params[block], dict):
+                        for subBlock in child_params[block]:
+                            if isinstance(child_params[block][subBlock], dict):
+                                for param in child_params[block][subBlock]:
+                                    if random.random() < self.crossover_rate:
+                                        child_params[block][subBlock][param] = parent2.model_params[block][subBlock][param]
+                            else:
                                 if random.random() < self.crossover_rate:
-                                    child_params[block][subBlock][param] = parent2.model_params[block][subBlock][param]
-                        else:
-                            if random.random() < self.crossover_rate:
-                                child_params[block][subBlock] = parent2.model_params[block][subBlock]
-                elif isinstance(child_params[block], list):
-                    if random.random() < self.crossover_rate:
-                        print("I am mutating optimazer\n")
-                        child_params[block] = parent2.model_params[block]
-                else:
-                    raise Exception(f"I failed in the mutation because of {block} and {child_params[block]}\n")
+                                    child_params[block][subBlock] = parent2.model_params[block][subBlock]
+                    else:
+                        if random.random() < self.crossover_rate:
+                            child_params[block] = parent2.model_params[block]
+            except Exception as e:
+                raise Exception(f"I failed in the mutation because of block '{block}' and value '{child_params[block]}'. Error: {str(e)}")
 
-            # 3. Try to create a child model
+            # Try to build the model
             child = TakuNetModel(model_name=model_name, 
                                 input_shape=(32, 32, 3), 
                                 model_params=child_params, 
@@ -286,12 +287,9 @@ class EvolutionarySearch:
                                 x_test=None, 
                                 y_test=None,
                                 folder="NAS")
-
-            # 4. If trainable, return it
             if child.is_trainable:
                 return child
             else:
-                # 5. Otherwise, retry (create new random crossover parameters again)
                 print(f"❌ Crossover {model_name} failed due to memory limits. Retrying...")
                 del child
                 tf.keras.backend.clear_session()
