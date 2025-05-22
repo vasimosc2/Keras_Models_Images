@@ -239,7 +239,10 @@ class EvolutionarySearch:
                         else:
                             if random.random() < self.mutation_rate:
                                 choices = self.config["model_search_space"][block][subBlock]
-                                model_params[block][subBlock] = random.choice(choices)
+                                if isinstance(choices, list):
+                                    model_params[block][subBlock] = random.choice(choices)
+                                else:
+                                    print(f"⚠️ Skipping mutation for {block}.{subBlock} (fixed value: {choices}). Should be the Classes that we use \n")
                 else:
                     if random.random() < self.mutation_rate:
                         choices = self.config["model_search_space"][block]
