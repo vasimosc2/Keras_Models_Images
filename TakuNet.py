@@ -68,9 +68,9 @@ class TakuNetModel:
         Returns:
             tf.Tensor: Output tensor after normalization and activation.
         """
-        x = layers.ReLU(max_value=6.0,name=f"ReLu_{name}")(x)
-        x = layers.BatchNormalization()(x)
         
+        x = layers.BatchNormalization()(x)
+        x = layers.ReLU(max_value=6.0,name=f"ReLu_{name}")(x)
         return x
 
     
