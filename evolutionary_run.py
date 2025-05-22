@@ -80,6 +80,9 @@ for generation, model in enumerate(evo_search.evolve(), start=1):
     })
 
     hist_df = pd.DataFrame(model.results.history.history)
+
+    os.makedirs(f'{Folder}/results/History', exist_ok=True)
+    
     hist_path = f'{Folder}/results/History/{model.model_name}_history.csv'
     hist_df.to_csv(hist_path, index=False)
     print(f"📊 Training history saved to: {hist_path}")
