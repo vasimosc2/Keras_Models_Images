@@ -29,6 +29,7 @@ def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:boo
 
     model_params, train_params = load_config(model_name=model_name,folder=Folder)
     Folder = os.path.join(Folder, "Retraining")
+    Folder = os.path.join(Folder, f"epochs")
     os.makedirs(f'{Folder}/results', exist_ok=True)
     
 
@@ -87,4 +88,4 @@ if __name__ == "__main__":
     parser.add_argument("--day", type=str, default="24", help="The day a run was made")
     args = parser.parse_args()
 
-    train_from_saved_config(model_name=args.name,epochs=args.epochs, dropout = args.dropout, train = args.train, month = args.month, day = args.day)
+    train_from_saved_config(model_name = args.name, epochs = args.epochs, dropout = args.dropout, train = args.train, month = args.month, day = args.day)
