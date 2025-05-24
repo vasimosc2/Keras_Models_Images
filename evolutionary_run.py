@@ -58,8 +58,13 @@ default_augementaion_technique ={ "apply_standard":False,
                             "apply_cutmix": False}
 
 # Initialize evolutionary search
-evo_search = EvolutionarySearch(config_path=CONFIG_PATH, population_size=POPULATION_SIZE, time=TIME,
-                                mutation_rate=MUTATION_RATE, crossover_rate=CROSSOVER_RATE, augmentation_techinque=default_augementaion_technique)
+evo_search = EvolutionarySearch(config_path=CONFIG_PATH, 
+                                population_size=POPULATION_SIZE, 
+                                time=TIME,
+                                mutation_rate=MUTATION_RATE, 
+                                crossover_rate=CROSSOVER_RATE, 
+                                augmentation_techinque=default_augementaion_technique,
+                                folder=Folder)
 
 # Run evolutionary search
 models_data = []

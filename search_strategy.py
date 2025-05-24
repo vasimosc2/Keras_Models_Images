@@ -3,7 +3,7 @@ import os
 import random
 import copy
 import json
-from typing import Iterator, List, Dict, Tuple, Union
+from typing import Iterator, List, Dict, Optional, Tuple, Union
 
 import numpy as np
 import tensorflow as tf
@@ -15,8 +15,14 @@ from utils import getSearchSpaceParameters, getTrainingParameters
 from SurrogateComparisson.RankNet import build_ranknet
 
 class EvolutionarySearch:
-    def __init__(self, config_path: str, population_size: int, time: float, 
-                 mutation_rate: float, crossover_rate: float, augmentation_techinque: Union[Dict, bool]):
+    def __init__(self, 
+                 config_path: str, 
+                 population_size: int, 
+                 time: float, 
+                 mutation_rate: float, 
+                 crossover_rate: float, 
+                 augmentation_techinque: Union[Dict, bool],
+                 folder:Optional[str] = None,):
 
         with open(config_path, "r") as file:
             self.config = json.load(file)
@@ -33,6 +39,7 @@ class EvolutionarySearch:
         self.x_test = None
         self.y_test = None
         self.augmentaion = augmentation_techinque
+        self.folderName:str = folder if folder is not None else "NAS"
     
     def _load_data(self,augmentation_technique: Union[Dict, bool]):
         """Loads the dataset using the get_dataset function from data_processing.py"""
@@ -58,7 +65,7 @@ class EvolutionarySearch:
                                  input_shape=(32, 32, 3), 
                                  model_params=model_params, 
                                  train_params=train_params, 
-                                 folder="NAS")
+                                 folder=self.folderName)
             
             if model.check_trainability():
                 self.population.append(model)
@@ -299,7 +306,7 @@ class EvolutionarySearch:
                                 y_train=None, 
                                 x_test=None, 
                                 y_test=None,
-                                folder="NAS")
+                                folder=self.folderName)
             if child.is_trainable:
                 return child
             else:
@@ -414,7 +421,7 @@ class EvolutionarySearch:
                                               y_train=None,
                                               x_test=None,
                                               y_test=None,
-                                              folder="NAS")
+                                              folder=self.folderName)
                         if mutant.is_trainable:
                             child:TakuNetModel = mutant
                             break
