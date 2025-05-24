@@ -751,8 +751,11 @@ class TakuNetModel:
         keras_size_kb = os.path.getsize(checkpoint_path) / 1024
         tflite_size_kb = os.path.getsize(f"{self.folderName}/TfLiteModels/{self.model_name}.tflite") / 1024
         c_array_size_kb = os.path.getsize(f"{self.folderName}/HeaderFiles/{self.model_name}.h") / 1024
-        save_config_to_file(self.model_params, f"{self.folderName}/Retraining/saved_configs/model_params/{self.model_name}_model_params.json")
-        save_config_to_file(self.train_params, f"{self.folderName}/Retraining/saved_configs/train_params/{self.model_name}_train_params.json")
+        if "Retraining" not in self.folderName:
+            save_config_to_file(self.model_params, f"{self.folderName}/saved_configs/model_params/{self.model_name}_model_params.json")
+            save_config_to_file(self.train_params, f"{self.folderName}/saved_configs/train_params/{self.model_name}_train_params.json")
+        else:
+            print("⚠️ Skipping config saving (Retraining mode detected). Config already saved\n")
 
         self.results.tflite_size = tflite_size_kb
         

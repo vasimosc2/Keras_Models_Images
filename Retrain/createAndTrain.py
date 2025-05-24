@@ -6,24 +6,33 @@ from TakuNet import TakuNetModel
 from compute_ram_show import compute_layer_ram_usage
 from data_processing import get_dataset
 from utils import memoryEstimator
-Folder="Manual_Run/Retraining"
-os.makedirs(f'{Folder}/results', exist_ok=True)
 
-def load_config(model_name: str):
-    with open(f"{Folder}/saved_configs/model_params/{model_name}_model_params.json" ,"r") as f:
+
+
+
+def load_config(model_name: str, folder:str):
+    with open(f"{folder}/saved_configs/model_params/{model_name}_model_params.json" ,"r") as f:
         model_params = json.load(f)
 
-    with open(f"{Folder}/saved_configs/train_params/{model_name}_train_params.json", "r") as f:
+    with open(f"{folder}/saved_configs/train_params/{model_name}_train_params.json", "r") as f:
         train_params = json.load(f)
 
     return model_params, train_params
 
 
-def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:bool):
-
+def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:bool, month:str, day:str ):
+    date = f"{month}-{day}"
+    
+    Folder=f"Manual_Run"
+    Folder = os.path.join(Folder, date)
     print(f"🔍 Loading saved configs for model: {model_name}\n")
 
-    model_params, train_params = load_config(model_name)
+    model_params, train_params = load_config(model_name=model_name,folder=Folder)
+    Folder = os.path.join(Folder, "Retraining")
+    os.makedirs(f'{Folder}/results', exist_ok=True)
+    
+
+
 
     print("🧠 Creating new TakuNet model\n")
     taku_model = TakuNetModel(
@@ -40,13 +49,14 @@ def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:boo
         enable_dropout=dropout
     )
     
-    default_augementaion_technique ={ "apply_standard":False,
-                                "apply_color":False,
-                                "apply_geometric":False,
-                                "apply_mixup": False,
-                                "apply_cutmix": False}
-    x_train, y_train, x_test, y_test = get_dataset( output_classes= model_params["refiner_block"]["num_output_classes"], 
-                                                augementation_technique=default_augementaion_technique)
+    default_augementaion_technique ={"apply_standard":False,
+                                     "apply_color":False,
+                                     "apply_geometric":False,
+                                     "apply_mixup": False,
+                                     "apply_cutmix": False}
+    
+    x_train, y_train, x_test, y_test = get_dataset(output_classes= model_params["refiner_block"]["num_output_classes"], 
+                                                   augementation_technique=default_augementaion_technique)
     print(f"LAYERS MEMORY CONSUMPTION:\n")
 
     compute_layer_ram_usage(taku_model.model, data_dtype_multiplier=1)
@@ -56,11 +66,12 @@ def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:boo
         print("🚀 Starting training\n")
         
         taku_model.train(x_train=x_train,
-                    y_train=y_train,
-                    x_test=x_test,
-                    y_test=y_test)  # Train the model
+                         y_train=y_train,
+                         x_test=x_test,
+                         y_test=y_test)  # Train the model
+        
         hist_df = pd.DataFrame(taku_model.results.history.history)
-        hist_path = f'{Folder}/results/{taku_model.model_name}_history.csv'
+        hist_path = f'{Folder}/Retraining/results/{taku_model.model_name}_history.csv'
         hist_df.to_csv(hist_path, index=False)
         print(f"📊 Training history saved to: {hist_path}\n")
 
@@ -69,9 +80,11 @@ def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:boo
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Retrain a model with optional SAM support")
     parser.add_argument("--name", type=str, default="TakuNet_Random_0", help="Model file name")
-    parser.add_argument("--epochs", type=int, default=50, help="Model folder")
+    parser.add_argument("--epochs", type=int, default=50, help="Number of epochs to be run")
     parser.add_argument("--dropout", type=lambda x: x.lower() == "true", default=True, help="Enable dropout (True/False)")
     parser.add_argument("--train", type=lambda x: x.lower() == "true", default=True, help="Enable training (True/False)")
+    parser.add_argument("--month", type=str, default="May", help="The Month a run was made")
+    parser.add_argument("--day", type=str, default="24", help="The day a run was made")
     args = parser.parse_args()
 
-    train_from_saved_config(model_name=args.name,epochs=args.epochs, dropout = args.dropout, train = args.train)
+    train_from_saved_config(model_name=args.name,epochs=args.epochs, dropout = args.dropout, train = args.train, month = args.month, day = args.day)

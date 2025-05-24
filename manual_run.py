@@ -1,6 +1,5 @@
 import json
 import os
-import random
 from typing import List
 import tensorflow as tf
 import pandas as pd
@@ -9,6 +8,7 @@ import os
 import time
 import argparse
 import gc
+from datetime import datetime
 from utils import getSearchSpaceParameters, getTrainingParameters
 
 import warnings
@@ -21,8 +21,9 @@ args = parser.parse_args()
 number_of_models = args.num_models
 
 
+today = datetime.now().strftime("%b-%d")
 Folder="Manual_Run"
-
+Folder = os.path.join(Folder, today)
 
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # 0 = all logs, 1 = INFO, 2 = WARNING, 3 = ERROR

@@ -158,12 +158,22 @@ class EvolutionarySearch:
         ram:int = model.results.ModelRam or MAX_RAM
         flash:int = model.results.estimatedFlash or MAX_FLASH
 
+        if(ram > MAX_RAM or flash > MAX_FLASH):
+            # For fair resoning (if the check_Training filter is deActivated)
+            # We want to see if the GA, will keep creating models that are untrainable
+            # So we penetalize models which are outside of the boundaries heavily
+            return -1000
+
         # Normalized scores (higher is better)
         norm_ram_score:float = float(max(0.0, 1.0 - ram / MAX_RAM))
         norm_flash_score:float = float(max(0.0, 1.0 - flash / MAX_FLASH))
 
-        # Weighted sum (you can adjust weights)
-        return  acc + norm_ram_score + norm_flash_score
+        # Weight factors (adjust to preference)
+        w_acc = 0.7
+        w_ram = 0.2
+        w_flash = 0.1
+
+        return w_acc * acc + w_ram * norm_ram_score + w_flash * norm_flash_score
     
     def _select_parents(self) -> List[TakuNetModel]:
         """Selects parents using 1v1 tournament style; last 3 form a mini-tournament if population is odd."""

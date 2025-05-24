@@ -1,6 +1,6 @@
-import json
 import os
-import time
+import argparse
+from datetime import datetime
 import pandas as pd
 import tensorflow as tf
 from tensorflow.keras import backend as K # type: ignore
@@ -9,7 +9,15 @@ warnings.filterwarnings("ignore", category=UserWarning, module="keras.src.backen
 
 
 
+# Command-line argument parsing
+parser = argparse.ArgumentParser(description="Run Evolutionary Search for TakuNet Models")
+parser.add_argument("--time", type=float, default=2.0, help="Total time to run the evolutionary search (in hours)")
+parser.add_argument("--population_size", type=int, default=6, help="Number of models in each generation")
+args = parser.parse_args()
+
+today = datetime.now().strftime("%b-%d")
 Folder ='NAS'
+Folder = os.path.join(Folder, today)
 
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
@@ -33,8 +41,8 @@ CONFIG_PATH = "config.json"
 
 # Set evolutionary search parameters
 
-POPULATION_SIZE:int =6  # Number of models per generation
-TIME:float = 2.0  # Number of hours to run
+POPULATION_SIZE:int= int(args.population_size)
+TIME:float = float(args.time)
 MUTATION_RATE:float = 0.2  # Probability of mutation per model
 CROSSOVER_RATE:float = 0.3  # Probability of crossover between two models
 
@@ -75,7 +83,7 @@ for generation, model in enumerate(evo_search.evolve(), start=1):
         "TFlite size(KB)": model.results.tflite_size,
         "Flop Number": model.results.flops,
         "Fitness Score": model.results.fitness_score,
-        "Training Time (s)": model.results.training_time,
+        "Training Time (min)": round(model.results.training_time/60,2),
         "Epochs Trained": model.results.epochs_trained
     })
 
