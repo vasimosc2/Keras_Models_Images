@@ -52,7 +52,7 @@ class TakuNetModel:
         self.epochs:int = epochs
         self.learningRate:Optional[float] = 0.0005 if given_model else None
         self.results: TrainingResults = TrainingResults()
-        self.test:bool = False
+        self.test:bool = True
         self.modelType:str = "normal" #"SAM"
         self.is_trainable: bool = self.check_trainability() if self.test is False else True
 
@@ -532,7 +532,7 @@ class TakuNetModel:
         x_test = x_test if x_test is not None else self.x_test
         y_test = y_test if y_test is not None else self.y_test
 
-        if self.check_trainability is False:
+        if self.is_trainable is False:
             return None
 
         print("✅ Memory check passed! Starting training... \n")
