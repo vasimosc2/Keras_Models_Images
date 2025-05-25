@@ -533,6 +533,7 @@ class TakuNetModel:
         y_test = y_test if y_test is not None else self.y_test
 
         if self.is_trainable is False:
+            self.results.estimatedFlash,self.results.ModelRam = memoryEstimator.memoryEstimation(model = self.model, data_dtype_multiplier = self.train_params["data_dtype_multiplier"])
             return None
 
         print("✅ Memory check passed! Starting training... \n")
