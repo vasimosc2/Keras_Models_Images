@@ -4,7 +4,6 @@ import random
 import copy
 import json
 from typing import Iterator, List, Dict, Optional, Tuple, Union
-
 import numpy as np
 import tensorflow as tf
 from SurrogateComparisson.Embedding import simple_architecture_embedding
@@ -13,6 +12,8 @@ from data_processing import get_dataset
 import time
 from utils import getSearchSpaceParameters, getTrainingParameters
 from SurrogateComparisson.RankNet import build_ranknet
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="tarfile")
 
 class EvolutionarySearch:
     def __init__(self, 
