@@ -603,15 +603,16 @@ class TakuNetModel:
                                            mode='max', 
                                            restore_best_weights=True)
 
-        midway_callback = MidwayStopCallback(total_epochs=self.train_params["num_epochs"], 
+        midway_callback = MidwayStopCallback(total_epochs=self.epochs, 
                                              divider=self.train_params["divider"], 
-                                             threshold=15e-2) # 15% 
+                                             threshold=0.3) # 15% 
         
         adjust_dropout = AdjustDropoutCallback(model_instance=self,
                                                overfitting_threshold=self.train_params["overfitting"],
                                                cooldown=3)
         
-        performanceCallback = PerformanceStopping()
+        performanceCallback = PerformanceStopping(patience=0.2 * self.epochs,
+                                                  min_improvement=0.15)
 
         lr_schedule = tf.keras.callbacks.LearningRateScheduler(cosine_annealing_with_warmup, verbose=1)
 

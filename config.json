@@ -32,7 +32,7 @@
             
             "label_smothing": 10e-2,
 
-            "divider" : 5,
+            "divider" : 3,
 
             "early_stop": {
                 "stop_patience": [8, 10]
