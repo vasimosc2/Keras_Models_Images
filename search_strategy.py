@@ -67,7 +67,7 @@ class EvolutionarySearch:
                                  train_params=train_params, 
                                  folder=self.folderName)
             
-            if model.check_trainability():
+            if model.is_trainable():
                 self.population.append(model)
                 self.embeedingList.append(simple_architecture_embedding(model_params))
                 created += 1
