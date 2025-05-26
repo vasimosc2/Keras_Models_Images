@@ -49,7 +49,7 @@ class TakuNetModel:
         
         self.is_trained:bool = False
         self.folderName:str = folder if folder is not None else "."
-        self.epochs:int = epochs
+        self.epochs:int = epochs if epochs else self.train_params["num_epochs"]
         self.learningRate:Optional[float] = 0.0005 if given_model else None
         self.results: TrainingResults = TrainingResults()
         self.modelType:str = "normal" #"SAM"
@@ -549,8 +549,6 @@ class TakuNetModel:
         if not self.is_trained:
 
              # === Hyperparameters ===
-
-            total_epochs:int = self.epochs if self.epochs else self.train_params["num_epochs"]
             loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=self.train_params["label_smothing"])
             batchSize:int = max(8, int(self.train_params["batch_size"] / 2))
             #initial_lr:float = float(self.train_params["learning_rate"]) if self.learningRate is None else self.learningRate
@@ -565,7 +563,7 @@ class TakuNetModel:
                 if epoch < warmup_epochs:
                     return float(initial_lr * (epoch + 1) / warmup_epochs)
                 else:
-                    cosine_decay = 0.5 * (1 + tf.math.cos(np.pi * (epoch - warmup_epochs) / (total_epochs - warmup_epochs)))
+                    cosine_decay = 0.5 * (1 + tf.math.cos(np.pi * (epoch - warmup_epochs) / (self.epochs - warmup_epochs)))
                     return float(initial_lr * cosine_decay)
 
 
