@@ -539,7 +539,7 @@ class TakuNetModel:
         if self.is_trainable is False:
             return None
         
-        if self.test is True:
+        if self.hardwareConstrains is False:
             print("⚠️ We are on Test mode, so we DO NOT CARE about memory ... \n")
             self.results.estimatedFlash,self.results.ModelRam= memoryEstimator.memoryEstimation(model = self.model, data_dtype_multiplier = self.train_params["data_dtype_multiplier"])
         else:
