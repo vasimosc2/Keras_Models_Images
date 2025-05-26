@@ -27,7 +27,11 @@ class TakuNetModel:
                 folder:Optional[str] = None,
                 epochs:Optional[int] = None,
                 given_model:Optional[tf.keras.Model] = None,
-                enable_dropout: bool = True
+                enable_dropout: bool = True,
+                hardwareConstrains:Optional[bool] = True,
+                performaceStoppage:Optional[bool] = False,
+                early_stopping_acc:Optional[bool] = False,
+                midway_callback:Optional[bool] = True
                 ):
         
         self.model_name:str = model_name
@@ -57,7 +61,10 @@ class TakuNetModel:
         If self.hardwareConstrains is activated (True), then we take into consideration the resources of Arduino Nano 33 BLU
         If it false, then all the models are trainable and we don't care about how much memory the consume
         """
-        self.hardwareConstrains:bool = True
+        self.hardwareConstrains:bool = hardwareConstrains
+        self.performaceStoppage:bool = performaceStoppage
+        self.early_stopping_acc:bool = early_stopping_acc
+        self.midway_callback:bool = midway_callback
         self.is_trainable: bool = self.check_trainability() if self.hardwareConstrains is True else True
 
   
@@ -341,7 +348,6 @@ class TakuNetModel:
         """Converts a trained model to TFLite with full-integer quantization."""
         model_to_convert = self.model.base_model if hasattr(self.model, 'base_model') else self.model
         converter = tf.lite.TFLiteConverter.from_keras_model(model_to_convert)
-        # converter = tf.lite.TFLiteConverter.from_keras_model(self.model)
 
         # **Enable optimizations and quantization**
         converter.optimizations = [tf.lite.Optimize.DEFAULT]
@@ -627,7 +633,34 @@ class TakuNetModel:
         print(f"✅Accurate RAM Memory: {self.results.ModelRam} KB\n")
         print(f"✅Flash Memory Ram: {self.results.estimatedFlash} KB\n")
 
-        callbacks:list = [midway_callback,early_stopping_acc,checkpoint,performanceCallback,lr_schedule,swa_callback]
+        callbacks:list = [checkpoint,performanceCallback,lr_schedule,swa_callback]
+
+        if self.performaceStoppage:
+            """
+            If for some specific epochs we do not see a big validation accuracy increase we stop the training
+
+            """
+            callbacks.append(performanceCallback)
+        else:
+            print("Training happens without Performance Callback\n")
+
+        if self.early_stopping_acc:
+            """
+            If for fewer epochs we do not see absolutly any accuracy improvement we stop our training
+
+            """
+            callbacks.append(early_stopping_acc)
+        else:
+            print("Training happens without Early Stopping Acc\n")
+
+        if self.midway_callback:
+            """
+            If at a specific epoch, the model has not reach a threshold of accuracy we stop its training
+
+            """
+            callbacks.append(midway_callback)
+        else:
+            print("Training happens without Midway Callback\n")
 
         if self.enable_dropout:
             print("✅ The TakuNet model is trained with Dropout\n")

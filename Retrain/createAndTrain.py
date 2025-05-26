@@ -20,11 +20,10 @@ def load_config(model_name: str, folder:str):
     return model_params, train_params
 
 
-def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:bool, month:str, day:str ):
+def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:bool, folder:str, month:str, day:str ):
     date = f"{month}-{day}"
     
-    Folder=f"Manual_Run"
-    Folder = os.path.join(Folder, date)
+    Folder = os.path.join(folder, date)
     print(f"🔍 Loading saved configs for model: {model_name}\n")
 
     model_params, train_params = load_config(model_name=model_name,folder=Folder)
@@ -84,8 +83,9 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=50, help="Number of epochs to be run")
     parser.add_argument("--dropout", type=lambda x: x.lower() == "true", default=True, help="Enable dropout (True/False)")
     parser.add_argument("--train", type=lambda x: x.lower() == "true", default=True, help="Enable training (True/False)")
+    parser.add_argument("--folder", type=str, default="NAS", help="The Run folder")
     parser.add_argument("--month", type=str, default="May", help="The Month a run was made")
     parser.add_argument("--day", type=str, default="24", help="The day a run was made")
     args = parser.parse_args()
 
-    train_from_saved_config(model_name = args.name, epochs = args.epochs, dropout = args.dropout, train = args.train, month = args.month, day = args.day)
+    train_from_saved_config(model_name = args.name, epochs = args.epochs, dropout = args.dropout,folder=args.folder, train = args.train, month = args.month, day = args.day)
