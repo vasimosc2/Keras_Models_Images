@@ -633,7 +633,7 @@ class TakuNetModel:
         print(f"✅Accurate RAM Memory: {self.results.ModelRam} KB\n")
         print(f"✅Flash Memory Ram: {self.results.estimatedFlash} KB\n")
 
-        callbacks:list = [checkpoint,performanceCallback,lr_schedule,swa_callback]
+        callbacks:list = [checkpoint,lr_schedule,swa_callback]
 
         if self.performaceStoppage:
             """
