@@ -52,9 +52,13 @@ class TakuNetModel:
         self.epochs:int = epochs
         self.learningRate:Optional[float] = 0.0005 if given_model else None
         self.results: TrainingResults = TrainingResults()
-        self.test:bool = True
         self.modelType:str = "normal" #"SAM"
-        self.is_trainable: bool = self.check_trainability() if self.test is False else True
+        """
+        If self.hardwareConstrains is activated (True), then we take into consideration the resources of Arduino Nano 33 BLU
+        If it false, then all the models are trainable and we don't care about how much memory the consume
+        """
+        self.hardwareConstrains:bool = True
+        self.is_trainable: bool = self.check_trainability() if self.hardwareConstrains is True else True
 
   
     def _norm_relu6_block(self,x: tf.Tensor, name: Optional[str] = None) -> tf.Tensor:

@@ -84,8 +84,8 @@ class EvolutionarySearch:
         if created < self.population_size:
             print(f"⚠️ Only {created}/{self.population_size} models were valid after {attempts} attempts.")
 
-        self.x_train, self.y_train, self.x_test, self.y_test = get_dataset( output_classes= self.config["model_search_space"]["refiner_block"]["num_output_classes"], 
-                                                augementation_technique=self.augmentaion)
+        self.x_train, self.y_train, self.x_test, self.y_test = get_dataset(output_classes= self.config["model_search_space"]["refiner_block"]["num_output_classes"], 
+                                                                           augementation_technique=self.augmentaion)
         for model in self.population:
             model.train(x_train=self.x_train,
             y_train=self.y_train,
