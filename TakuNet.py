@@ -637,7 +637,7 @@ class TakuNetModel:
 
         history = self.model.fit(
             x_train, y_train,
-            epochs = total_epochs,
+            epochs = self.epochs,
             batch_size = batchSize,
             validation_data=(x_test, y_test),
             verbose=2,
