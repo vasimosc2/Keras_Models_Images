@@ -27,6 +27,8 @@
         },
         "optimizer": ["sgd","adamw"]
     },
+
+    
     "train_and_evaluate":{
         "model_config": {
             

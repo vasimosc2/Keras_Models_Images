@@ -557,7 +557,6 @@ class TakuNetModel:
              # === Hyperparameters ===
             loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=self.train_params["label_smothing"])
             batchSize:int = max(8, int(self.train_params["batch_size"] / 2))
-            #initial_lr:float = float(self.train_params["learning_rate"]) if self.learningRate is None else self.learningRate
             initial_lr:float = 0.05 if self.model_params["optimizer"].lower() == "sgd" else 0.01
             print(f"The initial Learning rate is {initial_lr}\n")
 
@@ -607,20 +606,20 @@ class TakuNetModel:
                                      save_weights_only=False)
         
         early_stopping_acc = EarlyStopping(monitor='val_accuracy', 
-                                           patience=self.train_params["stop_patience"], # We stop the training if for "stop_patience" we have no improvement
+                                           patience=self.train_params["stop_patience"],
                                            mode='max', 
                                            restore_best_weights=True)
 
         midway_callback = MidwayStopCallback(total_epochs=self.epochs, 
                                              divider=self.train_params["divider"], 
-                                             threshold=0.3) # 15% 
+                                             threshold=0.3)
         
         adjust_dropout = AdjustDropoutCallback(model_instance=self,
                                                overfitting_threshold=self.train_params["overfitting"],
                                                cooldown=3)
         
-        performanceCallback = PerformanceStopping(patience=0.2 * self.epochs,
-                                                  min_improvement=0.15)
+        performanceCallback = PerformanceStopping(patience = 0.2 * self.epochs,
+                                                  min_improvement = 0.05)
 
         lr_schedule = tf.keras.callbacks.LearningRateScheduler(cosine_annealing_with_warmup, verbose=1)
 
@@ -1031,6 +1030,8 @@ class PerformanceStopping(tf.keras.callbacks.Callback):
             if self.wait >= self.patience:
                 print(f"\n🚨 Early stopping: No val_acc improvement >{self.min_improvement*100:.1f}% in {self.patience} epochs.")
                 self.model.stop_training = True
+
+
 
 class SWACallback(tf.keras.callbacks.Callback):
     def __init__(self, model, swa_start=10):
