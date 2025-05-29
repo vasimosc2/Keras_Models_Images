@@ -4,10 +4,10 @@ import time
 import os
 import tensorflow as tf
 from tensorflow.keras import layers, Model
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 from sklearn.metrics import precision_score, recall_score, f1_score
 from tensorflow.keras.callbacks import Callback, EarlyStopping, ModelCheckpoint
-from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop
+from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop, LearningRateSchedule
 from Models.SAM import SAMModel
 from utils import memoryEstimator
 import math
@@ -31,6 +31,7 @@ class TakuNetModel:
                 hardwareConstrains:Optional[bool] = True,
                 performaceStoppage:Optional[bool] = False,
                 early_stopping_acc:Optional[bool] = False,
+                lr_schedule_strategy:Optional[str] = "cosine",
                 midway_callback:Optional[bool] = True
                 ):
         
@@ -65,6 +66,7 @@ class TakuNetModel:
         self.performaceStoppage:bool = performaceStoppage
         self.early_stopping_acc:bool = early_stopping_acc
         self.midway_callback:bool = midway_callback
+        self.lr_schedule_strategy = lr_schedule_strategy.lower()
         self.is_trainable: bool = self.check_trainability() if self.hardwareConstrains is True else True
 
   
@@ -561,6 +563,7 @@ class TakuNetModel:
             print(f"The initial Learning rate is {initial_lr}\n")
 
             steps_per_epoch = len(x_train) // batchSize
+            total_steps = self.epochs * steps_per_epoch
             warmup_epochs = 5
             print(f"The steps per epoch are {steps_per_epoch}\n")
 
@@ -621,9 +624,29 @@ class TakuNetModel:
         performanceCallback = PerformanceStopping(patience = 0.2 * self.epochs,
                                                   min_improvement = 0.05)
 
-        lr_schedule = tf.keras.callbacks.LearningRateScheduler(cosine_annealing_with_warmup, verbose=1)
-
         swa_callback = SWACallback(self.model, swa_start=10)
+
+        if self.lr_schedule_strategy == "cosine":
+            print("📉 Using Cosine Decay LR schedule")
+            lr_schedule = tf.keras.callbacks.LearningRateScheduler(cosine_annealing_with_warmup, verbose=1)
+            
+        elif self.lr_schedule_strategy == "linear":
+            print("📉 Using Linear Decay LR schedule")
+            lr_schedule = LinearDecay(initial_lr, total_steps)
+
+        elif self.lr_schedule_strategy == "step":
+            
+            def step_decay(epoch):
+                drop = 0.5
+                epochs_drop = 10
+                return initial_lr * (drop ** (epoch // epochs_drop))
+            
+            print("📉 Using Step Decay LR schedule")
+            lr_schedule = tf.keras.callbacks.LearningRateScheduler(step_decay)
+        else:
+            raise ValueError(f"Unknown learning rate schedule strategy: {self.lr_schedule_strategy}")
+
+
 
 
         # **Train Model with Timing**
@@ -991,7 +1014,13 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
         print(f"🔧 {chosen_layer.name}: dropout rate increased from {old_rate:.3f} to {new_rate:.3f}")
 
 
-
+class LinearDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
+    def __init__(self, initial_lr, total_steps):
+        super().__init__()
+        self.initial_lr = initial_lr
+        self.total_steps = total_steps
+    def __call__(self, step):
+        return self.initial_lr * (1.0 - step / self.total_steps)
 
 
 class MidwayStopCallback(Callback):
