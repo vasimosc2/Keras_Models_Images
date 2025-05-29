@@ -1,8 +1,9 @@
 import argparse
 import json
 import os
+from typing import Optional, Tuple
 import pandas as pd
-from TakuNet import TakuNetModel
+from TakuNet import TakuNetModel, TrainingResults
 from compute_ram_show import compute_layer_ram_usage
 from data_processing import get_dataset
 from utils import memoryEstimator
@@ -20,7 +21,7 @@ def load_config(model_name: str, folder:str):
     return model_params, train_params
 
 
-def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:bool, folder:str, month:str, day:str ):
+def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:bool, folder:str, month:str, day:str) -> Tuple[Optional[TrainingResults], Optional[str]] :
     date = f"{month}-{day}"
     
     Folder = os.path.join(folder, date)
@@ -61,7 +62,9 @@ def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:boo
 
     compute_layer_ram_usage(taku_model.model, data_dtype_multiplier=1)
     flash,ram = memoryEstimator.memoryEstimation(model=taku_model.model,data_dtype_multiplier=1)
+
     print(f"The estimated Max Ram is {ram} whereas Flash Memory is {flash}")
+
     if train:
         print("🚀 Starting training\n")
         
@@ -76,6 +79,10 @@ def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:boo
         print(f"📊 Training history saved to: {hist_path}\n")
 
         print("✅ Training completed!\n")
+        return (taku_model.results, model_params["optimizer"])
+    else:
+        print("❌ Training was skipped (train=False). Model initialized but not trained.\n")
+        return (None, None)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Retrain a model with optional SAM support")
