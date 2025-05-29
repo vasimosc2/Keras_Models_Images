@@ -74,7 +74,8 @@ def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:boo
                          y_test=y_test)  # Train the model
         
         hist_df = pd.DataFrame(taku_model.results.history.history)
-        hist_path = f'{Folder}/results/{taku_model.model_name}_history.csv'
+        os.makedirs(f'{Folder}/results/History', exist_ok=True)
+        hist_path = f'{Folder}/results/History/{taku_model.model_name}_history.csv'
         hist_df.to_csv(hist_path, index=False)
         print(f"📊 Training history saved to: {hist_path}\n")
 
