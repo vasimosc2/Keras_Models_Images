@@ -3,6 +3,28 @@ import glob
 import argparse
 from typing import Optional
 import pandas as pd
+import tensorflow as tf
+
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        if any(tf.config.experimental.get_memory_growth(gpu) for gpu in gpus):
+            print("⚠️ GPU is already initialized! `set_memory_growth()` will fail.")
+        else:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            print(f"✅ Using GPU: {gpus[0].name}")
+    except RuntimeError as e:
+        print(f"❌ GPU Error: {e}")
+else:
+    print("⚠️ No GPU found, running on CPU.")
+
+
+
+
+
 from .createAndTrain import train_from_saved_config
 from TakuNet import TrainingResults  # Assumes this contains .results after training
 
@@ -61,6 +83,8 @@ def main(folder, month, day, epochs, dropout, train):
 
 
 if __name__ == "__main__":
+
+
     parser = argparse.ArgumentParser(description="Retrain all models from saved configs and log results")
     parser.add_argument("--folder", type=str, default="NAS", help="The Run folder")
     parser.add_argument("--month", type=str, default="May", help="The Month a run was made")
