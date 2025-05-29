@@ -632,7 +632,7 @@ class TakuNetModel:
 
         elif self.lr_schedule_strategy == "linear":
             print("📉 Using Linear Decay LR schedule")
-            lr_schedule = tf.keras.callbacks.LearningRateScheduler(LinearDecay(initial_lr, total_steps), verbose=1)
+            lr_schedule = tf.keras.callbacks.LearningRateScheduler(LinearDecay(initial_lr=initial_lr, total_steps=total_steps, total_epochs=self.epochs), verbose=1)
 
 
         elif self.lr_schedule_strategy == "step":
@@ -1016,12 +1016,13 @@ class AdjustDropoutCallback(tf.keras.callbacks.Callback):
 
 
 class LinearDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
-    def __init__(self, initial_lr, total_steps):
+    def __init__(self, initial_lr, total_steps, total_epochs):
         super().__init__()
         self.initial_lr = initial_lr
+        self.total_epochs = total_epochs
         self.total_steps = total_steps
-    def __call__(self, step):
-        return self.initial_lr * (1.0 - step / self.total_steps)
+    def __call__(self, epoch):
+        return self.initial_lr * (1.0 - epoch / self.total_epochs)
 
 
 class MidwayStopCallback(Callback):
