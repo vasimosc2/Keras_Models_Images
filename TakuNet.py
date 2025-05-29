@@ -7,7 +7,7 @@ from tensorflow.keras import layers, Model
 from typing import Dict, List, Optional, Tuple
 from sklearn.metrics import precision_score, recall_score, f1_score
 from tensorflow.keras.callbacks import Callback, EarlyStopping, ModelCheckpoint
-from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop, LearningRateSchedule
+from tensorflow.keras.optimizers import Adam, AdamW, SGD, RMSprop
 from Models.SAM import SAMModel
 from utils import memoryEstimator
 import math
@@ -629,7 +629,7 @@ class TakuNetModel:
         if self.lr_schedule_strategy == "cosine":
             print("📉 Using Cosine Decay LR schedule")
             lr_schedule = tf.keras.callbacks.LearningRateScheduler(cosine_annealing_with_warmup, verbose=1)
-            
+
         elif self.lr_schedule_strategy == "linear":
             print("📉 Using Linear Decay LR schedule")
             lr_schedule = LinearDecay(initial_lr, total_steps)
