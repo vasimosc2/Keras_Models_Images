@@ -632,7 +632,8 @@ class TakuNetModel:
 
         elif self.lr_schedule_strategy == "linear":
             print("📉 Using Linear Decay LR schedule")
-            lr_schedule = LinearDecay(initial_lr, total_steps)
+            lr_schedule = tf.keras.callbacks.LearningRateScheduler(LinearDecay(initial_lr, total_steps), verbose=1)
+
 
         elif self.lr_schedule_strategy == "step":
             
