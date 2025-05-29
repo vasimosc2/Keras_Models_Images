@@ -612,7 +612,7 @@ class TakuNetModel:
 
         midway_callback = MidwayStopCallback(total_epochs=self.epochs, 
                                              divider=self.train_params["divider"], 
-                                             threshold=0.3)
+                                             threshold=0.2)
         
         adjust_dropout = AdjustDropoutCallback(model_instance=self,
                                                overfitting_threshold=self.train_params["overfitting"],
