@@ -13,4 +13,4 @@ python3 manual_run.py --num_models 2 # This manually creates TakuNetModels
 python3 evolutionary_run.py --time 2.0 --population_size 6 # This Runs the Actual Nas with Genetic Algorythm
 python3 TrainBestModels.py # This was able to re-train and existing Model
 python -m Retrain.createAndTrain --name TakuNet_Init_0 --epochs 70 --dropout True --train True --folder NAS --month May --day 27
-python -m Retrain.reTrainAllModels  --folder NAS --month May --day 27 -epochs 70 --dropout True --train True
+python -m Retrain.reTrainAllModels  --folder NAS --month May --day 27 --epochs 10 --dropout True --train True
