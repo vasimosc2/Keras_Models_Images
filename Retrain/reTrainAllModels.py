@@ -3,7 +3,7 @@ import glob
 import argparse
 from typing import Optional
 import pandas as pd
-from createAndTrain import train_from_saved_config
+from .createAndTrain import train_from_saved_config
 from TakuNet import TrainingResults  # Assumes this contains .results after training
 
 def main(folder, month, day, epochs, dropout, train):
