@@ -21,7 +21,7 @@ def load_config(model_name: str, folder:str):
     return model_params, train_params
 
 
-def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:bool, folder:str, month:str, day:str) -> Tuple[Optional[TrainingResults], Optional[str]] :
+def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:bool, folder:str, month:str, day:str, learning_rate_strategy:str = "cosine") -> Tuple[Optional[TrainingResults], Optional[str]] :
     date = f"{month}-{day}"
     
     Folder = os.path.join(folder, date)
@@ -47,7 +47,8 @@ def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:boo
         y_test=None,
         folder=Folder,
         epochs=epochs,
-        enable_dropout=dropout
+        enable_dropout=dropout,
+        lr_schedule_strategy=learning_rate_strategy
     )
     
     default_augementaion_technique ={"apply_standard":False,
@@ -94,6 +95,7 @@ if __name__ == "__main__":
     parser.add_argument("--folder", type=str, default="NAS", help="The Run folder")
     parser.add_argument("--month", type=str, default="May", help="The Month a run was made")
     parser.add_argument("--day", type=str, default="24", help="The day a run was made")
+    parser.add_argument("--lr", type=str, default="linear", help="The day a run was made")
     args = parser.parse_args()
 
-    train_from_saved_config(model_name = args.name, epochs = args.epochs, dropout = args.dropout,folder=args.folder, train = args.train, month = args.month, day = args.day)
+    train_from_saved_config(model_name = args.name, epochs = args.epochs, dropout = args.dropout,folder=args.folder, train = args.train, month = args.month, day = args.day, learning_rate_strategy=args.lr)
