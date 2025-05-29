@@ -4,6 +4,11 @@ import random
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+import sys
+
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(project_root)
+
 from SurrogateComparisson.Embedding import simple_architecture_embedding
 from TakuNet import TakuNetModel
 
@@ -41,9 +46,9 @@ for _, row in results_df.iterrows():
             params = json.load(f)
 
         emb = simple_architecture_embedding(params)
-        acc = row["test_accuracy"]
-        ram = row["ModelRam"]
-        flash = row["estimatedFlash"]
+        acc = row["Best Test Accuracy"]
+        ram = row["Model RAM (KB)"]
+        flash = row["Estimated Flash Memory (KB)"]
 
         models.append({
             "name": model_name,
@@ -57,7 +62,7 @@ for _, row in results_df.iterrows():
 print(f"✅ Loaded {len(models)} models.")
 
 # === Tournament Evaluation ===
-total_runs = 10
+total_runs = 1000
 total_matches = 0
 total_errors = 0
 
