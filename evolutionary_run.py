@@ -13,6 +13,14 @@ warnings.filterwarnings("ignore", category=UserWarning, module="keras.src.backen
 parser = argparse.ArgumentParser(description="Run Evolutionary Search for TakuNet Models")
 parser.add_argument("--time", type=float, default=2.0, help="Total time to run the evolutionary search (in hours)")
 parser.add_argument("--population_size", type=int, default=6, help="Number of models in each generation")
+
+parser.add_argument(
+    "--lr_strategy",
+    type=str,
+    default="cosine",
+    choices=["cosine", "linear", "step"],
+    help="Learning Rate strategy to be used to train TakuNet models: 'cosine', 'linear', or 'step'"
+)
 args = parser.parse_args()
 
 today = datetime.now().strftime("%b-%d")
@@ -64,7 +72,8 @@ evo_search = EvolutionarySearch(config_path=CONFIG_PATH,
                                 mutation_rate=MUTATION_RATE, 
                                 crossover_rate=CROSSOVER_RATE, 
                                 augmentation_techinque=default_augementaion_technique,
-                                folder=Folder)
+                                folder=Folder,
+                                strategy=args.lr_strategy)
 
 # Run evolutionary search
 models_data = []

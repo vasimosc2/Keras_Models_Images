@@ -23,7 +23,8 @@ class EvolutionarySearch:
                  mutation_rate: float, 
                  crossover_rate: float, 
                  augmentation_techinque: Union[Dict, bool],
-                 folder:Optional[str] = None,):
+                 folder:Optional[str] = None,
+                 strategy:Optional[str] = None):
 
         with open(config_path, "r") as file:
             self.config = json.load(file)
@@ -41,6 +42,7 @@ class EvolutionarySearch:
         self.y_test = None
         self.augmentaion = augmentation_techinque
         self.folderName:str = folder if folder is not None else "NAS"
+        self.strategy:str = strategy if strategy is not None else "cosine"
     
     def _load_data(self,augmentation_technique: Union[Dict, bool]):
         """Loads the dataset using the get_dataset function from data_processing.py"""
@@ -66,7 +68,8 @@ class EvolutionarySearch:
                                  input_shape=(32, 32, 3), 
                                  model_params=model_params, 
                                  train_params=train_params, 
-                                 folder=self.folderName)
+                                 folder=self.folderName,
+                                 lr_schedule_strategy=self.strategy)
             
             if model.is_trainable:
                 self.population.append(model)
@@ -307,7 +310,9 @@ class EvolutionarySearch:
                                 y_train=None, 
                                 x_test=None, 
                                 y_test=None,
-                                folder=self.folderName)
+                                folder=self.folderName,
+                                lr_schedule_strategy=self.strategy)
+            
             if child.is_trainable:
                 return child
             else:
@@ -422,7 +427,8 @@ class EvolutionarySearch:
                                               y_train=None,
                                               x_test=None,
                                               y_test=None,
-                                              folder=self.folderName)
+                                              folder=self.folderName,
+                                              lr_schedule_strategy=self.strategy)
                         if mutant.is_trainable:
                             child:TakuNetModel = mutant
                             break

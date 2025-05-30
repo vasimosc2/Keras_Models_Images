@@ -2,7 +2,7 @@ import pandas as pd
 import os
 
 # File paths
-file_retrain = "Retraining_20.csv"
+file_retrain = "Retraining_50.csv"
 file_originalRun = "Best_Models_Results_NAS.csv"
 retraining_csv = os.path.join("results", file_retrain)
 original_csv = os.path.join("results", file_originalRun)

@@ -5,7 +5,7 @@ import random
 # Load both CSVs
 history_folder = "results"
 full_train_path = os.path.join(history_folder, "Best_Models_Results_NAS.csv")
-partially_trained = os.path.join(history_folder, "Retraining_20.csv")
+partially_trained = os.path.join(history_folder, "Retraining_50.csv")
 
 original_df = pd.read_csv(full_train_path)
 retrained_df = pd.read_csv(partially_trained)
