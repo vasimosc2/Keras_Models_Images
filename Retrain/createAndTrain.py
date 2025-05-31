@@ -29,6 +29,10 @@ def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:boo
 
     model_params, train_params = load_config(model_name=model_name,folder=Folder)
     Folder = os.path.join(Folder, "Retraining")
+
+    Folder = os.path.join(Folder,learning_rate_strategy)
+
+
     Folder = os.path.join(Folder, f"{epochs}-epochs")
     os.makedirs(f'{Folder}/results', exist_ok=True)
     

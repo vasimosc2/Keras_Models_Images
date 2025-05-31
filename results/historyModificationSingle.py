@@ -3,10 +3,13 @@ import os
 import glob
 
 # Set paths
-history_folder = "results"
+results: str = "results"
+epochNumbers: int = 70
+history_folder = os.path.join(results, f"{epochNumbers}-epochs")
+
 history_files = glob.glob(os.path.join(history_folder, "*_history.csv"))
-val_acc_path = os.path.join(history_folder, "val_accuracy_comparison.csv")
-nas_results_path = os.path.join(history_folder, "Best_Models_Results_NAS.csv")
+val_acc_path = os.path.join(history_folder, f"val_accuracy_comparison_{epochNumbers}.csv")
+nas_results_path = os.path.join(history_folder,  f"Retraining_{epochNumbers}.csv")
 
 combined_results = []
 
@@ -82,15 +85,11 @@ for file_path in history_files:
         stopped_val_acc = df.loc[stop_epoch, 'val_accuracy']
         orig_val_acc = df['val_accuracy'].max()
         epochs_saved = total_epochs - stop_epoch - 1
-        accuracy_diff = orig_val_acc - stopped_val_acc
-        projected_loss = (global_best_accuracy - stopped_val_acc) / global_best_accuracy
 
         combined_results.append({
             'Model': model_name,
             'Stopped_Val_Accuracy': stopped_val_acc,
             'Original_Val_Accuracy': orig_val_acc,
-            'Accuracy_Diff': accuracy_diff,
-            'Projected_Accuracy_Loss': projected_loss,
             'Stop_Reason': stop_reason,
             'Epochs_Saved': epochs_saved
         })
