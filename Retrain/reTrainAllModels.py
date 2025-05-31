@@ -28,7 +28,7 @@ else:
 from .createAndTrain import train_from_saved_config
 from TakuNet import TrainingResults  # Assumes this contains .results after training
 
-def main(folder, month, day, epochs, dropout, train):
+def main(folder, month, day, epochs, dropout, train, learning_rate):
     config_path = os.path.join(folder, f"{month}-{day}", "saved_configs", "train_params")
     train_files = glob.glob(f"{config_path}/*_train_params.json")
 
@@ -47,7 +47,8 @@ def main(folder, month, day, epochs, dropout, train):
                                                      train=train,
                                                      folder=folder,
                                                      month=month,
-                                                     day=day)
+                                                     day=day,
+                                                     learning_rate_strategy=learning_rate)
             if trainingResult is not None:
                 models_data.append({
                     "Model": model_name,
@@ -92,7 +93,7 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=50, help="Number of epochs to run")
     parser.add_argument("--dropout", type=lambda x: x.lower() == "true", default=True, help="Enable dropout (True/False)")
     parser.add_argument("--train", type=lambda x: x.lower() == "true", default=True, help="Enable training (True/False)")
-    
+    parser.add_argument("--lr", type=str, default="cosine", help="The day a run was made")
     args = parser.parse_args()
 
-    main(folder=args.folder,month=args.month,day=args.day,epochs=args.epochs,dropout=args.dropout,train=args.train)
+    main(folder = args.folder, month = args.month, day = args.day, epochs = args.epochs, dropout = args.dropout, train = args.train, learning_rate = args.lr )
