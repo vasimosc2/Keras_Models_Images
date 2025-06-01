@@ -28,7 +28,7 @@ else:
 from .createAndTrain import train_from_saved_config
 from TakuNet import TrainingResults  # Assumes this contains .results after training
 
-def main(folder, month, day, epochs, dropout, train, learning_rate):
+def main(folder, month, day, epochs, dropout, train, learning_strategy):
     config_path = os.path.join(folder, f"{month}-{day}", "saved_configs", "train_params")
     train_files = glob.glob(f"{config_path}/*_train_params.json")
 
@@ -48,7 +48,7 @@ def main(folder, month, day, epochs, dropout, train, learning_rate):
                                                      folder=folder,
                                                      month=month,
                                                      day=day,
-                                                     learning_rate_strategy=learning_rate)
+                                                     learning_rate_strategy=learning_strategy)
             if trainingResult is not None:
                 models_data.append({
                     "Model": model_name,
@@ -73,7 +73,7 @@ def main(folder, month, day, epochs, dropout, train, learning_rate):
             print(f"❌ Failed to retrain model {model_name}: {e}")
 
     # Save all results to a single CSV
-    results_folder = os.path.join(folder, f"{month}-{day}", "Retraining", f"{epochs}-epochs", "results")
+    results_folder = os.path.join(folder, f"{month}-{day}", "Retraining", learning_strategy, f"{epochs}-epochs", "results")
     os.makedirs(results_folder, exist_ok=True)
     csv_path = os.path.join(results_folder, f"Retraining_{epochs}.csv")
 
@@ -99,4 +99,4 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=str, default="cosine", help="The day a run was made")
     args = parser.parse_args()
 
-    main(folder = args.folder, month = args.month, day = args.day, epochs = args.epochs, dropout = args.dropout, train = args.train, learning_rate = args.lr )
+    main(folder = args.folder, month = args.month, day = args.day, epochs = args.epochs, dropout = args.dropout, train = args.train, learning_strategy = args.lr )

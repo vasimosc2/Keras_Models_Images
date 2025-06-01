@@ -34,6 +34,7 @@ def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:boo
 
 
     Folder = os.path.join(Folder, f"{epochs}-epochs")
+    
     os.makedirs(f'{Folder}/results', exist_ok=True)
     
 
