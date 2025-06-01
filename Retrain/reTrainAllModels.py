@@ -78,6 +78,9 @@ def main(folder, month, day, epochs, dropout, train, learning_rate):
     csv_path = os.path.join(results_folder, f"Retraining_{epochs}.csv")
 
     df_results = pd.DataFrame(models_data)
+    # ✅ Sort models alphabetically by "Model" column
+    df_results = df_results.sort_values(by="Model")
+    
     df_results.to_csv(csv_path, index=False)
 
     print(f"\n✅ All retrained model results saved to: {csv_path}")

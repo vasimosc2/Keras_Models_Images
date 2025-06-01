@@ -18,7 +18,7 @@ def compute_fitness(acc, ram, flash):
 # Load both CSVs
 results = "results"
 fullTrainEpochs = 70
-partiallyTrainEpochs = 10
+partiallyTrainEpochs = 50
 
 history_fullTrainEpochs_folder = os.path.join(results, f"{fullTrainEpochs}-epochs")
 full_train_path = os.path.join(history_fullTrainEpochs_folder, f"Retraining_{fullTrainEpochs}.csv")
@@ -80,9 +80,13 @@ for _ in range(total_runs):
                 f"❌ FIT: Estimated {m1['Model']} (acc={est_1:.4f}, ram={m1['Model RAM (KB)_original']:.2f}, "
                 f"flash={m1['Estimated Flash Memory (KB)_original']:.2f}, fitness={f1_est:.4f}) vs "
                 f"{m2['Model']} (acc={est_2:.4f}, ram={m2['Model RAM (KB)_original']:.2f}, "
-                f"flash={m2['Estimated Flash Memory (KB)_original']:.2f}, fitness={f2_est:.4f}) "
-                f"≠ True Fitness {f1_true:.4f} vs {f2_true:.4f}"
+                f"flash={m2['Estimated Flash Memory (KB)_original']:.2f}, fitness={f2_est:.4f}) \n"
+                f"≠ True Fitness {m1['Model']} (acc={true_1:.4f}, ram={m1['Model RAM (KB)_original']:.2f}, "
+                f"flash={m1['Estimated Flash Memory (KB)_original']:.2f}, fitness={f1_true:.4f}) vs "
+                f"{m2['Model']} (acc={true_2:.4f}, ram={m2['Model RAM (KB)_original']:.2f}, "
+                f"flash={m2['Estimated Flash Memory (KB)_original']:.2f}, fitness={f2_true:.4f})"
             )
+
 
 
         total_matches += 1

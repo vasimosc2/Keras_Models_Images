@@ -4,7 +4,7 @@ import glob
 
 # Set paths
 results: str = "results"
-epochNumbers: int = 10
+epochNumbers: int = 20
 history_folder = os.path.join(results, f"{epochNumbers}-epochs")
 
 history_files = glob.glob(os.path.join(history_folder, "*_history.csv"))
@@ -43,7 +43,7 @@ def simulate_early_stopping(df, monitor='val_accuracy', patience=10, mode='max')
             return best_epoch, "early_stopping"
     return len(df) - 1, "none"
 
-def simulate_performance_stopping(df, monitor='val_accuracy', min_improvement=0.03):
+def simulate_performance_stopping(df, monitor='val_accuracy', min_improvement=0.05):
     best_val_acc = 0.0
     wait = 0
     patience = int(0.2 * len(df))

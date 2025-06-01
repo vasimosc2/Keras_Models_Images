@@ -16,6 +16,7 @@ scp s222566@login.hpc.dtu.dk:/zhome/02/e/181021/Desktop/Keras_Models_Images/NAS/
 scp s222566@login.hpc.dtu.dk:/zhome/02/e/181021/Desktop/Keras_Models_Images/NAS/May-27/results/History/* /mnt/c/Users/mosho/OneDrive/Υπολογιστής/Keras_Models-Images/results/
 
 scp s222566@login.hpc.dtu.dk:/zhome/02/e/181021/Desktop/Keras_Models_Images/NAS/May-27/Retraining/cosine/10-epochs/results/History/* /mnt/c/Users/mosho/OneDrive/Υπολογιστής/Keras_Models-Images/results/10-epochs
+scp s222566@login.hpc.dtu.dk:/zhome/02/e/181021/Desktop/Keras_Models_Images/NAS/May-27/Retraining/cosine/20-epochs/results/History/* /mnt/c/Users/mosho/OneDrive/Υπολογιστής/Keras_Models-Images/results/20-epochs
 
 scp s222566@login.hpc.dtu.dk:/zhome/02/e/181021/Desktop/Keras_Models_Images/NAS/May-27/Retraining/cosine/10-epochs/results/Retraining_10.csv /mnt/c/Users/mosho/OneDrive/Υπολογιστής/Keras_Models-Images/results/10-epochs
 

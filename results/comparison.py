@@ -4,10 +4,23 @@ import pandas as pd
 
 # Load the CSV
 results = "results"
-epochNumbers = 30
+epochNumbers = 20
 history_folder = os.path.join(results, f"{epochNumbers}-epochs")
 csvPath = os.path.join(history_folder, f"val_accuracy_comparison_{epochNumbers}.csv")
 df = pd.read_csv(csvPath)
+
+# --- Compute time saved from early stopping ---
+if "Epochs_Saved" in df.columns and "Time Per Epoch (sec)" in df.columns:
+    df["Time_Saved_sec"] = df["Epochs_Saved"] * df["Time Per Epoch (sec)"]
+    total_time_saved_sec = df["Time_Saved_sec"].sum()
+    total_time_saved_min = total_time_saved_sec / 60
+    total_time_saved_hr = total_time_saved_min / 60
+
+    print(f"\n💡 Estimated Time Savings from Early Stopping:")
+    print(f"📦 Total models: {len(df)}")
+    print(f"⏱️ Total time saved: {total_time_saved_sec:.2f} seconds")
+    print(f"🕒 Total time saved: {total_time_saved_min:.2f} minutes")
+    print(f"⏳ Total time saved: {total_time_saved_hr:.2f} hours")
 
 # Constants
 MAX_RAM = 197.68

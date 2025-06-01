@@ -1,11 +1,26 @@
 import pandas as pd
 import os
 
+
+
+
+#
+
+
+additionalSpeedUp:str = 15
+
 # File paths
-file_retrain = "Retraining_50.csv"
-file_originalRun = "Best_Models_Results_NAS.csv"
-retraining_csv = os.path.join("results", file_retrain)
-original_csv = os.path.join("results", file_originalRun)
+results = "results"
+epochNumber:str = "30"
+
+file_retrain = f"Retraining_{epochNumber}.csv"
+file_originalRun = f"Retraining_70.csv"
+
+folder_retrain:str = os.path.join(results,f"{epochNumber}-epochs")
+folder_original:str = os.path.join(results,"70-epochs")
+
+retraining_csv = os.path.join(folder_retrain, file_retrain)
+original_csv = os.path.join(folder_original, file_originalRun)
 
 # Load CSVs
 df_retrain = pd.read_csv(retraining_csv)
@@ -32,6 +47,6 @@ print_training_time(time_retrain, "Retrained Models")
 print_training_time(time_original, "Original NAS Models")
 
 # Calculate improvement
-improvement = (time_original - time_retrain) / time_original * 100
+improvement = (time_original - (time_retrain - additionalSpeedUp) ) / time_original * 100
 print(f"\n📈 Training Time Improvement from NAS to Retraining:")
 print(f"✅ {improvement:.2f}% faster")
