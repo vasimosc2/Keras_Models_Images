@@ -15,7 +15,7 @@ thresholds = np.round(np.arange(0.15, 0.4, 0.02), 3)  # val_acc thresholds
 MAX_RAM = 197.68
 MAX_FLASH = 754.921875
 total_runs = 1000  # Tournament simulation count
-max_error_allowed = 25.0  # Max accepted error rate in percent
+max_error_allowed = 35.0  # Max accepted error rate in percent
 
 # --- Load Ground Truth and Epoch Timing ---
 ground_truth = pd.read_csv(ground_truth_file).set_index("Model")
@@ -131,14 +131,19 @@ if not df_filtered.empty:
     print(best_time_saved_row.to_string())
 
     # Save filtered configurations
-    df_filtered.to_csv(results_dir / "best_configs_under_25_percent_error.csv", index=False)
+    #df_filtered.to_csv(results_dir / "best_configs_under_25_percent_error.csv", index=False)
 else:
     print(f"\n⚠️ No configurations found with error rate ≤ {max_error_allowed:.0f}%.")
 
-# ⏳ Top 10 by time saved (break ties with error rate)
-df_top_time = df_summary.sort_values(by=["Total_Time_Saved_min", "Error_Rate (%)"], ascending=[False, True]).head(10)
-print("\n⏳ Top 10 Configurations by Most Time Saved:")
-print(df_top_time.to_string(index=False))
+# ✅ Show only top 5 valid configs (≤ 10% error), sorted by time saved
+df_valid = df_summary[df_summary["Error_Rate (%)"] <= max_error_allowed]
+df_valid_sorted = df_valid.sort_values(by=["Total_Time_Saved_min", "Error_Rate (%)"], ascending=[False, True])
 
-# Save top time-saving configs
-df_top_time.to_csv(results_dir / "top_10_time_saved_configs.csv", index=False)
+if not df_valid_sorted.empty:
+    top_5_configs = df_valid_sorted.head(5)
+    print(f"\n✅ Top 5 Configurations with ≤ {max_error_allowed:.0f}% Error Rate, Sorted by Time Saved:")
+    print(top_5_configs.to_string(index=False))
+    # Save to file
+    #top_5_configs.to_csv(results_dir / f"top_5_configs_under_{int(max_error_allowed)}_percent_error_sorted.csv", index=False)
+else:
+    print(f"\n⚠️ No configurations found with error rate ≤ {max_error_allowed:.0f}%.")
