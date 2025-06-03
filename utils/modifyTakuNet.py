@@ -28,8 +28,8 @@ def rename_and_replace(folder_path, input_filename, new_model_name,givenName):
 # Example usage
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Change the name of the TakuNet model to upload it into Arduino")
-    parser.add_argument("--givenName", default="Init", choices=["Init", "Crossover", "Mutant"] ,help="Name of the file")
-    parser.add_argument("--number", default="0", help="Memory type to filter")
+    parser.add_argument("--givenName", default="Crossover", choices=["Init", "Crossover", "Mutant"] ,help="Name of the file")
+    parser.add_argument("--number", default="22", help="Memory type to filter")
     args = parser.parse_args()
 
     folder = "/mnt/c/Users/mosho/OneDrive/Arduino/First_Attempt"

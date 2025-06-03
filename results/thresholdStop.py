@@ -1,25 +1,66 @@
 import pandas as pd
-import os
 import random
 from pathlib import Path
 import numpy as np
 
+
+"""
+
+This script takes the history of a RUN of specific epochs ( for example 20 ),
+
+As a ground truth it takes the 70 epochs Mark.
+
+We provide a maximum allowable error rate -> The code finds the best epoch to stop the training and a the specific threshold for it
+
+No more Errors than the error rate will be depicted.
+
+The comparissons are done in a tounrament manner with total_runs = 1000
+
+The script will print the TOP 5 cases, example :
+
+ Cutoff_Epoch  Val_Threshold  Error_Rate (%)  Saved Epochs  Total_Time_Saved_min  Time_Saved (%)
+            6           0.27           24.22            28                 13.10            6.22
+            5           0.21           22.83            15                  6.40            3.04
+            9           0.31           22.45            11                  5.75            2.73
+            9           0.19           20.91             0                  0.00            0.00
+            8           0.23           21.20             0                  0.00            0.00
+
+As well as the case with the biggest time save (withing this error limit):
+    💰 Best Config (≤ 25% Error):
+        Cutoff_Epoch             6.00
+        Val_Threshold            0.27
+        Error_Rate (%)          24.22
+        Saved Epochs            28.00
+        Total_Time_Saved_min    13.10
+        Time_Saved (%)           6.22 
+
+
+"""
+
 # --- Settings ---
-epochs_total = 70
-results_dir = Path("results") / f"{epochs_total}-epochs"
-history_files = list(results_dir.glob("*_history.csv"))
-ground_truth_file = results_dir / f"Retraining_{epochs_total}.csv"
-cutoff_epochs = list(range(5, 30, 5))  # 5, 10, ..., 25
-thresholds = np.round(np.arange(0.15, 0.4, 0.02), 3)  # val_acc thresholds
+
+epochs_total = 30 # Here show that the outcome of 70 and 30 for less than 25% is the same 
+ground_truth_epochs = 70
+max_error_allowed = 25.0  # %
+
+test_dir = Path("results") / f"{epochs_total}-epochs"
+ground_dir = Path("results") / f"{ground_truth_epochs}-epochs"
+
+history_files = list(test_dir.glob("*_history.csv"))
+ground_truth_file = ground_dir / f"Retraining_{ground_truth_epochs}.csv"
+runtime_file = test_dir / f"Retraining_{epochs_total}.csv"
+
+cutoff_epochs = list(range(5, 10, 1))  # Try cutoffs at 5 to 9
+thresholds = np.round(np.arange(0.15, 0.4, 0.02), 3)
 
 MAX_RAM = 197.68
 MAX_FLASH = 754.921875
-total_runs = 1000  # Tournament simulation count
-max_error_allowed = 35.0  # Max accepted error rate in percent
+total_runs = 1000
 
-# --- Load Ground Truth and Epoch Timing ---
-ground_truth = pd.read_csv(ground_truth_file).set_index("Model")
-ground_truth["Time Per Epoch (sec)"] = (ground_truth["Training Time (min)"] * 60) / epochs_total
+# --- Load Ground Truth Accuracy and Runtime Info ---
+ground_truth_accuracy = pd.read_csv(ground_truth_file).set_index("Model")
+runtime_info = pd.read_csv(runtime_file).set_index("Model")
+runtime_info["Time Per Epoch (sec)"] = (runtime_info["Training Time (min)"] * 60) / epochs_total
 
 # --- Fitness Function ---
 def compute_fitness(acc, ram, flash):
@@ -61,22 +102,27 @@ for cutoff in cutoff_epochs:
             model = file.stem.replace("_history", "")
             try:
                 df = pd.read_csv(file)
-                if model not in ground_truth.index or len(df) <= cutoff:
+                if model not in ground_truth_accuracy.index or model not in runtime_info.index:
+                    continue
+                if len(df) <= cutoff:
                     continue
 
-                stop_epoch = cutoff if df.loc[cutoff, "val_accuracy"] < threshold else len(df) - 1
+                # Properly index the cutoff epoch
+                cutoff_index = cutoff - 1  # cutoff=8 means use epoch 8 (index 7)
+
+                stop_epoch = cutoff_index if df.loc[cutoff_index, "val_accuracy"] < threshold else len(df) - 1
                 val_acc = df.loc[stop_epoch, "val_accuracy"]
-                orig_acc = df["val_accuracy"].max()
+                orig_acc = ground_truth_accuracy.loc[model, "Best Test Accuracy"]
                 epochs_saved = max(0, epochs_total - stop_epoch - 1)
-                time_per_epoch = ground_truth.loc[model, "Time Per Epoch (sec)"]
+                time_per_epoch = runtime_info.loc[model, "Time Per Epoch (sec)"]
 
                 rows.append({
                     "Model": model,
                     "Stopped_Val_Accuracy": val_acc,
                     "Original_Val_Accuracy": orig_acc,
                     "Epochs_Saved": epochs_saved,
-                    "Model RAM (KB)": ground_truth.loc[model, "Model RAM (KB)"],
-                    "Estimated Flash Memory (KB)": ground_truth.loc[model, "Estimated Flash Memory (KB)"],
+                    "Model RAM (KB)": runtime_info.loc[model, "Model RAM (KB)"],
+                    "Estimated Flash Memory (KB)": runtime_info.loc[model, "Estimated Flash Memory (KB)"],
                     "Time Per Epoch (sec)": time_per_epoch
                 })
 
@@ -90,37 +136,37 @@ for cutoff in cutoff_epochs:
         # Evaluate tournament error
         error_rate = evaluate_tournament(df_simulated, "Stopped_Val_Accuracy")
 
-        # Use real model training time to compute total time saved and % saved
+        # Time saved calculation
         time_saved_total = 0
         total_full_time = 0
+        total_saved_epochs = 0
 
         for row in rows:
             model = row["Model"]
             epochs_saved = row["Epochs_Saved"]
-            full_training_time_sec = ground_truth.loc[model, "Training Time (min)"] * 60
+            full_training_time_sec = runtime_info.loc[model, "Training Time (min)"] * 60
             time_per_epoch = full_training_time_sec / epochs_total
-            time_saved_model = epochs_saved * time_per_epoch
 
+            time_saved_model = epochs_saved * time_per_epoch
             time_saved_total += time_saved_model
+            total_saved_epochs += epochs_saved
             total_full_time += full_training_time_sec
+
+        #print(f"Total training time of the full training is {round(total_full_time/3600,2)} h for cutoff {cutoff} and threshold {threshold}.")
 
         percent_saved = (time_saved_total / total_full_time) * 100 if total_full_time > 0 else 0
 
-        # Append results
         all_results.append({
             "Cutoff_Epoch": cutoff,
             "Val_Threshold": threshold,
             "Error_Rate (%)": round(100 * error_rate, 2),
+            "Saved Epochs": total_saved_epochs,
             "Total_Time_Saved_min": round(time_saved_total / 60, 2),
             "Time_Saved (%)": round(percent_saved, 2)
         })
 
 # --- Output Results ---
-df_summary = pd.DataFrame(all_results).sort_values(by="Error_Rate (%)")
-
-# 📊 Top 10 by lowest error
-print("\n📊 Top 10 Configurations by Lowest Error Rate:")
-print(df_summary.head(10))
+df_summary = pd.DataFrame(all_results).sort_values(by="Time_Saved (%)")
 
 # 💰 Best config under allowed error
 df_filtered = df_summary[df_summary["Error_Rate (%)"] <= max_error_allowed]
@@ -129,13 +175,10 @@ if not df_filtered.empty:
     best_time_saved_row = df_filtered.sort_values(by=["Total_Time_Saved_min", "Error_Rate (%)"], ascending=[False, True]).iloc[0]
     print(f"\n💰 Best Config (≤ {max_error_allowed:.0f}% Error):")
     print(best_time_saved_row.to_string())
-
-    # Save filtered configurations
-    #df_filtered.to_csv(results_dir / "best_configs_under_25_percent_error.csv", index=False)
 else:
     print(f"\n⚠️ No configurations found with error rate ≤ {max_error_allowed:.0f}%.")
 
-# ✅ Show only top 5 valid configs (≤ 10% error), sorted by time saved
+# ✅ Top 5 valid configs sorted by time saved
 df_valid = df_summary[df_summary["Error_Rate (%)"] <= max_error_allowed]
 df_valid_sorted = df_valid.sort_values(by=["Total_Time_Saved_min", "Error_Rate (%)"], ascending=[False, True])
 
@@ -143,7 +186,5 @@ if not df_valid_sorted.empty:
     top_5_configs = df_valid_sorted.head(5)
     print(f"\n✅ Top 5 Configurations with ≤ {max_error_allowed:.0f}% Error Rate, Sorted by Time Saved:")
     print(top_5_configs.to_string(index=False))
-    # Save to file
-    #top_5_configs.to_csv(results_dir / f"top_5_configs_under_{int(max_error_allowed)}_percent_error_sorted.csv", index=False)
 else:
     print(f"\n⚠️ No configurations found with error rate ≤ {max_error_allowed:.0f}%.")
