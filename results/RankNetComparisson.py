@@ -62,6 +62,9 @@ def fitness(acc, ram, flash):
     norm_flash = max(0.0, 1.0 - flash / MAX_FLASH)
     return 0.7 * acc + 0.2 * norm_ram + 0.1 * norm_flash
 
+def mse_error(true1, true2, pred1, pred2):
+    return ((true1 - true2) - (pred1 - pred2)) ** 2
+
 # === Load results CSV ===
 results_df = pd.read_csv(results_file)
 
@@ -100,6 +103,7 @@ print(f"✅ Loaded {len(models)} models.")
 total_runs = 1000
 total_matches = 0
 total_errors = 0
+fitness_mse_total = 0.0
 
 for run in range(total_runs):
     shuffled = random.sample(models, len(models))  # Random shuffle
@@ -121,6 +125,9 @@ for run in range(total_runs):
         # Compare
         if ranknet_winner["name"] != true_winner["name"]:
             total_errors += 1
+            true_diff = m1["fitness"] - m2["fitness"]
+            pred_diff = pred[0][0] if ranknet_winner == m1 else -pred[0][0]
+            fitness_mse_total += mse_error(m1["fitness"], m2["fitness"], m1["fitness"] + pred_diff, m2["fitness"])
 
         total_matches += 1
         i += 2
@@ -131,3 +138,5 @@ print(f"🔁 Total runs: {total_runs}")
 print(f"🎯 Total matches: {total_matches}")
 print(f"❌ Incorrect predictions: {total_errors}")
 print(f"⚠️ Error rate: {100 * total_errors / total_matches:.2f}%")
+print(f"📐 Avg Fitness MSE: {fitness_mse_total / total_matches:.2e}")
+print(f"ℹ️ Fitness is normalized in [0, 1]. This implies ~±{(fitness_mse_total / total_matches) ** 0.5:.4f} avg prediction deviation.")

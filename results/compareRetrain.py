@@ -20,10 +20,6 @@ The script:
 - Records the number and rate of misranked predictions based on both accuracy and fitness.
 - Optionally prints detailed logs of misranked pairs for debugging or reporting purposes.
 
-Fitness Function:
-\[
-\text{fitness} = 0.7 \times \text{accuracy} + 0.2 \times (1 - \text{RAM}/\text{MAX\_RAM}) + 0.1 \times (1 - \text{Flash}/\text{MAX\_FLASH})
-\]
 
 Outputs:
 - Total matchups and number of incorrect predictions
@@ -53,6 +49,9 @@ def compute_fitness(acc, ram, flash):
     norm_flash = max(0.0, 1.0 - flash / MAX_FLASH)
     return 0.7 * acc + 0.2 * norm_ram + 0.1 * norm_flash
 
+def mse_error(true1, true2, pred1, pred2):
+    return ((true1 - true2) - (pred1 - pred2)) ** 2
+
 # Load both CSVs
 results = "results"
 fullTrainEpochs = 70
@@ -76,6 +75,9 @@ total_runs = 10
 accuracy_errors = 0
 fitness_errors = 0
 total_matches = 0
+
+accuracy_mse_total = 0.0
+fitness_mse_total = 0.0
 
 accuracy_error_log = []
 fitness_error_log = []
@@ -101,6 +103,7 @@ for _ in range(total_runs):
                 f"❌ ACC: Estimated {m1['Model']}({est_1:.4f}) vs {m2['Model']}({est_2:.4f}) "
                 f"≠ True {true_1:.4f} vs {true_2:.4f}"
             )
+        accuracy_mse_total += mse_error(true_1, true_2, est_1, est_2)
 
         # --- Fitness-based comparison ---
         f1_est = compute_fitness(est_1, m1["Model RAM (KB)_original"], m1["Estimated Flash Memory (KB)_original"])
@@ -125,7 +128,7 @@ for _ in range(total_runs):
                 f"flash={m2['Estimated Flash Memory (KB)_original']:.2f}, fitness={f2_true:.4f})"
             )
 
-
+        fitness_mse_total += mse_error(f1_true, f2_true, f1_est, f2_est)
 
         total_matches += 1
 
@@ -140,6 +143,8 @@ print(f"🔁 Total runs: {total_runs}")
 print(f"🎯 Total model matchups: {total_matches}")
 print(f"❌ Misranked pairs (Accuracy only): {accuracy_errors}")
 print(f"⚠️ Misranking rate (Accuracy): {100 * accuracy_errors / total_matches:.2f}%")
+print(f"ℹ️ Note: Fitness values are normalized in the range [0, 1].")
+print(f"📐 Average Accuracy MSE: {accuracy_mse_total / total_matches:.6f}")
 
 if PRINT_FITNESS_MISTAKES:
     print("\n🔍 Misranked Fitness Pairs:")
@@ -150,4 +155,7 @@ if PRINT_FITNESS_MISTAKES:
 print(f"\n📊 Fitness-Based Misranking Evaluation (Accuracy + RAM + Flash) for {partiallyTrainEpochs}")
 print(f"❌ Misranked pairs (Fitness): {fitness_errors}")
 print(f"⚠️ Misranking rate (Fitness): {100 * fitness_errors / total_matches:.2f}%")
+print(f"ℹ️ Note: Fitness values are normalized in the range [0, 1].")
+print(f"📐 Average Fitness MSE: {fitness_mse_total / total_matches:.2e}")
+
 
