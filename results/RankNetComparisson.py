@@ -103,7 +103,8 @@ print(f"✅ Loaded {len(models)} models.")
 total_runs = 1000
 total_matches = 0
 total_errors = 0
-fitness_mse_total = 0.0
+fitness_mse_total_all = 0.0
+fitness_mse_wrong = 0.0
 
 for run in range(total_runs):
     shuffled = random.sample(models, len(models))  # Random shuffle
@@ -122,12 +123,16 @@ for run in range(total_runs):
         )
         ranknet_winner = m1 if pred[0][0] > 0.5 else m2
 
-        # Compare
+                # Calculate MSE for this pair
+        true_diff = m1["fitness"] - m2["fitness"]
+        pred_diff = pred[0][0] if ranknet_winner == m1 else -pred[0][0]
+        mse_val = mse_error(m1["fitness"], m2["fitness"], m1["fitness"] + pred_diff, m2["fitness"])
+
+        fitness_mse_total_all += mse_val  # Always accumulate
+
         if ranknet_winner["name"] != true_winner["name"]:
             total_errors += 1
-            true_diff = m1["fitness"] - m2["fitness"]
-            pred_diff = pred[0][0] if ranknet_winner == m1 else -pred[0][0]
-            fitness_mse_total += mse_error(m1["fitness"], m2["fitness"], m1["fitness"] + pred_diff, m2["fitness"])
+            fitness_mse_total_wrong += mse_val
 
         total_matches += 1
         i += 2
@@ -138,5 +143,5 @@ print(f"🔁 Total runs: {total_runs}")
 print(f"🎯 Total matches: {total_matches}")
 print(f"❌ Incorrect predictions: {total_errors}")
 print(f"⚠️ Error rate: {100 * total_errors / total_matches:.2f}%")
-print(f"📐 Avg Fitness MSE: {fitness_mse_total / total_matches:.2e}")
-print(f"ℹ️ Fitness is normalized in [0, 1]. This implies ~±{(fitness_mse_total / total_matches) ** 0.5:.4f} avg prediction deviation.")
+print(f"📐 Avg Fitness MSE: {fitness_mse_total_all / total_matches:.2e}")
+print(f"ℹ️ Fitness is normalized in [0, 1]. This implies ~±{(fitness_mse_wrong / total_matches) ** 0.5:.4f} avg prediction deviation.")
