@@ -132,7 +132,7 @@ for run in range(total_runs):
 
         if ranknet_winner["name"] != true_winner["name"]:
             total_errors += 1
-            fitness_mse_total_wrong += mse_val
+            fitness_mse_wrong += mse_val
 
         total_matches += 1
         i += 2
