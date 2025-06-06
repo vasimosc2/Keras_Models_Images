@@ -2,9 +2,47 @@ import pandas as pd
 import os
 import random
 
+"""
+Script: evaluate_misranking_partial_vs_full.py
+
+Description:
+This script compares model rankings between two training durations (e.g., 30 and 70 epochs) to assess whether 
+early-stopped models (trained partially) can correctly approximate the ranking order of fully trained models.
+
+It performs tournament-style comparisons between models using two ranking strategies:
+1. Accuracy-Based: Using the best test accuracy of partially vs. fully trained models.
+2. Fitness-Based: Using a composite fitness score that combines accuracy, RAM usage, and flash memory usage.
+
+The script:
+- Loads two CSV files containing model metadata and performance for different training durations.
+- Merges them by model name and runs randomized pairwise matchups.
+- For each matchup, checks if the estimated winner (from partial training) matches the true winner (from full training).
+- Records the number and rate of misranked predictions based on both accuracy and fitness.
+- Optionally prints detailed logs of misranked pairs for debugging or reporting purposes.
+
+Fitness Function:
+\[
+\text{fitness} = 0.7 \times \text{accuracy} + 0.2 \times (1 - \text{RAM}/\text{MAX\_RAM}) + 0.1 \times (1 - \text{Flash}/\text{MAX\_FLASH})
+\]
+
+Outputs:
+- Total matchups and number of incorrect predictions
+- Misranking error rate for both accuracy-based and fitness-based evaluations
+- Optional detailed logs of misranked model comparisons
+
+Config Flags:
+- `PRINT_ACCURACY_MISTAKES`: Set to True to print incorrect accuracy-based matchups
+- `PRINT_FITNESS_MISTAKES`: Set to True to print incorrect fitness-based matchups
+
+Use Case:
+This script is valuable for validating whether early training signals are reliable predictors of final model quality,
+and helps determine if early stopping strategies can safely guide model selection.
+"""
+
+
 # === Config flags ===
 PRINT_ACCURACY_MISTAKES = False
-PRINT_FITNESS_MISTAKES = True
+PRINT_FITNESS_MISTAKES = False
 
 # Constants for normalization
 MAX_RAM = 197.68
@@ -18,7 +56,7 @@ def compute_fitness(acc, ram, flash):
 # Load both CSVs
 results = "results"
 fullTrainEpochs = 70
-partiallyTrainEpochs = 50
+partiallyTrainEpochs = 30
 
 history_fullTrainEpochs_folder = os.path.join(results, f"{fullTrainEpochs}-epochs")
 full_train_path = os.path.join(history_fullTrainEpochs_folder, f"Retraining_{fullTrainEpochs}.csv")

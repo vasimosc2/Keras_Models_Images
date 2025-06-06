@@ -36,12 +36,22 @@ As well as the case with the biggest time save (withing this error limit):
 
 
 """
+def print_training_time(total_minutes):
+    """
 
+    pass the Training time in minutes there
+
+    """
+    hours = int(total_minutes // 60)
+    minutes = int(total_minutes % 60)
+    print(f"\n⏱️ Total Training Time :")
+    print(f"🕒 {total_minutes:.2f} minutes")
+    print(f"🕓 ≈ {hours}h {minutes}m")
 # --- Settings ---
 
 epochs_total = 30 # Here show that the outcome of 70 and 30 for less than 25% is the same 
 ground_truth_epochs = 70
-max_error_allowed = 25.0  # %
+max_error_allowed = 18.0  # %
 
 test_dir = Path("results") / f"{epochs_total}-epochs"
 ground_dir = Path("results") / f"{ground_truth_epochs}-epochs"
@@ -50,8 +60,8 @@ history_files = list(test_dir.glob("*_history.csv"))
 ground_truth_file = ground_dir / f"Retraining_{ground_truth_epochs}.csv"
 runtime_file = test_dir / f"Retraining_{epochs_total}.csv"
 
-cutoff_epochs = list(range(5, 10, 1))  # Try cutoffs at 5 to 9
-thresholds = np.round(np.arange(0.15, 0.4, 0.02), 3)
+cutoff_epochs = list(range(3, 15, 1))  # Try cutoffs at 5 to 9
+thresholds = np.round(np.arange(0.15, 0.45, 0.02), 3)
 
 MAX_RAM = 197.68
 MAX_FLASH = 754.921875
@@ -152,7 +162,8 @@ for cutoff in cutoff_epochs:
             total_saved_epochs += epochs_saved
             total_full_time += full_training_time_sec
 
-        #print(f"Total training time of the full training is {round(total_full_time/3600,2)} h for cutoff {cutoff} and threshold {threshold}.")
+        print_training_time(total_full_time/60)
+
 
         percent_saved = (time_saved_total / total_full_time) * 100 if total_full_time > 0 else 0
 

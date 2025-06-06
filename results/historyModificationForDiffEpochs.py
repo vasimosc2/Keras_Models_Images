@@ -2,24 +2,37 @@ import pandas as pd
 import os
 import glob
 
+
+"""
+Description:
+This script evaluates the impact of early stopping for models trained for fewer epochs (e.g., 20 or 30).
+It simulates two stopping strategies (early and performance-based) and compares the resulting accuracy
+to the final accuracy achieved by the same models trained for 70 epochs. The goal is to estimate how
+much training time could be saved with minimal loss in validation performance.
+
+Output: A CSV summary with per-model early stopping accuracy, original accuracy, and time saved.
+"""
+
+
 # Set paths
 results: str = "results"
-epochNumbers: int = 20
+
+epochNumbers: int = 30
+epochTruth:int = 70
+
 history_folder = os.path.join(results, f"{epochNumbers}-epochs")
-
 history_files = glob.glob(os.path.join(history_folder, "*_history.csv"))
-
 val_acc_path = os.path.join(history_folder, f"val_accuracy_comparison_{epochNumbers}.csv")
 nas_results_path = os.path.join(history_folder, f"Retraining_{epochNumbers}.csv")
 
 # Load 70-epoch reference results
-nas_70_path = os.path.join(results, "70-epochs")
-df_70 = pd.read_csv(os.path.join(nas_70_path, "Retraining_70.csv"))
+nas_70_path = os.path.join(results, f"{str(epochTruth)}-epochs")
+df_70 = pd.read_csv(os.path.join(nas_70_path, f"Retraining_{str(epochTruth)}.csv"))
 df_70 = df_70[["Model", "Best Test Accuracy"]].rename(columns={"Best Test Accuracy": "Original_Val_Accuracy"})
 
 combined_results = []
 
-def simulate_early_stopping(df, monitor='val_accuracy', patience=10, mode='max'):
+def simulate_performance_early_stopping(df, monitor='val_accuracy', patience=10, mode='max'):
     if mode == 'max':
         best_val = float('-inf')
         compare = lambda a, b: a > b
@@ -66,7 +79,7 @@ for file_path in history_files:
         model_name = os.path.basename(file_path).replace("_history.csv", "")
         total_epochs = len(df)
 
-        early_epoch, early_reason = simulate_early_stopping(df, patience=8)
+        early_epoch, early_reason = simulate_performance_early_stopping(df, patience=8)
         perf_epoch, perf_reason = simulate_performance_stopping(df)
 
         stop_epoch = early_epoch if early_epoch <= perf_epoch else perf_epoch
@@ -101,7 +114,14 @@ df_val_acc = df_val_acc[[
 
 # Load NAS info and add time/flash/ram stats
 df_nas = pd.read_csv(nas_results_path)
-df_nas["Time Per Epoch (sec)"] = (df_nas["Training Time (min)"] * 60) / 70
+
+"""
+
+This Represents the time per epoch in the Retrained version
+
+"""
+df_nas["Time Per Epoch (sec)"] = (df_nas["Training Time (min)"] * 60) / epochNumbers
+
 
 df_merged = pd.merge(
     df_val_acc,

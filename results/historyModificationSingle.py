@@ -13,7 +13,7 @@ nas_results_path = os.path.join(history_folder,  f"Retraining_{epochNumbers}.csv
 
 combined_results = []
 
-def simulate_early_stopping(df, monitor='val_accuracy', patience=10, mode='max'):
+def simulate_performance_early_stopping(df, monitor='val_accuracy', patience=10, mode='max'):
     if mode == 'max':
         best_val = float('-inf')
         compare = lambda a, b: a > b
@@ -72,7 +72,7 @@ for file_path in history_files:
         model_name = os.path.basename(file_path).replace("_history.csv", "")
         total_epochs = len(df)
 
-        early_epoch, early_reason = simulate_early_stopping(df, patience=8)
+        early_epoch, early_reason = simulate_performance_early_stopping(df, patience=8)
         perf_epoch, perf_reason = simulate_performance_stopping(df)
 
         if early_epoch <= perf_epoch:

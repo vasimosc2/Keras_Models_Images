@@ -10,7 +10,42 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(project_root)
 
 from SurrogateComparisson.Embedding import simple_architecture_embedding
-from TakuNet import TakuNetModel
+
+
+"""
+Script: evaluate_ranknet_tournament.py
+
+Description:
+This script evaluates the accuracy of a surrogate ranking model (RankNet) in predicting the relative performance
+of neural network architectures discovered during a Neural Architecture Search (NAS) process.
+
+The RankNet model compares architecture embeddings and predicts which model is better. This evaluation simulates
+a tournament where pairs of models are compared repeatedly, and RankNet's predictions are validated against
+a ground truth fitness function based on actual model performance.
+
+Main Components:
+- Loads architecture parameter files (`*_model_params.json`) and generates fixed-length embeddings using
+  `simple_architecture_embedding()`.
+- Computes ground truth fitness using a weighted formula combining accuracy, RAM usage, and flash memory.
+- Loads a pre-trained RankNet model and uses it to predict pairwise model comparisons.
+- Runs a large number of randomized pairwise matchups (tournaments) and records how often RankNet's predicted
+  winner disagrees with the actual higher-fitness model.
+
+Fitness Function:
+\[
+\text{fitness} = 0.7 \times \text{accuracy} + 0.2 \times (1 - \text{RAM}/\text{MAX\_RAM}) + 0.1 \times (1 - \text{Flash}/\text{MAX\_FLASH})
+\]
+
+Outputs:
+- Total number of matches
+- Total number of prediction errors
+- Final error rate (%), indicating how often RankNet fails to rank the models correctly
+
+Use Case:
+This script is useful for validating the quality of a learned surrogate model before using it in future
+NAS iterations or model selection pipelines.
+"""
+
 
 # === Paths ===
 day="May-27"
