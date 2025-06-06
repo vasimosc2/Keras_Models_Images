@@ -71,7 +71,7 @@ merged = pd.merge(original_df, retrained_df, on="Model", suffixes=("_original", 
 models = merged.to_dict("records")
 
 # Tournament-style comparison
-total_runs = 10
+total_runs = 1000
 accuracy_errors = 0
 fitness_errors = 0
 total_matches = 0
