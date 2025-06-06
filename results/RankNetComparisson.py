@@ -144,4 +144,7 @@ print(f"🎯 Total matches: {total_matches}")
 print(f"❌ Incorrect predictions: {total_errors}")
 print(f"⚠️ Error rate: {100 * total_errors / total_matches:.2f}%")
 print(f"📐 Avg Fitness MSE: {fitness_mse_total_all / total_matches:.2e}")
-print(f"ℹ️ Fitness is normalized in [0, 1]. This implies ~±{(fitness_mse_wrong / total_matches) ** 0.5:.4f} avg prediction deviation.")
+print(f"ℹ️ Fitness is normalized in [0, 1]. This implies ~±{(fitness_mse_total_all / total_matches) ** 0.5:.4f} avg prediction deviation.")
+
+print(f"📐 Avg Fitness MSE (wrong predictions only): {fitness_mse_wrong / total_errors:.2e}")
+print(f"ℹ️ Fitness is normalized in [0, 1]. This implies ~±{(fitness_mse_wrong / total_errors) ** 0.5:.4f} avg prediction deviation (RMSE) on incorrect predictions.")
