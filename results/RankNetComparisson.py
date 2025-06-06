@@ -62,8 +62,8 @@ def fitness(acc, ram, flash):
     norm_flash = max(0.0, 1.0 - flash / MAX_FLASH)
     return 0.7 * acc + 0.2 * norm_ram + 0.1 * norm_flash
 
-def mse_error(true1, true2, pred1, pred2):
-    return ((true1 - true2) - (pred1 - pred2)) ** 2
+def mse_error(true1, true2):
+    return (true1 - true2) ** 2
 
 # === Load results CSV ===
 results_df = pd.read_csv(results_file)
@@ -103,7 +103,7 @@ print(f"✅ Loaded {len(models)} models.")
 total_runs = 1000
 total_matches = 0
 total_errors = 0
-fitness_mse_total_all = 0.0
+
 fitness_mse_wrong = 0.0
 
 for run in range(total_runs):
@@ -126,13 +126,11 @@ for run in range(total_runs):
                 # Calculate MSE for this pair
         true_diff = m1["fitness"] - m2["fitness"]
         pred_diff = pred[0][0] if ranknet_winner == m1 else -pred[0][0]
-        mse_val = mse_error(m1["fitness"], m2["fitness"], m1["fitness"] + pred_diff, m2["fitness"])
-
-        fitness_mse_total_all += mse_val  # Always accumulate
+       
 
         if ranknet_winner["name"] != true_winner["name"]:
             total_errors += 1
-            mse_value = (m1["fitness"] - m2["fitness"]) ** 2
+            mse_value = mse_error(m1["fitness"],m2["fitness"])
             fitness_mse_wrong += mse_value
 
         total_matches += 1
@@ -144,8 +142,6 @@ print(f"🔁 Total runs: {total_runs}")
 print(f"🎯 Total matches: {total_matches}")
 print(f"❌ Incorrect predictions: {total_errors}")
 print(f"⚠️ Error rate: {100 * total_errors / total_matches:.2f}%")
-print(f"📐 Avg Fitness MSE: {fitness_mse_total_all / total_matches:.2e}")
-print(f"ℹ️ Fitness is normalized in [0, 1]. This implies ~±{(fitness_mse_total_all / total_matches) ** 0.5:.4f} avg prediction deviation.\n")
 
 print(f"📐 Avg Fitness MSE (wrong predictions only): {fitness_mse_wrong / total_errors:.2e}")
 print(f"ℹ️ Fitness is normalized in [0, 1]. This implies ~±{(fitness_mse_wrong / total_errors) ** 0.5:.4f} avg prediction deviation (RMSE) on incorrect predictions.")

@@ -49,8 +49,8 @@ def compute_fitness(acc, ram, flash):
     norm_flash = max(0.0, 1.0 - flash / MAX_FLASH)
     return 0.7 * acc + 0.2 * norm_ram + 0.1 * norm_flash
 
-def mse_error(true1, true2, pred1, pred2):
-    return ((true1 - true2) - (pred1 - pred2)) ** 2
+def mse_error(true1, true2):
+    return (true1 - true2) ** 2
 
 # Load both CSVs
 results = "results"
@@ -103,7 +103,7 @@ for _ in range(total_runs):
                 f"❌ ACC: Estimated {m1['Model']}({est_1:.4f}) vs {m2['Model']}({est_2:.4f}) "
                 f"≠ True {true_1:.4f} vs {true_2:.4f}"
             )
-        accuracy_mse_total += mse_error(true_1, true_2, est_1, est_2)
+        accuracy_mse_total += mse_error(true_1, true_2)
 
         # --- Fitness-based comparison ---
         f1_est = compute_fitness(est_1, m1["Model RAM (KB)_original"], m1["Estimated Flash Memory (KB)_original"])
@@ -128,7 +128,7 @@ for _ in range(total_runs):
                 f"flash={m2['Estimated Flash Memory (KB)_original']:.2f}, fitness={f2_true:.4f})"
             )
 
-        fitness_mse_total += mse_error(f1_true, f2_true, f1_est, f2_est)
+        fitness_mse_total += mse_error(f1_true, f2_true)
 
         total_matches += 1
 
@@ -144,7 +144,7 @@ print(f"🎯 Total model matchups: {total_matches}")
 print(f"❌ Misranked pairs (Accuracy only): {accuracy_errors}")
 print(f"⚠️ Misranking rate (Accuracy): {100 * accuracy_errors / total_matches:.2f}%")
 print(f"ℹ️ Note: Fitness values are normalized in the range [0, 1].")
-print(f"📐 Average Accuracy MSE: {accuracy_mse_total / total_matches:.6f}")
+print(f"📐 Average Accuracy MSE: {accuracy_mse_total / total_matches:.2e}")
 
 if PRINT_FITNESS_MISTAKES:
     print("\n🔍 Misranked Fitness Pairs:")
