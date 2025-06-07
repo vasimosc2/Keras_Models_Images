@@ -71,6 +71,7 @@ total_runs = 1000
 for comparison_col, label in comparison_columns.items():
     total_errors = 0
     total_matches = 0
+    fitness_mse_wrong = 0.0
 
     for run in range(total_runs):
         shuffled = random.sample(list(df.to_dict('records')), len(df))
@@ -79,11 +80,9 @@ for comparison_col, label in comparison_columns.items():
             m1 = shuffled[i]
             m2 = shuffled[i + 1]
 
-            # Real fitness using 70-epoch accuracy
             f1_real = compute_fitness(m1["Original_Val_Accuracy"], m1["Model RAM (KB)"], m1["Estimated Flash Memory (KB)"])
             f2_real = compute_fitness(m2["Original_Val_Accuracy"], m2["Model RAM (KB)"], m2["Estimated Flash Memory (KB)"])
 
-            # Estimated fitness using comparison column
             f1_est = compute_fitness(m1[comparison_col], m1["Model RAM (KB)"], m1["Estimated Flash Memory (KB)"])
             f2_est = compute_fitness(m2[comparison_col], m2["Model RAM (KB)"], m2["Estimated Flash Memory (KB)"])
 
@@ -92,13 +91,19 @@ for comparison_col, label in comparison_columns.items():
 
             if real_winner != est_winner:
                 total_errors += 1
+                fitness_mse_wrong += (f1_real - f2_real) ** 2
 
             total_matches += 1
             i += 2
 
-    # Output for this comparison
+    mse = fitness_mse_wrong / total_errors if total_errors > 0 else 0.0
+    rmse = mse ** 0.5
+
     print(f"\n🔍 {label}")
     print(f"🔁 Total runs: {total_runs}")
     print(f"🎯 Total matches: {total_matches}")
     print(f"❌ Total mismatches: {total_errors}")
     print(f"⚠️ Error rate: {100 * total_errors / total_matches:.2f}%")
+    print(f"✏️ MSE (Wrong Predictions): {mse:.2e}")
+    print(f"🔢 RMSE (Wrong Predictions): ±{rmse:.4f}")
+
