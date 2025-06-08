@@ -6,7 +6,6 @@ def sample_from_train_and_evaluate(train_and_evaluate)->Dict:
     """Randomly selects training hyperparameters."""
     return {
         "label_smothing": train_and_evaluate["model_config"]["label_smothing"],
-        "divider": train_and_evaluate["model_config"]["divider"],
 
         "stop_patience": random.choice(train_and_evaluate["model_config"]["early_stop"]["stop_patience"]),
 

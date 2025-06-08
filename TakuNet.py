@@ -562,7 +562,7 @@ class TakuNetModel:
             initial_lr:float = 0.05 if self.model_params["optimizer"].lower() == "sgd" else 0.01
             print(f"The initial Learning rate is {initial_lr}\n")
 
-            steps_per_epoch = len(x_train) // batchSize
+            steps_per_epoch = len(x_train) // batchSize # This the integer part of the diviation
             total_steps = self.epochs * steps_per_epoch
             warmup_epochs = 5
             print(f"The steps per epoch are {steps_per_epoch}\n")
@@ -608,18 +608,21 @@ class TakuNetModel:
                                      verbose=1,  
                                      save_weights_only=False)
         
-        early_stopping_acc = EarlyStopping(monitor='val_accuracy', 
-                                           patience=self.train_params["stop_patience"],
-                                           mode='max', 
-                                           restore_best_weights=True)
+        
 
-        midway_callback = MidwayStopCallback(total_epochs=self.epochs, 
-                                             divider=self.train_params["divider"], 
-                                             threshold=0.2)
+        midway_callback = MidwayStopCallback(stopEpoch = 3, 
+                                             threshold = 0.37 )
         
         adjust_dropout = AdjustDropoutCallback(model_instance=self,
                                                overfitting_threshold=self.train_params["overfitting"],
                                                cooldown=3)
+        
+        # Early_Stopping_acc +  performanceCallback = PerformanceOptimization
+
+        early_stopping_acc = EarlyStopping(monitor='val_accuracy', 
+                                           patience=self.train_params["stop_patience"],
+                                           mode='max', 
+                                           restore_best_weights=True)
         
         performanceCallback = PerformanceStopping(patience = 0.2 * self.epochs,
                                                   min_improvement = 0.05)
@@ -1026,9 +1029,9 @@ class LinearDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
 
 
 class MidwayStopCallback(Callback):
-    def __init__(self, total_epochs:int, divider:int, threshold:float):
+    def __init__(self, stopEpoch:int, threshold:float):
         super().__init__()
-        self.mid_epoch = total_epochs // divider 
+        self.mid_epoch = stopEpoch
         self.threshold = threshold
 
     def on_epoch_end(self, epoch, logs=None):

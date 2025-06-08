@@ -27,11 +27,11 @@ or improved procedures. It provides a direct comparison in both absolute (minute
 """
 
 
-additionalSpeedUp:float = 3
+additionalSpeedUp:float = 0
 
 # File paths
 results = "results"
-epochNumber:str = "30"
+epochNumber:str = "20"
 
 file_retrain = f"Retraining_{epochNumber}.csv"
 file_originalRun = f"Retraining_70.csv"
