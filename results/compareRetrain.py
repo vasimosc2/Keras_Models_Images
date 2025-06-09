@@ -55,7 +55,7 @@ def mse_error(true1, true2):
 # Load both CSVs
 results = "results"
 fullTrainEpochs = 70
-partiallyTrainEpochs = 20
+partiallyTrainEpochs = 30
 
 history_fullTrainEpochs_folder = os.path.join(results, f"{fullTrainEpochs}-epochs")
 full_train_path = os.path.join(history_fullTrainEpochs_folder, f"Retraining_{fullTrainEpochs}.csv")

@@ -1,3 +1,4 @@
+import argparse
 import pandas as pd
 import os
 
@@ -27,16 +28,21 @@ or improved procedures. It provides a direct comparison in both absolute (minute
 """
 
 
-additionalSpeedUp:float = 0
+parser = argparse.ArgumentParser()
+parser.add_argument("--partialEpochs", type=int, default=30, help="Partial Training Epochs (Strategy 1)")
+parser.add_argument("--additionalSpeedUp", type=float, default=21.83 , help="Saved Time in the Partial Training from another optimization (Like Early Stoppage or Performance Stoppage)")
+
+args = parser.parse_args()
+
+additionalSpeedUp:float = args.additionalSpeedUp
 
 # File paths
 results = "results"
-epochNumber:str = "20"
 
-file_retrain = f"Retraining_{epochNumber}.csv"
+file_retrain = f"Retraining_{str(args.partialEpochs)}.csv"
 file_originalRun = f"Retraining_70.csv"
 
-folder_retrain:str = os.path.join(results,f"{epochNumber}-epochs")
+folder_retrain:str = os.path.join(results,f"{str(args.partialEpochs)}-epochs")
 folder_original:str = os.path.join(results,"70-epochs")
 
 retraining_csv = os.path.join(folder_retrain, file_retrain)
@@ -64,6 +70,7 @@ time_original = compute_training_time(df_original)
 
 # Print results
 print_training_time(time_retrain, "Retrained Models")
+print_training_time(time_retrain-additionalSpeedUp, "Retrained Models")
 print_training_time(time_original, "Original NAS Models")
 
 # Calculate improvement

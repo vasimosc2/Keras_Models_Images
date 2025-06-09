@@ -11,7 +11,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module="keras.src.backen
 
 # Command-line argument parsing
 parser = argparse.ArgumentParser(description="Run Evolutionary Search for TakuNet Models")
-parser.add_argument("--time", type=float, default=2.0, help="Total time to run the evolutionary search (in hours)")
+parser.add_argument("--time", type=float, default=12.0, help="Total time to run the evolutionary search (in hours)")
 parser.add_argument("--population_size", type=int, default=6, help="Number of models in each generation")
 
 parser.add_argument(

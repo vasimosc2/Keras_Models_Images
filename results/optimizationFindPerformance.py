@@ -66,8 +66,8 @@ python optimizationFindPerformance.py --partialEpochs 30 --max_error_allowed 20
 """
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--partialEpochs", type=int, default=70, help="Partial Training Epochs (Strategy 1)")
-parser.add_argument("--max_error_allowed", type=float, default=15.0, help="Maximun Allowed Error Rate in Comparissons (Strategy 1)")
+parser.add_argument("--partialEpochs", type=int, default=30, help="Partial Training Epochs (Strategy 1)")
+parser.add_argument("--max_error_allowed", type=float, default=18.0, help="Maximun Allowed Error Rate in Comparissons (Strategy 1)")
 
 args = parser.parse_args()
 
@@ -251,7 +251,7 @@ if candidate_list:
 
     print("\n✅ Best configuration under", max_error_rate, "% error rate:")
     print(f"🔁 Patience: {best_candidate['patience']}")
-    print(f"🪟 Alpha (Window Size %): {best_candidate['alpha']}")
+    print(f"🪟 Alpha (Window Size %): {best_candidate['alpha']} (Epoch Diminishing Return: {best_candidate['alpha'] * total_epochs})")
     print(f"📉 Epsilon (Min Relative Improvement): {best_candidate['epsilon']}")
     print(f"❗ Error Rate: {best_candidate['error_rate']:.2f}%")
     print(f"📉 RMSE: {best_candidate['rmse']:.2e}")

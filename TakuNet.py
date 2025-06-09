@@ -29,10 +29,10 @@ class TakuNetModel:
                 given_model:Optional[tf.keras.Model] = None,
                 enable_dropout: bool = True,
                 hardwareConstrains:Optional[bool] = True,
-                performaceStoppage:Optional[bool] = False,
-                early_stopping_acc:Optional[bool] = False,
+                performaceStoppage:Optional[bool] = True,
+                early_stopping_acc:Optional[bool] = True,
                 lr_schedule_strategy:Optional[str] = "cosine",
-                midway_callback:Optional[bool] = True
+                midway_callback:Optional[bool] = False
                 ):
         
         self.model_name:str = model_name
@@ -532,6 +532,37 @@ class TakuNetModel:
         return True
     
     
+
+
+    def _fitness(self) -> float:
+
+        MAX_RAM:int = (self.train_params["train_and_evaluate"]["evaluation_config"]["max_ram_consumption"] - self.train_params["train_and_evaluate"]["evaluation_config"]["additional_ram_consumption"])/1024
+        MAX_FLASH:int = (self.train_params["train_and_evaluate"]["evaluation_config"]["max_flash_consumption"] - self.train_params["train_and_evaluate"]["evaluation_config"]["additional_flash_consumption"])/1024
+
+        acc:int = self.results.test_accuracy or 0.0
+        ram:int = self.results.ModelRam or MAX_RAM
+        flash:int = self.results.estimatedFlash or MAX_FLASH
+
+        if(ram > MAX_RAM or flash > MAX_FLASH):
+            # For fair resoning (if the check_Training filter is deActivated)
+            # We want to see if the GA, will keep creating models that are untrainable
+            # So we penetalize models which are outside of the boundaries heavily
+            return -1000
+
+        # Normalized scores (higher is better)
+        norm_ram_score:float = float(max(0.0, 1.0 - ram / MAX_RAM))
+        norm_flash_score:float = float(max(0.0, 1.0 - flash / MAX_FLASH))
+
+        # Weight factors (adjust to preference)
+        w_acc = 0.7
+        w_ram = 0.2
+        w_flash = 0.1
+
+        return w_acc * acc + w_ram * norm_ram_score + w_flash * norm_flash_score
+
+
+
+
     def train(self,
               x_train:Optional[tf.Tensor]= None,
               y_train:Optional[tf.Tensor]= None,
@@ -620,12 +651,12 @@ class TakuNetModel:
         # Early_Stopping_acc +  performanceCallback = PerformanceOptimization
 
         early_stopping_acc = EarlyStopping(monitor='val_accuracy', 
-                                           patience=self.train_params["stop_patience"],
+                                           patience= 5,
                                            mode='max', 
                                            restore_best_weights=True)
         
-        performanceCallback = PerformanceStopping(patience = 0.2 * self.epochs,
-                                                  min_improvement = 0.05)
+        performanceCallback = PerformanceStopping(patience = 0.3 * self.epochs,
+                                                  min_improvement = 0.07)
 
         swa_callback = SWACallback(self.model, swa_start=10)
 
@@ -794,7 +825,8 @@ class TakuNetModel:
         self.results.recall = recall_score(y_true_classes, y_test_pred_classes, average='macro')
         self.results.f1_score = f1_score(y_true_classes, y_test_pred_classes, average='macro')
         self.results.training_time = training_time 
-
+        self.results.fitness_score = self._fitness()
+        
         # ** Declare that this model is trained.
         self.is_trained = True
         self._freeze_dropout_for_inference()

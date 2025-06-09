@@ -95,7 +95,6 @@ class EvolutionarySearch:
             x_test=self.x_test,
             y_test=self.y_test)
 
-            model.results.fitness_score = self._fitness(model=model)
             self.discoveredModels.append(model)
 
             
@@ -153,38 +152,12 @@ class EvolutionarySearch:
                 model_j = self.population[j]
 
                 pairs.append(( simple_architecture_embedding(model_i.model_params),  simple_architecture_embedding(model_j.model_params)))
-                better = 1 if self._fitness(model_i) >= self._fitness(model_j) else 0
+                better = 1 if model_i.results.fitness_score >= model_j.results.fitness_score else 0
                 labels.append(better)
 
         pairs = np.array(pairs)
         labels = np.array(labels)
         return pairs, labels
-
-    def _fitness(self, model: TakuNetModel) -> float:
-
-        MAX_RAM:int = (self.config["train_and_evaluate"]["evaluation_config"]["max_ram_consumption"] - self.config["train_and_evaluate"]["evaluation_config"]["additional_ram_consumption"])/1024
-        MAX_FLASH:int = (self.config["train_and_evaluate"]["evaluation_config"]["max_flash_consumption"] - self.config["train_and_evaluate"]["evaluation_config"]["additional_flash_consumption"])/1024
-
-        acc:int = model.results.test_accuracy or 0.0
-        ram:int = model.results.ModelRam or MAX_RAM
-        flash:int = model.results.estimatedFlash or MAX_FLASH
-
-        if(ram > MAX_RAM or flash > MAX_FLASH):
-            # For fair resoning (if the check_Training filter is deActivated)
-            # We want to see if the GA, will keep creating models that are untrainable
-            # So we penetalize models which are outside of the boundaries heavily
-            return -1000
-
-        # Normalized scores (higher is better)
-        norm_ram_score:float = float(max(0.0, 1.0 - ram / MAX_RAM))
-        norm_flash_score:float = float(max(0.0, 1.0 - flash / MAX_FLASH))
-
-        # Weight factors (adjust to preference)
-        w_acc = 0.7
-        w_ram = 0.2
-        w_flash = 0.1
-
-        return w_acc * acc + w_ram * norm_ram_score + w_flash * norm_flash_score
     
     def _select_parents(self) -> List[TakuNetModel]:
         """Selects parents using 1v1 tournament style; last 3 form a mini-tournament if population is odd."""
@@ -201,10 +174,10 @@ class EvolutionarySearch:
                 print(f"📌 Comparing {trio[0].model_name}, {trio[1].model_name}, and {trio[2].model_name} ....\n")
                 best: TakuNetModel = self._ranknet_best(models=trio)
 
-                print(f"The winner is {best.model_name} with fitness {self._fitness(model=best)} 🏆\n")
-                print(f"The Competitor 0 {trio[0].model_name} with fitness {self._fitness(model=trio[0]) if trio[0].is_trained else 'None'}\n")
-                print(f"The Competitor 1 {trio[1].model_name} with fitness {self._fitness(model=trio[1]) if trio[1].is_trained else 'None'}\n")
-                print(f"The Competitor 2 {trio[2].model_name} with fitness {self._fitness(model=trio[2]) if trio[2].is_trained else 'None'}\n")
+                print(f"The winner is {best.model_name} with fitness {best.results.fitness_score} 🏆\n")
+                print(f"The Competitor 0 {trio[0].model_name} with fitness { trio[0].results.fitness_score if trio[0].is_trained else 'None'}\n")
+                print(f"The Competitor 1 {trio[1].model_name} with fitness { trio[1].results.fitness_score if trio[1].is_trained else 'None'}\n")
+                print(f"The Competitor 2 {trio[2].model_name} with fitness { trio[2].results.fitness_score if trio[2].is_trained else 'None'}\n")
 
                 if best.is_trainable and not best.is_trained:
                     print(f"Therotically I am never here :) \n")
@@ -222,9 +195,9 @@ class EvolutionarySearch:
                 print(f"🥊 Comparing {duo[0].model_name} and {duo[1].model_name} ....\n")
                 best: TakuNetModel = self._ranknet_best(models=duo)
 
-                print(f"The winner is {best.model_name} with fitness {self._fitness(model=best)} 🏆\n")
-                print(f"The Competitor 0 {duo[0].model_name} with fitness {self._fitness(model=duo[0]) if duo[0].is_trained else 'None'}\n")
-                print(f"The Competitor 1 {duo[1].model_name} with fitness {self._fitness(model=duo[1]) if duo[1].is_trained else 'None'}\n")
+                print(f"The winner is {best.model_name} with fitness {best.results.fitness_score} 🏆\n")
+                print(f"The Competitor 0 {duo[0].model_name} with fitness {duo[0].results.fitness_score if duo[0].is_trained else 'None'}\n")
+                print(f"The Competitor 1 {duo[1].model_name} with fitness {duo[1].results.fitness_score if duo[1].is_trained else 'None'}\n")
 
                 if best.is_trainable and not best.is_trained:
                     print(f"Therotically I am never here :) \n")
@@ -337,7 +310,7 @@ class EvolutionarySearch:
 
         # ✅ Case 1: All are trained → pick by fitness
         if all(m.is_trained for m in models):
-            best_model = max(models, key=lambda m: self._fitness(m))
+            best_model:TakuNetModel = max(models, key=lambda m: m.results.fitness_score)
             print(f"💪 All Competitors were trained. Selected {best_model.model_name} by fitness.\n")
             return best_model
 
@@ -364,18 +337,15 @@ class EvolutionarySearch:
             predicted_winner.train(x_train=self.x_train, y_train=self.y_train,
                                 x_test=self.x_test, y_test=self.y_test)
             
-            predicted_winner.results.fitness_score = self._fitness(model=predicted_winner)
             self.discoveredModels.append(predicted_winner)
 
         # ✅ Compare with already-trained competitors
+        # Here we take the index and the model of that index of the losers
         for i, opponent in enumerate(models):
             if i != winner_index and opponent.is_trained:
-                f_winner = self._fitness(predicted_winner)
-                f_opponent = self._fitness(opponent)
-
-                if f_opponent > f_winner:
-                    print(f"❌ RankNet mistake: {opponent.model_name} (fitness={f_opponent:.4f}) "
-                        f"> {predicted_winner.model_name} (fitness={f_winner:.4f})")
+                if opponent.results.fitness_score > predicted_winner.results.fitness_score:
+                    print(f"❌ RankNet mistake: {opponent.model_name} (fitness={opponent.results.fitness_score:.4f}) "
+                        f"> {predicted_winner.model_name} (fitness={predicted_winner.results.fitness_score:.4f})")
                     return opponent
 
         return predicted_winner
