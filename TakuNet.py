@@ -536,8 +536,8 @@ class TakuNetModel:
 
     def _fitness(self) -> float:
 
-        MAX_RAM:int = (self.train_params["train_and_evaluate"]["evaluation_config"]["max_ram_consumption"] - self.train_params["train_and_evaluate"]["evaluation_config"]["additional_ram_consumption"])/1024
-        MAX_FLASH:int = (self.train_params["train_and_evaluate"]["evaluation_config"]["max_flash_consumption"] - self.train_params["train_and_evaluate"]["evaluation_config"]["additional_flash_consumption"])/1024
+        MAX_RAM:int = (self.train_params["max_ram_consumption"] - self.train_params["additional_ram_consumption"])/1024
+        MAX_FLASH:int = (self.train_params["max_flash_consumption"] - self.train_params["additional_flash_consumption"])/1024
 
         acc:int = self.results.test_accuracy or 0.0
         ram:int = self.results.ModelRam or MAX_RAM
