@@ -105,7 +105,7 @@ if __name__ == "__main__":
     parser.add_argument("--midway_callback", type=lambda x: x.lower() == "false", default=True, help="Enable/Disable the MidwayCallback during Retraining")
     parser.add_argument("--lr", type=str, default="cosine", help="The day a run was made")
     args = parser.parse_args()
-
+    print(args.midway_callback)
     main(folder = args.folder, 
          month = args.month, 
          day = args.day, 
