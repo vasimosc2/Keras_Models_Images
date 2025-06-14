@@ -7,7 +7,7 @@ from TakuNet import TakuNetModel, TrainingResults
 from compute_ram_show import compute_layer_ram_usage
 from data_processing import get_dataset
 from utils import memoryEstimator
-
+import time
 
 
 
@@ -38,8 +38,8 @@ def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:boo
     
     os.makedirs(f'{Folder}/results', exist_ok=True)
     
-
-
+    print(f"Test = {midway_callback}")
+    time.sleep(3)
 
     print("🧠 Creating new TakuNet model\n")
     taku_model = TakuNetModel(
