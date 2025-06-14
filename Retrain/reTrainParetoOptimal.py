@@ -1,6 +1,7 @@
 import argparse
 import glob
 import os
+import time
 from typing import Optional
 
 import pandas as pd
@@ -10,6 +11,9 @@ from TakuNet import TrainingResults
 
 
 def main(folder, month, day, epochs, dropout, train, learning_strategy, performanceStoppage:bool, early_stopping_acc:bool, midway_callback:bool):
+
+    print(f"Test = {midway_callback}")
+    time.sleep(3)
     config_path = os.path.join(folder, f"{month}-{day}", "saved_configs", "train_params")
     train_files = glob.glob(f"{config_path}/*_train_params.json")
     paretoFront = os.path.join(folder, f"{month}-{day}", "results", "Pareto_Optimal_Models.csv")
