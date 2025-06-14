@@ -31,8 +31,8 @@ class TakuNetModel:
                 hardwareConstrains:Optional[bool] = True,
                 performaceStoppage:Optional[bool] = True,
                 early_stopping_acc:Optional[bool] = True,
-                lr_schedule_strategy:Optional[str] = "cosine",
-                midway_callback:Optional[bool] = False
+                midway_callback:Optional[bool] = False,
+                lr_schedule_strategy:Optional[str] = "cosine"
                 ):
         
         self.model_name:str = model_name

@@ -62,8 +62,8 @@ python thresholdStop.py --strategy 2 --partialEpochs 30 --cutoff_fraction 0.25 -
 parser = argparse.ArgumentParser()
 parser.add_argument("--strategy", type=int, default=1, choices=[1, 2], help="Strategy: 1=Grid Search, 2=Fixed Evaluation")
 
-parser.add_argument("--partialEpochs", type=int, default=30, help="Partial Training Epochs (Strategy 1)")
-parser.add_argument("--max_error_allowed", type=float, default=18.0, help="Maximun Allowed Error Rate in Comparissons (Strategy 1)")
+parser.add_argument("--partialEpochs", type=int, default=70, help="Partial Training Epochs (Strategy 1)")
+parser.add_argument("--max_error_allowed", type=float, default=20.0, help="Maximun Allowed Error Rate in Comparissons (Strategy 1)")
 
 parser.add_argument("--cutoff", type=int, default=10, help="Fraction of total epochs to use as cutoff (Strategy 2)")
 parser.add_argument("--threshold", type=float, default=0.35,help="Accuracy threshold at cutoff (Strategy 2)")

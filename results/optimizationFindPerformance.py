@@ -66,8 +66,8 @@ python optimizationFindPerformance.py --partialEpochs 30 --max_error_allowed 20
 """
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--partialEpochs", type=int, default=30, help="Partial Training Epochs (Strategy 1)")
-parser.add_argument("--max_error_allowed", type=float, default=18.0, help="Maximun Allowed Error Rate in Comparissons (Strategy 1)")
+parser.add_argument("--partialEpochs", type=int, default=70, help="Partial Training Epochs (Strategy 1)")
+parser.add_argument("--max_error_allowed", type=float, default=25.0, help="Maximun Allowed Error Rate in Comparissons (Strategy 1)")
 
 args = parser.parse_args()
 
