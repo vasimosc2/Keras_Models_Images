@@ -28,9 +28,9 @@ class TakuNetModel:
                 epochs:Optional[int] = None,
                 given_model:Optional[tf.keras.Model] = None,
                 enable_dropout: bool = True,
-                hardwareConstrains:Optional[bool] = True,
-                performaceStoppage:Optional[bool] = True,
-                early_stopping_acc:Optional[bool] = True,
+                hardwareConstrains:Optional[bool] = False,
+                performaceStoppage:Optional[bool] = False,
+                early_stopping_acc:Optional[bool] = False,
                 midway_callback:Optional[bool] = False,
                 lr_schedule_strategy:Optional[str] = "cosine"
                 ):

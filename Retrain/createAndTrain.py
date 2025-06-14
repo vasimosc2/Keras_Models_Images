@@ -21,7 +21,8 @@ def load_config(model_name: str, folder:str):
     return model_params, train_params
 
 
-def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:bool, folder:str, month:str, day:str, performaceStoppage:bool, early_stopping_acc:bool, midway_callback:bool, learning_rate_strategy:str = "cosine") -> Tuple[Optional[TrainingResults], Optional[str]] :
+def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:bool, folder:str, month:str, day:str, performaceStoppage:bool = False, early_stopping_acc:bool = False, midway_callback:bool = False, learning_rate_strategy:str = "cosine") -> Tuple[Optional[TrainingResults], Optional[str]] :
+    
     date = f"{month}-{day}"
     
     Folder = os.path.join(folder, date)
