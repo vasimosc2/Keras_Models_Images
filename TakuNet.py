@@ -715,6 +715,7 @@ class TakuNetModel:
             If at a specific epoch, the model has not reach a threshold of accuracy we stop its training
 
             """
+            print("I am here for some reason !!!!")
             callbacks.append(midway_callback)
         else:
             print("Training happens without Midway Callback\n")
