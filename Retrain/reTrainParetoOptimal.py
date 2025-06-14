@@ -12,8 +12,6 @@ from TakuNet import TrainingResults
 
 def main(folder, month, day, epochs, dropout, train, learning_strategy, performanceStoppage:bool, early_stopping_acc:bool, midway_callback:bool):
 
-    print(f"Test = {midway_callback}")
-    time.sleep(3)
     config_path = os.path.join(folder, f"{month}-{day}", "saved_configs", "train_params")
     train_files = glob.glob(f"{config_path}/*_train_params.json")
     paretoFront = os.path.join(folder, f"{month}-{day}", "results", "Pareto_Optimal_Models.csv")
@@ -100,12 +98,12 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=70, help="Number of epochs to run")
     parser.add_argument("--dropout", type=lambda x: x.lower() == "true", default=True, help="Enable dropout (True/False)")
     parser.add_argument("--train", type=lambda x: x.lower() == "true", default=True, help="Enable training (True/False)")
-    parser.add_argument("--performaceStoppage", type=lambda x: x.lower() == "false", default=True, help="Enable/Disable the PerformanceStoppage during Retraining")
-    parser.add_argument("--early_stopping_acc", type=lambda x: x.lower() == "false", default=True, help="Enable/Disable the EarlyStoppingAcc during Retraining")
-    parser.add_argument("--midway_callback", type=lambda x: x.lower() == "false", default=True, help="Enable/Disable the MidwayCallback during Retraining")
+    parser.add_argument("--performaceStoppage", type=lambda x: x.lower() == "false", default=False, help="Enable/Disable the PerformanceStoppage during Retraining")
+    parser.add_argument("--early_stopping_acc", type=lambda x: x.lower() == "false", default=False, help="Enable/Disable the EarlyStoppingAcc during Retraining")
+    parser.add_argument("--midway_callback", type=lambda x: x.lower() == "false", default=False, help="Enable/Disable the MidwayCallback during Retraining")
     parser.add_argument("--lr", type=str, default="cosine", help="The day a run was made")
     args = parser.parse_args()
-    print(args.midway_callback)
+
     main(folder = args.folder, 
          month = args.month, 
          day = args.day, 

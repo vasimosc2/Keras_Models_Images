@@ -38,8 +38,6 @@ def train_from_saved_config(model_name: str, epochs:int, dropout:bool, train:boo
     
     os.makedirs(f'{Folder}/results', exist_ok=True)
     
-    print(f"Test = {midway_callback}")
-    time.sleep(3)
 
     print("🧠 Creating new TakuNet model\n")
     taku_model = TakuNetModel(
