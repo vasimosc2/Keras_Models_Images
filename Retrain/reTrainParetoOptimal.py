@@ -108,7 +108,7 @@ if __name__ == "__main__":
          epochs = args.epochs, 
          dropout = args.dropout, 
          train = args.train, 
-         performaceStoppage = args.performaceStoppage, 
+         performanceStoppage = args.performaceStoppage, 
          early_stopping_acc = args.early_stopping_acc,
          midway_callback = args.midway_callback,
          learning_strategy = args.lr )
