@@ -697,6 +697,9 @@ class TakuNetModel:
             If for some specific epochs we do not see a big validation accuracy increase we stop the training
 
             """
+
+            print("Training With Performance CallBack\n")
+            time.sleep(3)
             callbacks.append(performanceCallback)
         else:
             print("Training happens without Performance Callback\n")
@@ -706,6 +709,8 @@ class TakuNetModel:
             If for fewer epochs we do not see absolutly any accuracy improvement we stop our training
 
             """
+            print("Training With Early Stopping Accuracy Callback\n")
+            time.sleep(3)
             callbacks.append(early_stopping_acc)
         else:
             print("Training happens without Early Stopping Acc\n")
@@ -715,7 +720,6 @@ class TakuNetModel:
             If at a specific epoch, the model has not reach a threshold of accuracy we stop its training
 
             """
-            print("I am here for some reason !!!!")
             callbacks.append(midway_callback)
         else:
             print("Training happens without Midway Callback\n")

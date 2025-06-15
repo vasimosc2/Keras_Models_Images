@@ -24,6 +24,9 @@ class EvolutionarySearch:
                  crossover_rate: float, 
                  augmentation_techinque: Union[Dict, bool],
                  folder:Optional[str] = None,
+                 performaceStoppage:Optional[bool] = False,
+                 early_stopping_acc:Optional[bool] = False,
+                 midway_callback:Optional[bool] = False,
                  strategy:Optional[str] = None):
 
         with open(config_path, "r") as file:
@@ -42,6 +45,9 @@ class EvolutionarySearch:
         self.y_test = None
         self.augmentaion = augmentation_techinque
         self.folderName:str = folder if folder is not None else "NAS"
+        self.performaceStoppage:bool = performaceStoppage
+        self.early_stopping_acc:bool = early_stopping_acc
+        self.midway_callback:bool = midway_callback
         self.strategy:str = strategy if strategy is not None else "cosine"
     
     def _load_data(self,augmentation_technique: Union[Dict, bool]):
@@ -69,6 +75,9 @@ class EvolutionarySearch:
                                  model_params=model_params, 
                                  train_params=train_params, 
                                  folder=self.folderName,
+                                 performaceStoppage=self.performaceStoppage,
+                                 early_stopping_acc=self.early_stopping_acc,
+                                 midway_callback=self.midway_callback,
                                  lr_schedule_strategy=self.strategy)
             
             if model.is_trainable:
@@ -284,6 +293,9 @@ class EvolutionarySearch:
                                 x_test=None, 
                                 y_test=None,
                                 folder=self.folderName,
+                                performaceStoppage=self.performaceStoppage,
+                                early_stopping_acc=self.early_stopping_acc,
+                                midway_callback=self.midway_callback,
                                 lr_schedule_strategy=self.strategy)
             
             if child.is_trainable:
@@ -398,6 +410,9 @@ class EvolutionarySearch:
                                               x_test=None,
                                               y_test=None,
                                               folder=self.folderName,
+                                              performaceStoppage=self.performaceStoppage,
+                                              early_stopping_acc=self.early_stopping_acc,
+                                              midway_callback=self.midway_callback,
                                               lr_schedule_strategy=self.strategy)
                         if mutant.is_trainable:
                             child:TakuNetModel = mutant
