@@ -43,9 +43,9 @@ def plot_optimal_models(csv1_path, csv2_path=None):
 
     # Custom legend with clear shape indications
     custom_legend = [
-        Line2D([0], [0], marker='o', color='w', label='Model Set 1 (● Circle)',
+        Line2D([0], [0], marker='o', color='w', label='30-epochs Run (● Circle)',
                markerfacecolor='tab:blue', markersize=10, markeredgecolor='black'),
-        Line2D([0], [0], marker='s', color='w', label='Model Set 2 (■ Square)',
+        Line2D([0], [0], marker='s', color='w', label='20-epochs Run (■ Square)',
                markerfacecolor='tab:green', markersize=10, markeredgecolor='black'),
     ]
     plt.legend(handles=custom_legend, loc='center left', bbox_to_anchor=(1, 0.5), fontsize=10)
