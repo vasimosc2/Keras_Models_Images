@@ -28,7 +28,7 @@ def plot_optimal_models(csv1_path, csv2_path=None):
         plt.scatter(
             df['Model RAM (KB)'],
             df['Best Test Accuracy'],
-            s=df['TFlite size(KB)'],
+            s=df['TFlite size(KB)'] * 5,
             alpha=0.7,
             label=labels[i],
             color=colors[i],

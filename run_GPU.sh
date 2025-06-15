@@ -15,4 +15,4 @@ python3 TrainBestModels.py # This was able to re-train and existing Model
 python -m Retrain.createAndTrain --name TakuNet_Init_0 --epochs 70 --dropout True --train True --folder NAS --month May --day 27 --lr linear
 python -m Retrain.reTrainAllModels  --folder NAS --month May --day 27 --epochs 10 --dropout True --train True --lr linear
 python -m Retrain.reTrainParetoOptimal --folder NAS --month Jun --day 08
-python3 plotting/plotParetoCurve --month Jun --day 08
+python3 plotting/plotParetoCurve.py --month2 Jun --day2 08
