@@ -14,4 +14,4 @@ python3 evolutionary_run.py --time 2.0 --population_size 6 --lr_strategy linear 
 python3 TrainBestModels.py # This was able to re-train and existing Model
 python -m Retrain.createAndTrain --name TakuNet_Init_0 --epochs 70 --dropout True --train True --folder NAS --month May --day 27 --lr linear
 python -m Retrain.reTrainAllModels  --folder NAS --month May --day 27 --epochs 10 --dropout True --train True --lr linear
-python -m Retrain.reTrainParetoOptimal
+python -m Retrain.reTrainParetoOptimal --folder NAS --month Jun --day 08
