@@ -40,15 +40,15 @@ def plot_optimal_models(csv1_path, csv2_path=None):
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-
+    
     # Save the plot
-    plt.savefig("pareto_plot.png")
+    plt.savefig(os.path.join("plotting","pareto_plot.png"))
     print(f"Plot saved to  pareto_plot.png")
     plt.close()
 
 def findParetoOptimalCsv(month,day,learning_rate_strategy):
     date = f"{month}-{day}"
-    Folder = os.path.join("NAS", date , "Retrain", learning_rate_strategy, "ParetoOptimals", "results", "ParetoOptimalFullTrain.csv" )
+    Folder = os.path.join("NAS", date , "Retraining", learning_rate_strategy, "ParetoOptimals", "results", "ParetoOptimalFullTrain.csv" )
     return Folder
 
 if __name__ == "__main__":
