@@ -20,13 +20,13 @@ def plot_optimal_models(csv1_path, csv2_path=None):
     for i, df in enumerate(dfs):
         df = df.rename(columns=lambda x: x.strip())
         assert 'TFlite Test Accuracy' in df.columns
-        assert 'RAM (KB)' in df.columns
-        assert 'Flash (KB)' in df.columns
+        assert 'Model RAM (KB)' in df.columns
+        assert 'TFlite size(KB)' in df.columns
 
         plt.scatter(
-            df['RAM (KB)'],
+            df['Model RAM (KB)'],
             df['TFlite Test Accuracy'],
-            s=df['Flash (KB)'],
+            s=df['TFlite size(KB)'],
             alpha=0.7,
             label=labels[i],
             color=colors[i],
@@ -36,7 +36,7 @@ def plot_optimal_models(csv1_path, csv2_path=None):
 
     plt.xlabel('RAM Consumption (KB)')
     plt.ylabel('TFLite Accuracy')
-    plt.title('Optimal Models Comparison')
+    plt.title('Optimal Models')
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
