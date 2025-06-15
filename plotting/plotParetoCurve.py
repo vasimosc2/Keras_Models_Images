@@ -2,17 +2,18 @@ import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+from matplotlib.lines import Line2D 
 
 def plot_optimal_models(csv1_path, csv2_path=None):
     dfs = [pd.read_csv(csv1_path)]
-    labels = ['Model Set 1']
+    labels = ['30-epochs Run (● Circle)']
     colors = ['tab:blue']
     markers = ['o']
 
     name = "pareto_plot_single.png"
     if csv2_path:
         dfs.append(pd.read_csv(csv2_path))
-        labels.append('Model Set 2')
+        labels.append('20-epochs Run (■ Square)')
         colors.append('tab:green')
         markers.append('s')
         name = "pareto_plot_comparison.png"
@@ -28,7 +29,7 @@ def plot_optimal_models(csv1_path, csv2_path=None):
         plt.scatter(
             df['Model RAM (KB)'],
             df['Best Test Accuracy'],
-            s=df['TFlite size(KB)'] * 1.5,  # Smaller, better looking circles
+            s=df['TFlite size(KB)'] * 1.5,
             alpha=0.7,
             label=labels[i],
             color=colors[i],
@@ -40,7 +41,15 @@ def plot_optimal_models(csv1_path, csv2_path=None):
     plt.ylabel('TFLite Accuracy', fontsize=12)
     plt.title('Optimal Models', fontsize=14)
 
-    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), fontsize=10)
+    # Custom legend with clear shape indications
+    custom_legend = [
+        Line2D([0], [0], marker='o', color='w', label='Model Set 1 (● Circle)',
+               markerfacecolor='tab:blue', markersize=10, markeredgecolor='black'),
+        Line2D([0], [0], marker='s', color='w', label='Model Set 2 (■ Square)',
+               markerfacecolor='tab:green', markersize=10, markeredgecolor='black'),
+    ]
+    plt.legend(handles=custom_legend, loc='center left', bbox_to_anchor=(1, 0.5), fontsize=10)
+
     plt.grid(True)
     plt.gca().invert_xaxis()
     plt.tight_layout(rect=[0, 0, 0.85, 1])  # Leave space for legend
@@ -55,6 +64,10 @@ def findParetoOptimalCsv(month, day, learning_rate_strategy):
     return os.path.join("NAS", date, "Retraining", learning_rate_strategy, "ParetoOptimals", "results", "ParetoOptimalFullTrain.csv")
 
 if __name__ == "__main__":
+    """
+    Jun-09: Run for the 30 epochs
+    Jun-08: Run for the 20 epochs
+    """
     parser = argparse.ArgumentParser(description="Plot Pareto Optimal Models")
     parser.add_argument("--month1", type=str, default="Jun")
     parser.add_argument("--day1", type=str, default="09")
