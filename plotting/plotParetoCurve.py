@@ -9,11 +9,13 @@ def plot_optimal_models(csv1_path, csv2_path=None):
     colors = ['tab:blue']
     markers = ['o']
 
+    name = "pareto_plot_single.png"
     if csv2_path:
         dfs.append(pd.read_csv(csv2_path))
         labels.append('Model Set 2')
         colors.append('tab:green')
         markers.append('s')
+        name = "pareto_plot_comparison.png"
 
     plt.figure(figsize=(8, 6))
 
@@ -44,8 +46,8 @@ def plot_optimal_models(csv1_path, csv2_path=None):
     plt.tight_layout(rect=[0, 0, 0.85, 1])  # Leave space for legend
     
     # Save the plot
-    plt.savefig(os.path.join("plotting","pareto_plot.png"))
-    print(f"Plot saved to  pareto_plot.png")
+    plt.savefig(os.path.join("plotting",name))
+    print(f" Plot saved to  {name} ")
     plt.close()
 
 def findParetoOptimalCsv(month,day,learning_rate_strategy):
@@ -61,7 +63,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--month2", type=str, default=None, help="Folder of first run (CSV must be in there)")
     parser.add_argument("--day2", type=str, default=None, help="Folder of second run (optional)")
-    parser.add_argument("--learning_rate_strategy2", type=str, default=None, help="Folder of second run (optional)")
+    parser.add_argument("--learning_rate_strategy2", type=str, default='cosine', help="Folder of second run (optional)")
 
     args = parser.parse_args()
 
