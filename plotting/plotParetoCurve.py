@@ -19,13 +19,13 @@ def plot_optimal_models(csv1_path, csv2_path=None):
 
     for i, df in enumerate(dfs):
         df = df.rename(columns=lambda x: x.strip())
-        assert 'TFlite Test Accuracy' in df.columns
+        assert 'Best Test Accuracy' in df.columns
         assert 'Model RAM (KB)' in df.columns
         assert 'TFlite size(KB)' in df.columns
 
         plt.scatter(
             df['Model RAM (KB)'],
-            df['TFlite Test Accuracy'],
+            df['Best Test Accuracy'],
             s=df['TFlite size(KB)'],
             alpha=0.7,
             label=labels[i],
@@ -37,9 +37,11 @@ def plot_optimal_models(csv1_path, csv2_path=None):
     plt.xlabel('RAM Consumption (KB)')
     plt.ylabel('TFLite Accuracy')
     plt.title('Optimal Models')
-    plt.legend()
+
+    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     plt.grid(True)
-    plt.tight_layout()
+    plt.gca().invert_xaxis()
+    plt.tight_layout(rect=[0, 0, 0.85, 1])  # Leave space for legend
     
     # Save the plot
     plt.savefig(os.path.join("plotting","pareto_plot.png"))
