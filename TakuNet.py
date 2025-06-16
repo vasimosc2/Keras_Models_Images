@@ -695,40 +695,38 @@ class TakuNetModel:
         if self.performaceStoppage:
             """
             If for some specific epochs we do not see a big validation accuracy increase we stop the training
-
             """
-
-            print("Training With Performance CallBack\n")
+            print("🔁 Training with **Performance Callback** enabled.")
             time.sleep(3)
             callbacks.append(performanceCallback)
         else:
-            print("Training happens without Performance Callback\n")
+            print("⚙️  Training without Performance Callback.")
 
         if self.early_stopping_acc:
             """
-            If for fewer epochs we do not see absolutly any accuracy improvement we stop our training
-
+            If for fewer epochs we do not see absolutely any accuracy improvement, we stop the training
             """
-            print("Training With Early Stopping Accuracy Callback\n")
+            print("🛑 Training with **Early Stopping Accuracy Callback** enabled.")
             time.sleep(3)
             callbacks.append(early_stopping_acc)
         else:
-            print("Training happens without Early Stopping Acc\n")
+            print("⚙️  Training without Early Stopping Accuracy Callback.")
 
         if self.midway_callback:
             """
-            If at a specific epoch, the model has not reach a threshold of accuracy we stop its training
-
+            If at a specific epoch, the model has not reached a threshold of accuracy, we stop its training
             """
+            print("⏱️ Training with **Midway Accuracy Callback** enabled.")
+            time.sleep(3)
             callbacks.append(midway_callback)
         else:
-            print("Training happens without Midway Callback\n")
+            print("⚙️  Training without Midway Accuracy Callback.")
 
         if self.enable_dropout:
-            print("✅ The TakuNet model is trained with Dropout\n")
+            print("🎯 Training with **Adaptive Dropout** enabled.")
             callbacks.append(adjust_dropout)
         else:
-            print("Training happens without Dropout\n")
+            print("⚙️  Training without Adaptive Dropout.")
 
         history = self.model.fit(
             x_train, y_train,
