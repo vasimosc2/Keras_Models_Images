@@ -24,6 +24,7 @@ class EvolutionarySearch:
                  crossover_rate: float, 
                  augmentation_techinque: Union[Dict, bool],
                  folder:Optional[str] = None,
+                 hardwareConstrains:Optional[bool] = False,
                  performaceStoppage:Optional[bool] = False,
                  early_stopping_acc:Optional[bool] = False,
                  midway_callback:Optional[bool] = False,
@@ -45,6 +46,7 @@ class EvolutionarySearch:
         self.y_test = None
         self.augmentaion = augmentation_techinque
         self.folderName:str = folder if folder is not None else "NAS"
+        self.hardwareConstrains:bool = hardwareConstrains
         self.performaceStoppage:bool = performaceStoppage
         self.early_stopping_acc:bool = early_stopping_acc
         self.midway_callback:bool = midway_callback
@@ -75,6 +77,7 @@ class EvolutionarySearch:
                                  model_params=model_params, 
                                  train_params=train_params, 
                                  folder=self.folderName,
+                                 hardwareConstrains=self.hardwareConstrains,
                                  performaceStoppage=self.performaceStoppage,
                                  early_stopping_acc=self.early_stopping_acc,
                                  midway_callback=self.midway_callback,
@@ -293,6 +296,7 @@ class EvolutionarySearch:
                                 x_test=None, 
                                 y_test=None,
                                 folder=self.folderName,
+                                hardwareConstrains=self.hardwareConstrains,
                                 performaceStoppage=self.performaceStoppage,
                                 early_stopping_acc=self.early_stopping_acc,
                                 midway_callback=self.midway_callback,
@@ -410,6 +414,7 @@ class EvolutionarySearch:
                                               x_test=None,
                                               y_test=None,
                                               folder=self.folderName,
+                                              hardwareConstrains=self.hardwareConstrains,
                                               performaceStoppage=self.performaceStoppage,
                                               early_stopping_acc=self.early_stopping_acc,
                                               midway_callback=self.midway_callback,

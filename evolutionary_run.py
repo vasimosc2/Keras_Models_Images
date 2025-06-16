@@ -5,7 +5,12 @@ import pandas as pd
 import tensorflow as tf
 from tensorflow.keras import backend as K # type: ignore
 import warnings
+
+from utils import str2bool
 warnings.filterwarnings("ignore", category=UserWarning, module="keras.src.backend.tensorflow.trainer")
+
+
+
 
 
 
@@ -13,9 +18,11 @@ warnings.filterwarnings("ignore", category=UserWarning, module="keras.src.backen
 parser = argparse.ArgumentParser(description="Run Evolutionary Search for TakuNet Models")
 parser.add_argument("--time", type=float, default=12.0, help="Total time to run the evolutionary search (in hours)")
 parser.add_argument("--population_size", type=int, default=6, help="Number of models in each generation")
-parser.add_argument("--performaceStoppage", type=bool, default=True, help="Enable/Disable the PerformanceStoppage during Retraining")
-parser.add_argument("--early_stopping_acc", type=bool, default=True, help="Enable/Disable the EarlyStoppingAcc during Retraining")
-parser.add_argument("--midway_callback", type=bool, default=False, help="Enable/Disable the MidwayCallback during Retraining")
+parser.add_argument("--hardwareConstrains", type=str2bool, default=False, help="Enable/Disable the PerformanceStoppage during Retraining")
+parser.add_argument("--performaceStoppage", type=str2bool, default=False, help="Enable/Disable the PerformanceStoppage during Retraining")
+parser.add_argument("--early_stopping_acc", type=str2bool, default=False, help="Enable/Disable the EarlyStoppingAcc during Retraining")
+parser.add_argument("--midway_callback", type=str2bool, default=False, help="Enable/Disable the MidwayCallback during Retraining")
+
 parser.add_argument(
     "--lr_strategy",
     type=str,

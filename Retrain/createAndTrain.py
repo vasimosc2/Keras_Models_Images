@@ -6,7 +6,7 @@ import pandas as pd
 from TakuNet import TakuNetModel, TrainingResults
 from compute_ram_show import compute_layer_ram_usage
 from data_processing import get_dataset
-from utils import memoryEstimator
+from utils import memoryEstimator, str2bool
 import time
 
 
@@ -102,9 +102,9 @@ if __name__ == "__main__":
     parser.add_argument("--folder", type=str, default="NAS", help="The Run folder")
     parser.add_argument("--month", type=str, default="May", help="The Month a run was made")
     parser.add_argument("--day", type=str, default="24", help="The day a run was made")
-    parser.add_argument("--performaceStoppage", type=lambda x: x.lower() == "false", default=True, help="Enable/Disable the PerformanceStoppage during Retraining")
-    parser.add_argument("--early_stopping_acc", type=lambda x: x.lower() == "false", default=True, help="Enable/Disable the EarlyStoppingAcc during Retraining")
-    parser.add_argument("--midway_callback", type=lambda x: x.lower() == "false", default=True, help="Enable/Disable the MidwayCallback during Retraining")
+    parser.add_argument("--performaceStoppage", type=str2bool, default=False, help="Enable/Disable the PerformanceStoppage during Retraining")
+    parser.add_argument("--early_stopping_acc", type=str2bool, default=False, help="Enable/Disable the EarlyStoppingAcc during Retraining")
+    parser.add_argument("--midway_callback", type=str2bool, default=False, help="Enable/Disable the MidwayCallback during Retraining")
     parser.add_argument("--lr", type=str, default="linear", help="The day a run was made")
     args = parser.parse_args()
 

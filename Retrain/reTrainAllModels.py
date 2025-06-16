@@ -5,6 +5,8 @@ from typing import Optional
 import pandas as pd
 import tensorflow as tf
 
+from utils import str2bool
+
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -96,9 +98,9 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=50, help="Number of epochs to run")
     parser.add_argument("--dropout", type=lambda x: x.lower() == "true", default=True, help="Enable dropout (True/False)")
     parser.add_argument("--train", type=lambda x: x.lower() == "true", default=True, help="Enable training (True/False)")
-    parser.add_argument("--performaceStoppage", type=lambda x: x.lower() == "false", default=True, help="Enable/Disable the PerformanceStoppage during Retraining")
-    parser.add_argument("--early_stopping_acc", type=lambda x: x.lower() == "false", default=True, help="Enable/Disable the EarlyStoppingAcc during Retraining")
-    parser.add_argument("--midway_callback", type=lambda x: x.lower() == "false", default=True, help="Enable/Disable the MidwayCallback during Retraining")
+    parser.add_argument("--performaceStoppage", type=str2bool, default=False, help="Enable/Disable the PerformanceStoppage during Retraining")
+    parser.add_argument("--early_stopping_acc", type=str2bool, default=False, help="Enable/Disable the EarlyStoppingAcc during Retraining")
+    parser.add_argument("--midway_callback", type=str2bool, default=False, help="Enable/Disable the MidwayCallback during Retraining")
     parser.add_argument("--lr", type=str, default="cosine", help="The day a run was made")
     args = parser.parse_args()
 
