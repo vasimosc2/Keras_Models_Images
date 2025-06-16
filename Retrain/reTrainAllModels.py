@@ -5,7 +5,7 @@ from typing import Optional
 import pandas as pd
 import tensorflow as tf
 
-from utils import str2bool
+from utils.str2bool import str2bool
 
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 

@@ -8,7 +8,7 @@ import pandas as pd
 
 from Retrain.createAndTrain import train_from_saved_config
 from TakuNet import TrainingResults
-from utils import str2bool
+from utils.str2bool import str2bool
 
 
 def main(folder, month, day, epochs, dropout, train, learning_strategy, performanceStoppage:bool, early_stopping_acc:bool, midway_callback:bool):

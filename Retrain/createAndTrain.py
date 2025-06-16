@@ -6,9 +6,9 @@ import pandas as pd
 from TakuNet import TakuNetModel, TrainingResults
 from compute_ram_show import compute_layer_ram_usage
 from data_processing import get_dataset
-from utils import memoryEstimator, str2bool
+from utils import memoryEstimator
 import time
-
+from utils.str2bool import str2bool
 
 
 def load_config(model_name: str, folder:str):

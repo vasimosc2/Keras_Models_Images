@@ -6,7 +6,7 @@ import tensorflow as tf
 from tensorflow.keras import backend as K # type: ignore
 import warnings
 
-from utils import str2bool
+from utils.str2bool import str2bool
 warnings.filterwarnings("ignore", category=UserWarning, module="keras.src.backend.tensorflow.trainer")
 
 
