@@ -504,6 +504,7 @@ class TakuNetModel:
 
     
     def check_trainability(self) -> bool:
+        print("⚙️ Checking Memory Contrains of the Model")
         """Check if the model fits within the memory constraints."""
         if self.train_params is None:
             print("⚠️ Cannot check trainability: `train_params` is None.")
