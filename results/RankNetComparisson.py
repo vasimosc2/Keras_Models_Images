@@ -60,7 +60,7 @@ MAX_FLASH = 754.921875
 def fitness(acc, ram, flash):
     norm_ram = max(0.0, 1.0 - ram / MAX_RAM)
     norm_flash = max(0.0, 1.0 - flash / MAX_FLASH)
-    return 0.7 * acc + 0.2 * norm_ram + 0.1 * norm_flash
+    return 7 * acc + 2 * norm_ram + 1 * norm_flash
 
 def mse_error(true1, true2):
     return (true1 - true2) ** 2
