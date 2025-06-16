@@ -1,7 +1,7 @@
 #!/bin/bash
 sxm2sh
 nvidia-smi # To see which GPUs are idle
-export CUDA_VISIBLE_DEVICES=2
+export CUDA_VISIBLE_DEVICES=1
 module load cuda/12.8
 nvcc --version
 export TF_CPP_MIN_LOG_LEVEL=3
