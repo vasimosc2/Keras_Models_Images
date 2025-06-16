@@ -504,7 +504,7 @@ class TakuNetModel:
 
     
     def check_trainability(self) -> bool:
-        print("⚙️ Checking Memory Contrains of the Model")
+        print(f"⚠️ Checking model {self.model_name}.....\n")
         """Check if the model fits within the memory constraints."""
         if self.train_params is None:
             print("⚠️ Cannot check trainability: `train_params` is None.")
@@ -513,7 +513,7 @@ class TakuNetModel:
         (self.results.estimatedFlash,
         self.results.ModelRam)= memoryEstimator.memoryEstimation(model = self.model, data_dtype_multiplier = self.train_params["data_dtype_multiplier"])
 
-        print(f"⚠️ Checking model {self.model_name}.....\n")
+        
         print(f"Max RAM Usage: {self.results.ModelRam:.2f} KB\n")
         print(f"Parameter Memory: {self.results.estimatedFlash:.2f} KB\n")
 

@@ -72,9 +72,6 @@ class EvolutionarySearch:
             model_params = getSearchSpaceParameters.sample_from_search_space(self.config["model_search_space"])
             train_params = getTrainingParameters.sample_from_train_and_evaluate(self.config["train_and_evaluate"])
             
-
-            print(f"The hardWare Constrais are {self.hardwareConstrains}")
-            time.sleep(10)
             model = TakuNetModel(model_name=f"TakuNet_Init_{created}", 
                                  input_shape=(32, 32, 3), 
                                  model_params=model_params, 
