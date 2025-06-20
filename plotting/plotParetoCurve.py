@@ -38,7 +38,7 @@ def plot_optimal_models(csv1_path, csv2_path=None):
         )
 
     plt.xlabel('RAM Consumption (KB)', fontsize=12)
-    plt.ylabel('TFLite Accuracy', fontsize=12)
+    plt.ylabel('Val. Accuracy', fontsize=12)
     plt.title('Optimal Models', fontsize=14)
 
     # Custom legend with clear shape indications

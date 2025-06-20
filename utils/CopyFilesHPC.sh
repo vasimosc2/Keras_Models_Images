@@ -10,7 +10,7 @@ scp s222566@login.hpc.dtu.dk:/zhome/02/e/181021/Desktop/Keras_Models_Images/Manu
 scp s222566@login.hpc.dtu.dk:/zhome/02/e/181021/Desktop/Keras_Models_Images/Manual_Run/Retraining/HeaderFiles/TakuNet_Random_0.h /mnt/c/Users/mosho/OneDrive/Arduino/First_Attempt/
 
 scp s222566@login.hpc.dtu.dk:/zhome/02/e/181021/Desktop/Keras_Models_Images/NAS/May-27/results/Best_Models_Results_NAS.csv /mnt/c/Users/mosho/OneDrive/Υπολογιστής/Keras_Models-Images/results/
-
+scp s222566@login.hpc.dtu.dk:/zhome/02/e/181021/Desktop/Keras_Models_Images/NAS/Jun-08/results/Best_Models_Results_NAS.csv /mnt/c/Users/mosho/OneDrive/Υπολογιστής/Keras_Models-Images/test/
 #Copy folder from HPC
 
 scp s222566@login.hpc.dtu.dk:/zhome/02/e/181021/Desktop/Keras_Models_Images/NAS/May-27/results/History/* /mnt/c/Users/mosho/OneDrive/Υπολογιστής/Keras_Models-Images/results/
