@@ -835,6 +835,8 @@ class TakuNetModel:
         self.is_trained = True
         self._freeze_dropout_for_inference()
         # **Save Model in Multiple Formats**
+
+        tfilte_time_start = time.time()
         self._convert_to_tflite(x_train=x_train)
         self._convert_tflite_to_c_array()
         self.results.flops = self._count_flops()
@@ -846,7 +848,8 @@ class TakuNetModel:
         except Exception as e:
             print(f"❌ TFLite evaluation failed: {e}")
             self.results.tflite_accuracy = 0.0
-
+            
+        self.results.tfliteConversionTime = time.time() - tfilte_time_start
         print(f"Test Accuracy (TFLite): {self.results.tflite_accuracy:.4f}")
 
         # **File Size Reporting**
@@ -1152,6 +1155,7 @@ class TrainingResults:
         self.fitness_score = None
         self.tflite_accuracy = None
         self.tflite_size = None
+        self.tfliteConversionTime = None
         self.epochs_trained = None
         self.flops = None
 

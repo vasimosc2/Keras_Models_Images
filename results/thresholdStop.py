@@ -105,7 +105,7 @@ if "Time Per Epoch (sec)" not in runtime_info.columns:
 def compute_fitness(acc, ram, flash):
     norm_ram = max(0.0, 1.0 - ram / MAX_RAM)
     norm_flash = max(0.0, 1.0 - flash / MAX_FLASH)
-    return 7 * acc + 2 * norm_ram + 1 * norm_flash
+    return 70 * acc + 20 * norm_ram + 10 * norm_flash
 
 # --- MSE Evaluation ---
 def evaluate_tournament(df, acc_col):
@@ -226,8 +226,8 @@ if args.strategy ==1:
                 "Cutoff_Epoch": cutoff,
                 "Val_Threshold": threshold,
                 "Error_Rate (%)": round(100 * error_rate, 2),
-                "Avg Fitness RMSE": f"{np.sqrt(mse):.2e}",
-                "MSE": f"{mse:.2e}",
+                "Avg Fitness RMSE": f"{round(np.sqrt(mse),2)}",
+                "MSE": f"{round(mse,2)}",
                 "Saved Epochs": total_saved_epochs,
                 "Training Initial Time (min)": total_full_time / 60,
                 "Total_Time_Saved_min": round(time_saved_total / 60, 2),

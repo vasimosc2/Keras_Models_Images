@@ -111,6 +111,7 @@ for generation, model in enumerate(evo_search.evolve(), start=1):
         "Flop Number": model.results.flops,
         "Fitness Score": model.results.fitness_score,
         "Training Time (min)": round(model.results.training_time/60,2),
+        "TFlite Conversion Time (sec)": round(model.results.tfliteConversionTime,2),
         "Epochs Trained": model.results.epochs_trained
     })
 

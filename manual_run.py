@@ -134,6 +134,7 @@ for model in models_to_train:
             "Estimated Flash Memory (KB)": model.results.estimatedFlash,
             "TFlite size (KB)": model.results.tflite_size,
             "Training Time (s)": model.results.training_time,
+            "TFlite Conversion Time (sec)": round(model.results.tfliteConversionTime,2),
             "Flop Number": model.results.flops,
             "Epochs Trained": model.results.epochs_trained
         })

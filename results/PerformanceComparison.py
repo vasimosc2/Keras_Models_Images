@@ -27,7 +27,7 @@ Intended Use:
 
 # Load the CSV
 results = "results"
-epochNumbers:int = 30
+epochNumbers:int = 70
 history_folder = os.path.join(results, f"{str(epochNumbers)}-epochs")
 csvPath = os.path.join(history_folder, f"val_accuracy_comparison_{str(epochNumbers)}.csv")
 df = pd.read_csv(csvPath)

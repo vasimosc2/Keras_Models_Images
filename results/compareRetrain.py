@@ -47,7 +47,7 @@ MAX_FLASH = 754.921875
 def compute_fitness(acc, ram, flash):
     norm_ram = max(0.0, 1.0 - ram / MAX_RAM)
     norm_flash = max(0.0, 1.0 - flash / MAX_FLASH)
-    return 7 * acc + 2 * norm_ram + 1 * norm_flash
+    return 70 * acc + 20 * norm_ram + 10 * norm_flash
 
 def mse_error(true1, true2):
     return (true1 - true2) ** 2
@@ -55,7 +55,7 @@ def mse_error(true1, true2):
 # Load both CSVs
 results = "results"
 fullTrainEpochs = 70
-partiallyTrainEpochs = 30
+partiallyTrainEpochs = 10
 
 history_fullTrainEpochs_folder = os.path.join(results, f"{fullTrainEpochs}-epochs")
 full_train_path = os.path.join(history_fullTrainEpochs_folder, f"Retraining_{fullTrainEpochs}.csv")
@@ -151,7 +151,7 @@ if PRINT_FITNESS_MISTAKES:
     for line in fitness_error_log:
         print(line)
 
-
+print(f"\nFor the Partial Training  of {partiallyTrainEpochs} :")
 print(f"\n📊 Fitness-Based Misranking Evaluation (Accuracy + RAM + Flash) for {partiallyTrainEpochs}")
 print(f"❌ Misranked pairs (Fitness): {fitness_errors}")
 print(f"⚠️ Misranking rate (Fitness): {100 * fitness_errors / total_matches:.2f}%")
