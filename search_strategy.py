@@ -65,7 +65,7 @@ class EvolutionarySearch:
         print("🚀 Initializing population...")
         created = 0
         attempts = 0
-        max_attempts = self.population_size * 30  # Prevent infinite loop in rare cases
+        max_attempts = self.population_size * 300  # Prevent infinite loop in rare cases
 
         while created < self.population_size and attempts < max_attempts:
             attempts += 1
@@ -97,7 +97,10 @@ class EvolutionarySearch:
 
 
         if created < self.population_size:
-            print(f"⚠️ Only {created}/{self.population_size} models were valid after {attempts} attempts.")
+            raise RuntimeError(
+            f"❌ Failed to create full population. Only {created}/{self.population_size} models were valid after {attempts} attempts. "
+            f"Consider relaxing resource constraints or adjusting the search space."
+        )
 
         self.x_train, self.y_train, self.x_test, self.y_test = get_dataset(output_classes= self.config["model_search_space"]["refiner_block"]["num_output_classes"], 
                                                                            augementation_technique=self.augmentaion)
