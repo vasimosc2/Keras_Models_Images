@@ -50,9 +50,9 @@ if __name__ == "__main__":
 
     # 30 Epochs runs (green)
     parser.add_argument("--epoch_30_month_run1", type=str)
-    parser.add_argument("--epoch_30_day30_run1", type=str)
-    parser.add_argument("--epoch_30_month30_run2", type=str)
-    parser.add_argument("--epoch_30_day30_run2", type=str)
+    parser.add_argument("--epoch_30_day_run1", type=str)
+    parser.add_argument("--epoch_30_month_run2", type=str)
+    parser.add_argument("--epoch_30_day_run2", type=str)
 
     # 20 Epochs runs (blue)
     parser.add_argument("--epoch_20_month_run1", type=str)
@@ -66,14 +66,14 @@ if __name__ == "__main__":
 
     csvs, labels, colors, markers = [], [], [], []
 
-    if args.epoch_30_month_run1 and args.epoch_30_day30_run1:
-        csvs.append(findParetoOptimalCsv(args.epoch_30_month_run1, args.epoch_30_day30_run1, args.lr_strategy))
+    if args.epoch_30_month_run1 and args.epoch_30_day_run1:
+        csvs.append(findParetoOptimalCsv(args.epoch_30_month_run1, args.epoch_30_day_run1, args.lr_strategy))
         labels.append("30 Epochs - Run 1 (●)")
         colors.append("green")
         markers.append("o")
 
-    if args.epoch_30_month30_run2 and args.epoch_30_day30_run2:
-        csvs.append(findParetoOptimalCsv(args.epoch_30_month30_run2, args.epoch_30_day30_run2, args.lr_strategy))
+    if args.epoch_30_month_run2 and args.epoch_30_day_run2:
+        csvs.append(findParetoOptimalCsv(args.epoch_30_month_run2, args.epoch_30_day_run2, args.lr_strategy))
         labels.append("30 Epochs - Run 2 (▲)")
         colors.append("green")
         markers.append("^")

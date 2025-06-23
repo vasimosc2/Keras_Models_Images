@@ -18,6 +18,6 @@ python -m Retrain.reTrainAllModels  --folder NAS --month May --day 27 --epochs 1
 python -m Retrain.reTrainParetoOptimal --folder NAS --month Jun --day 08
 python3 plotting/plotParetoCurve.py \
   --epoch_30_month_run1 Jun --epoch_30_day_run1 09 \
-  --epoch_30_month_run2 Jun --epoch_30_day_run2 10 \
+  --epoch_30_month_run2 Jun --epoch_30_day_run2 15 \
   --epoch_20_month_run1 Jun --epoch_20_day_run1 08 \
   --epoch_20_month_run2 Jun --epoch_20_day_run2 21
