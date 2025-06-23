@@ -28,7 +28,7 @@ def plot_optimal_models(csvs, labels, colors, markers, marker_scale):
 
     plt.xlabel('RAM Consumption (KB)', fontsize=12)
     plt.ylabel('Val. Accuracy', fontsize=12)
-    plt.title('Optimal Models (Flexible Runs)', fontsize=14)
+    plt.title('Optimal Models', fontsize=14)
 
     # Custom legend with consistent symbols
     custom_legend = [

@@ -20,4 +20,5 @@ python3 plotting/plotParetoCurve.py \
   --epoch_30_month_run1 Jun --epoch_30_day_run1 09 \
   --epoch_30_month_run2 Jun --epoch_30_day_run2 15 \
   --epoch_20_month_run1 Jun --epoch_20_day_run1 08 \
-  --epoch_20_month_run2 Jun --epoch_20_day_run2 21
+  --epoch_20_month_run2 Jun --epoch_20_day_run2 21 \
+  --marker_scale 0.3
