@@ -18,7 +18,7 @@ def plot_optimal_models(csvs, labels, colors, markers, marker_scale):
         plt.scatter(
             df['Model RAM (KB)'],
             df['Best Test Accuracy'],
-            s=df['TFlite size(KB)'] * marker_scale,  # Smaller markers
+            s=df['TFlite size(KB)'] * marker_scale,
             alpha=0.7,
             label=labels[i],
             color=colors[i],
@@ -30,7 +30,6 @@ def plot_optimal_models(csvs, labels, colors, markers, marker_scale):
     plt.ylabel('Val. Accuracy', fontsize=12)
     plt.title('Optimal Models', fontsize=14)
 
-    # Custom legend with consistent symbols
     custom_legend = [
         Line2D([0], [0], marker='o', color='w', label='30 Epochs - Run 1',
                markerfacecolor='green', markersize=8, markeredgecolor='black'),
@@ -40,6 +39,10 @@ def plot_optimal_models(csvs, labels, colors, markers, marker_scale):
                markerfacecolor='blue', markersize=8, markeredgecolor='black'),
         Line2D([0], [0], marker='D', color='w', label='20 Epochs - Run 2',
                markerfacecolor='blue', markersize=8, markeredgecolor='black'),
+        Line2D([0], [0], marker='P', color='w', label='70 Epochs - Run 1',
+               markerfacecolor='red', markersize=8, markeredgecolor='black'),
+        Line2D([0], [0], marker='X', color='w', label='70 Epochs - Run 2',
+               markerfacecolor='red', markersize=8, markeredgecolor='black'),
     ]
 
     plt.legend(handles=custom_legend, loc='center left', bbox_to_anchor=(1, 0.5), fontsize=10)
@@ -53,14 +56,16 @@ def plot_optimal_models(csvs, labels, colors, markers, marker_scale):
     print(f"✅ Plot saved to: plotting/{name}")
     plt.close()
 
-
 def findParetoOptimalCsv(month, day, lr_strategy):
     date = f"{month}-{day}"
     return os.path.join("NAS", date, "Retraining", lr_strategy, "ParetoOptimals", "results", "ParetoOptimalFullTrain.csv")
 
+def originalParetoCsv(month,day):
+    date = f"{month}-{day}"
+    return os.path.join("NAS", date, "results", "Pareto_Optimal_Models.csv")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Plot up to 4 Pareto Optimal Runs")
+    parser = argparse.ArgumentParser(description="Plot up to 6 Pareto Optimal Runs")
 
     # 30 Epochs runs (green)
     parser.add_argument("--epoch_30_month_run1", type=str)
@@ -73,6 +78,12 @@ if __name__ == "__main__":
     parser.add_argument("--epoch_20_day_run1", type=str)
     parser.add_argument("--epoch_20_month_run2", type=str)
     parser.add_argument("--epoch_20_day_run2", type=str)
+
+    # 70 Epochs runs (red)
+    parser.add_argument("--epoch_70_month_run1", type=str)
+    parser.add_argument("--epoch_70_day_run1", type=str)
+    parser.add_argument("--epoch_70_month_run2", type=str)
+    parser.add_argument("--epoch_70_day_run2", type=str)
 
     # Optional marker size scaling
     parser.add_argument("--marker_scale", type=float, default=0.3, help="Scale factor for marker size")
@@ -106,6 +117,18 @@ if __name__ == "__main__":
         labels.append("20 Epochs - Run 2")
         colors.append("blue")
         markers.append("D")
+
+    if args.epoch_70_month_run1 and args.epoch_70_day_run1:
+        csvs.append(originalParetoCsv(args.epoch_70_month_run1, args.epoch_70_day_run1))
+        labels.append("70 Epochs - Run 1")
+        colors.append("red")
+        markers.append("P")
+
+    if args.epoch_70_month_run2 and args.epoch_70_day_run2:
+        csvs.append(originalParetoCsv(args.epoch_70_month_run2, args.epoch_70_day_run2))
+        labels.append("70 Epochs - Run 2")
+        colors.append("red")
+        markers.append("X")
 
     if not csvs:
         print("⚠️ No valid run data provided. Please provide at least one run using the expected --epoch_* arguments.")
