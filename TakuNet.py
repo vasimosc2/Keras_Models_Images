@@ -835,39 +835,41 @@ class TakuNetModel:
         self.is_trained = True
         self._freeze_dropout_for_inference()
         # **Save Model in Multiple Formats**
+        if self.hardwareConstrains == True:
+            tfilte_time_start = time.time()
+            self._convert_to_tflite(x_train=x_train)
+            self._convert_tflite_to_c_array()
+            self.results.flops = self._count_flops()
+            print(f"📊 Estimated FLOPs: {self.results.flops:,}")
 
-        tfilte_time_start = time.time()
-        self._convert_to_tflite(x_train=x_train)
-        self._convert_tflite_to_c_array()
-        self.results.flops = self._count_flops()
-        print(f"📊 Estimated FLOPs: {self.results.flops:,}")
+            # **Evaluate the TFLite Model**
+            try:
+                self.results.tflite_accuracy = self._evaluate_tflite_model(x_test=x_test, y_test=y_test)
+            except Exception as e:
+                print(f"❌ TFLite evaluation failed: {e}")
+                self.results.tflite_accuracy = 0.0
+                
+            self.results.tfliteConversionTime = time.time() - tfilte_time_start
+            print(f"Test Accuracy (TFLite): {self.results.tflite_accuracy:.4f}")
 
-        # **Evaluate the TFLite Model**
-        try:
-            self.results.tflite_accuracy = self._evaluate_tflite_model(x_test=x_test, y_test=y_test)
-        except Exception as e:
-            print(f"❌ TFLite evaluation failed: {e}")
-            self.results.tflite_accuracy = 0.0
+            # **File Size Reporting**
+            keras_size_kb = os.path.getsize(checkpoint_path) / 1024
+            tflite_size_kb = os.path.getsize(f"{self.folderName}/TfLiteModels/{self.model_name}.tflite") / 1024
+            c_array_size_kb = os.path.getsize(f"{self.folderName}/HeaderFiles/{self.model_name}.h") / 1024
+            if "Retraining" not in self.folderName:
+                save_config_to_file(self.model_params, f"{self.folderName}/saved_configs/model_params/{self.model_name}_model_params.json")
+                save_config_to_file(self.train_params, f"{self.folderName}/saved_configs/train_params/{self.model_name}_train_params.json")
+            else:
+                print("⚠️ Skipping config saving (Retraining mode detected). Config already saved\n")
+
+            self.results.tflite_size = tflite_size_kb
             
-        self.results.tfliteConversionTime = time.time() - tfilte_time_start
-        print(f"Test Accuracy (TFLite): {self.results.tflite_accuracy:.4f}")
-
-        # **File Size Reporting**
-        keras_size_kb = os.path.getsize(checkpoint_path) / 1024
-        tflite_size_kb = os.path.getsize(f"{self.folderName}/TfLiteModels/{self.model_name}.tflite") / 1024
-        c_array_size_kb = os.path.getsize(f"{self.folderName}/HeaderFiles/{self.model_name}.h") / 1024
-        if "Retraining" not in self.folderName:
-            save_config_to_file(self.model_params, f"{self.folderName}/saved_configs/model_params/{self.model_name}_model_params.json")
-            save_config_to_file(self.train_params, f"{self.folderName}/saved_configs/train_params/{self.model_name}_train_params.json")
+            print(f"Keras Model Size: {keras_size_kb:.2f} KB")
+            print(f"TFLite Model Size: {tflite_size_kb:.2f} KB")
+            print(f"C Array File Size: {c_array_size_kb:.2f} KB")
+            print(f"RAM: {self.results.ModelRam:.2f} KB")
         else:
-            print("⚠️ Skipping config saving (Retraining mode detected). Config already saved\n")
-
-        self.results.tflite_size = tflite_size_kb
-        
-        print(f"Keras Model Size: {keras_size_kb:.2f} KB")
-        print(f"TFLite Model Size: {tflite_size_kb:.2f} KB")
-        print(f"C Array File Size: {c_array_size_kb:.2f} KB")
-        print(f"RAM: {self.results.ModelRam:.2f} KB")
+            print("⚠️ We don't check for Hardware constrains so it is not Safe to convert to TfLite\n")
 
     def summary(self):
         self.model.summary()
