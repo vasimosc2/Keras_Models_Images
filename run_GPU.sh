@@ -13,7 +13,7 @@ python3 manual_run.py --num_models 2 # This manually creates TakuNetModels
 python3 evolutionary_run.py --time 2.0 --population_size 6 --lr_strategy linear # This Runs the Actual Nas with Genetic Algorythm, for lr_strategy add : cosine, linear, step
 
 python3 evolutionary_run.py \
-  --time 12.0 \
+  --time 10.0 \
   --population_size 6 \
   --hardwareConstrains False \
   --performaceStoppage False \

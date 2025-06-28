@@ -580,7 +580,10 @@ class TakuNetModel:
             return None
         
         if self.hardwareConstrains is False:
-            print("⚠️ We are on Test mode, so we DO NOT CARE about memory ... \n")
+            print("⚠️ We don't Care about the Memory, and the training will be executed normally ... \n")
+            """
+            Here we dont care about the memory, but we still estimate to see, how big the model is
+            """
             self.results.estimatedFlash,self.results.ModelRam= memoryEstimator.memoryEstimation(model = self.model, data_dtype_multiplier = self.train_params["data_dtype_multiplier"])
         else:
             print("✅ Memory check passed! Starting training ... \n")

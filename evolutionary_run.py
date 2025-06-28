@@ -100,18 +100,18 @@ for generation, model in enumerate(evo_search.evolve(), start=1):
         "Best Train Accuracy": model.results.train_accuracy,
         "Best Test Accuracy": model.results.test_accuracy,
         "Swa Test Accuracy": model.results.SWA_test_accuracy,
-        "TFlite Test Accuracy": model.results.tflite_accuracy,
+        "TFlite Test Accuracy": model.results.tflite_accuracy if model.results.tflite_accuracy is not None else 0,
         "Optimizer":model.model_params["optimizer"],
         "Precision": model.results.precision,
         "Recall": model.results.recall,
         "F1 Score": model.results.f1_score,
         "Model RAM (KB)": model.results.ModelRam,
         "Estimated Flash Memory (KB)": model.results.estimatedFlash,        
-        "TFlite size(KB)": model.results.tflite_size,
+        "TFlite size(KB)": model.results.tflite_size if model.results.tflite_size is not None else 0,
         "Flop Number": model.results.flops,
         "Fitness Score": model.results.fitness_score,
-        "Training Time (min)": round(model.results.training_time/60,2),
-        "TFlite Conversion Time (sec)": round(model.results.tfliteConversionTime,2),
+        "Training Time (min)": round(model.results.training_time/60,2) if model.results.training_time is not None else 0,
+        "TFlite Conversion Time (sec)": round(model.results.tfliteConversionTime,2) if model.results.tfliteConversionTime is not None else 0,
         "Epochs Trained": model.results.epochs_trained
     })
 
