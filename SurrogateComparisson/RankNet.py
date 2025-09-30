@@ -18,7 +18,7 @@ def build_ranknet(input_dim: int) -> Model:
     input_b = layers.Input(shape=(input_dim,), name="input_b")
 
     # Shared MLP (same for both inputs)
-    shared_mlp = tf.keras.Sequential([
+    shared_mlp = tf.keras.Sequential([ # Dense = Fully connected layer
         layers.Dense(64, activation='relu'),
         layers.Dense(32, activation='relu'),
         layers.Dense(16, activation='relu')
