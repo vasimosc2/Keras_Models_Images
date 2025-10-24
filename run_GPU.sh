@@ -8,7 +8,7 @@ export TF_CPP_MIN_LOG_LEVEL=3
 export XLA_FLAGS=--xla_gpu_cuda_data_dir=/appl/cuda/12.8.0
 source venv/bin/activate
 
-# Choices
+# Run Choices and Examples
 python3 manual_run.py --num_models 2 # This manually creates TakuNetModels
 python3 evolutionary_run.py --time 2.0 --population_size 6 --lr_strategy linear # This Runs the Actual Nas with Genetic Algorythm, for lr_strategy add : cosine, linear, step
 
@@ -19,6 +19,21 @@ python3 evolutionary_run.py \
   --performaceStoppage False \
   --midway_callback False \
   --early_stopping_acc False
+
+
+python3 evolutionary_run.py \
+  --time 10.0 \
+  --population_size 6 \
+  --lr_strategy cosine \
+  --hardwareConstrains True \
+  --performaceStoppage False \
+  --midway_callback False \
+  --early_stopping_acc False \
+  --use_ranknet False
+
+
+
+# Retrain Techniques
 
 python3 TrainBestModels.py # This was able to re-train and existing Model
 python -m Retrain.createAndTrain --name TakuNet_Init_0 --epochs 70 --dropout True --train True --folder NAS --month May --day 27 --lr linear

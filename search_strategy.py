@@ -28,7 +28,8 @@ class EvolutionarySearch:
                  performaceStoppage:Optional[bool] = False,
                  early_stopping_acc:Optional[bool] = False,
                  midway_callback:Optional[bool] = False,
-                 strategy:Optional[str] = None):
+                 strategy:Optional[str] = None,
+                 use_ranknet: Optional[bool] = True):
 
         with open(config_path, "r") as file:
             self.config = json.load(file)
@@ -51,6 +52,7 @@ class EvolutionarySearch:
         self.early_stopping_acc:bool = early_stopping_acc
         self.midway_callback:bool = midway_callback
         self.strategy:str = strategy if strategy is not None else "cosine"
+        self.use_ranknet:bool = use_ranknet
     
     def _load_data(self,augmentation_technique: Union[Dict, bool]):
         """Loads the dataset using the get_dataset function from data_processing.py"""
@@ -187,7 +189,7 @@ class EvolutionarySearch:
                 # Special case: 3 models left
                 trio = shuffled[i:i+3]
                 print(f"📌 Comparing {trio[0].model_name}, {trio[1].model_name}, and {trio[2].model_name} ....\n")
-                best: TakuNetModel = self._ranknet_best(models=trio)
+                best: TakuNetModel = self._pick_best(models=trio)
 
                 print(f"The winner is {best.model_name} with fitness {best.results.fitness_score} 🏆\n")
                 print(f"The Competitor 0 {trio[0].model_name} with fitness { trio[0].results.fitness_score if trio[0].is_trained else 'None'}\n")
@@ -208,20 +210,20 @@ class EvolutionarySearch:
                 # Normal case: 2 models
                 duo = shuffled[i:i+2]
                 print(f"🥊 Comparing {duo[0].model_name} and {duo[1].model_name} ....\n")
-                best: TakuNetModel = self._ranknet_best(models=duo)
+                best: TakuNetModel = self._pick_best(models=duo)
 
                 print(f"The winner is {best.model_name} with fitness {best.results.fitness_score} 🏆\n")
                 print(f"The Competitor 0 {duo[0].model_name} with fitness {duo[0].results.fitness_score if duo[0].is_trained else 'None'}\n")
                 print(f"The Competitor 1 {duo[1].model_name} with fitness {duo[1].results.fitness_score if duo[1].is_trained else 'None'}\n")
 
-                if best.is_trainable and not best.is_trained:
-                    print(f"Therotically I am never here :) \n")
-                    best.train(
-                        x_train=self.x_train,
-                        y_train=self.y_train,
-                        x_test=self.x_test,
-                        y_test=self.y_test
-                    )
+                # if best.is_trainable and not best.is_trained:
+                #     print(f"Therotically I am never here :) \n")
+                #     best.train(
+                #         x_train=self.x_train,
+                #         y_train=self.y_train,
+                #         x_test=self.x_test,
+                #         y_test=self.y_test
+                #     )
 
                 i += 2
 
@@ -371,14 +373,31 @@ class EvolutionarySearch:
 
 
 
+    def _true_best(self, models: List[TakuNetModel]) -> TakuNetModel:
+        """Train any untrained candidates, then return the best by true fitness."""
+        for m in models:
+            if not m.is_trained:
+                m.train(x_train=self.x_train, y_train=self.y_train,
+                        x_test=self.x_test, y_test=self.y_test)
+                self.discoveredModels.append(m)
+        return max(models, key=lambda m: m.results.fitness_score)
+
+    def _pick_best(self, models: List[TakuNetModel]) -> TakuNetModel:
+        """Dispatch to RankNet or ground-truth selection based on flag."""
+        if self.use_ranknet:
+            return self._ranknet_best(models)
+        else:
+            return self._true_best(models)
+
     
     def evolve(self)->Iterator[TakuNetModel]:
         """Runs the evolutionary search process."""
         start_time = time.time()
         max_duration_seconds = self.time * 3600
 
-        self._initialize_population() # Here we create 10 un-trained Models
-        self._build_ranknet()
+        self._initialize_population()
+        if self.use_ranknet: 
+            self._build_ranknet()
 
         model_number = 0
 

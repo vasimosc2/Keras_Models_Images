@@ -67,7 +67,8 @@ class TakuNetModel:
         self.early_stopping_acc:bool = early_stopping_acc
         self.midway_callback:bool = midway_callback
         self.lr_schedule_strategy = lr_schedule_strategy.lower()
-        self.is_trainable: bool = self.check_trainability() if self.hardwareConstrains is True else True
+        self.is_trainable: bool = self.check_trainability() if self.hardwareConstrains is True else True # If self.hardwareConstrain == True, then we check
+                                                                                                         # If it is false, the all the models are trainable ( We dont care about hardwareConstrains )
 
   
     def _norm_relu6_block(self,x: tf.Tensor, name: Optional[str] = None) -> tf.Tensor:
