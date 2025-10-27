@@ -1,6 +1,7 @@
 import os
 import argparse
 from datetime import datetime
+import sys
 import pandas as pd
 import tensorflow as tf
 from tensorflow.keras import backend as K # type: ignore
@@ -48,8 +49,43 @@ else:
     print("⚠️ No GPU found, running on CPU.")
 
 from search_strategy import EvolutionarySearch
+
+
 # Load configuration
 CONFIG_PATH = "config.json"
+
+
+# Save Run Arguments
+os.makedirs(f"{Folder}", exist_ok=True)
+os.makedirs(f"{Folder}/results", exist_ok=True)
+
+# Save Run Arguments
+run_args_path = f"{Folder}/results/run_args.txt"
+
+run_info = {
+    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    "command": " ".join(sys.argv),
+    "args": vars(args),
+    "config_path": CONFIG_PATH,
+    "env": {
+        "TF_ENABLE_ONEDNN_OPTS": os.environ.get("TF_ENABLE_ONEDNN_OPTS", "")
+    },
+    "hardware": {
+        "gpus_detected": [d.name for d in gpus] if gpus else []
+    }
+}
+
+with open(run_args_path, "w", encoding="utf-8") as f:
+    f.write(f"Timestamp: {run_info['timestamp']}\n")
+    f.write(f"Command: {run_info['command']}\n\n")
+    f.write("Args:\n")
+    for k, v in run_info["args"].items():
+        f.write(f"  - {k}: {v}\n")
+    f.write(f"\nConfig path: {run_info['config_path']}\n")
+    f.write(f"TF_ENABLE_ONEDNN_OPTS: {run_info['env']['TF_ENABLE_ONEDNN_OPTS']}\n")
+    f.write(f"GPUs detected: {', '.join(run_info['hardware']['gpus_detected']) or 'None'}\n")
+
+print(f"📝 Run arguments saved to: {run_args_path}")
 
 # Set evolutionary search parameters
 

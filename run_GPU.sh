@@ -33,6 +33,16 @@ python3 evolutionary_run.py \
   --use_ranknet False
 
 
+python3 evolutionary_run.py \
+  --time 10.0 \
+  --population_size 6 \
+  --lr_strategy cosine \
+  --hardwareConstrains True \
+  --performaceStoppage False \
+  --midway_callback False \
+  --early_stopping_acc False \
+  --use_ranknet True
+
 
 # Retrain Techniques
 
