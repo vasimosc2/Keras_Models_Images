@@ -556,9 +556,9 @@ class TakuNetModel:
         norm_flash_score:float = float(max(0.0, 1.0 - flash / MAX_FLASH))
 
         # Weight factors (adjust to preference)
-        w_acc = 0.7
-        w_ram = 0.2
-        w_flash = 0.1
+        w_acc = 0.998
+        w_ram = 0.001
+        w_flash = 0.001
 
         return w_acc * acc + w_ram * norm_ram_score + w_flash * norm_flash_score
 
