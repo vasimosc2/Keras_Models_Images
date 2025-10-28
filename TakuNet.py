@@ -67,8 +67,8 @@ class TakuNetModel:
         self.early_stopping_acc:bool = early_stopping_acc
         self.midway_callback:bool = midway_callback
         self.lr_schedule_strategy = lr_schedule_strategy.lower()
-        self.is_trainable: bool = self.check_trainability() if self.hardwareConstrains is True else True # If self.hardwareConstrain == True, then we check
-                                                                                                         # If it is false, the all the models are trainable ( We dont care about hardwareConstrains )
+        self.is_trainable: bool = self.check_trainability( stopBigModels=self.hardwareConstrains )  # if HardwareConstrains is True, the this means we will stop big Models 
+                                                                                                    # if it is False we will allow models to be created up to the size of the env.sh variables
 
   
     def _norm_relu6_block(self,x: tf.Tensor, name: Optional[str] = None) -> tf.Tensor:
@@ -504,23 +504,28 @@ class TakuNetModel:
         return accuracy
 
     
-    def check_trainability(self) -> bool:
+    def check_trainability(self, stopBigModels:bool = True ) -> bool:
+        """
+        
+        If the Hardware Contrains is turn into False, we train bigger models and we dont convert them into .tflite to add them into the Arduino
+        But for GENERAL purposes and in order to allow the training to be complete we want to Dont allow huge models
+
+        """
         print(f"⚠️ Checking model {self.model_name}.....\n")
         """Check if the model fits within the memory constraints."""
         if self.train_params is None:
             print("⚠️ Cannot check trainability: `train_params` is None.")
             return False
 
-        (self.results.estimatedFlash,
-        self.results.ModelRam)= memoryEstimator.memoryEstimation(model = self.model, data_dtype_multiplier = self.train_params["data_dtype_multiplier"])
+        (self.results.estimatedFlash,self.results.ModelRam)= memoryEstimator.memoryEstimation(model = self.model, data_dtype_multiplier = self.train_params["data_dtype_multiplier"])
 
         
         print(f"Max RAM Usage: {self.results.ModelRam:.2f} KB\n")
         print(f"Parameter Memory: {self.results.estimatedFlash:.2f} KB\n")
 
-        ram_limit = self.train_params["max_ram_consumption"] - self.train_params["additional_ram_consumption"]
+        ram_limit = self.train_params["max_ram_consumption"] - self.train_params["additional_ram_consumption"] if stopBigModels else ( os.getenv("TAKUNET_RAM_LIMIT_MB") * 1024 * 1024 )
 
-        flash_limit = self.train_params["max_flash_consumption"] - self.train_params["additional_flash_consumption"]
+        flash_limit = self.train_params["max_flash_consumption"] - self.train_params["additional_flash_consumption"] if stopBigModels else  ( os.getenv("TAKUNET_FLASH_LIMIT_MB") * 1024 * 1024 )
 
 
         if  self.results.estimatedFlash * 1024 > flash_limit:
@@ -545,22 +550,22 @@ class TakuNetModel:
         ram:int = self.results.ModelRam or MAX_RAM
         flash:int = self.results.estimatedFlash or MAX_FLASH
 
-        if(ram > MAX_RAM or flash > MAX_FLASH):
+        #if(ram > MAX_RAM or flash > MAX_FLASH):
             # For fair resoning (if the check_Training filter is deActivated)
             # We want to see if the GA, will keep creating models that are untrainable
             # So we penetalize models which are outside of the boundaries heavily
-            return -1000
+            #return -1000
 
         # Normalized scores (higher is better)
         norm_ram_score:float = float(max(0.0, 1.0 - ram / MAX_RAM))
         norm_flash_score:float = float(max(0.0, 1.0 - flash / MAX_FLASH))
 
         # Weight factors (adjust to preference)
-        w_acc = 0.998
+        w_acc = 1
         w_ram = 0.001
         w_flash = 0.001
 
-        return w_acc * acc + w_ram * norm_ram_score + w_flash * norm_flash_score
+        return w_acc * acc #+ w_ram * norm_ram_score + w_flash * norm_flash_score
 
 
 
@@ -757,7 +762,7 @@ class TakuNetModel:
         full_history = history
         total_epochs_trained = len(history.history['loss'])
 
-        goal_val_accuract:float = 0.60
+        goal_val_accuract:float = 0.90
 
 
         if best_test_acc > goal_val_accuract:

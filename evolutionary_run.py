@@ -1,7 +1,9 @@
 import os
 import argparse
 from datetime import datetime
+import random
 import sys
+import numpy as np
 import pandas as pd
 import tensorflow as tf
 from tensorflow.keras import backend as K # type: ignore
@@ -26,7 +28,22 @@ parser.add_argument("--early_stopping_acc", type=str2bool, default=False, help="
 parser.add_argument("--midway_callback", type=str2bool, default=False, help="Enable/Disable the MidwayCallback during Retraining")
 parser.add_argument("--use_ranknet", type=str2bool, default=True, help="Use RankNet surrogate during selection (True/False)")
 
+
+# -------------------------------------------------------
+# Deterministic seeding for reproducibility
+# -------------------------------------------------------
+def set_global_seed(seed: int):
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    tf.random.set_seed(seed)
+
+# --- call it right after argument parsing ---
 args = parser.parse_args()
+seed:int = getattr(args, "seed", 1337)
+set_global_seed(seed)
+
+print(f"🌱 Global random seed set to {seed}")
 
 today = datetime.now().strftime("%b-%d")
 Folder ='NAS'
@@ -113,6 +130,7 @@ evo_search = EvolutionarySearch(config_path=CONFIG_PATH,
                                 crossover_rate=CROSSOVER_RATE, 
                                 augmentation_techinque=default_augementaion_technique,
                                 folder=Folder,
+                                seed=seed,
                                 hardwareConstrains=args.hardwareConstrains,
                                 performaceStoppage=args.performaceStoppage,
                                 early_stopping_acc=args.early_stopping_acc,

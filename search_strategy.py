@@ -24,6 +24,7 @@ class EvolutionarySearch:
                  crossover_rate: float, 
                  augmentation_techinque: Union[Dict, bool],
                  folder:Optional[str] = None,
+                 seed:Optional[int] = None,
                  hardwareConstrains:Optional[bool] = False,
                  performaceStoppage:Optional[bool] = False,
                  early_stopping_acc:Optional[bool] = False,
@@ -47,6 +48,7 @@ class EvolutionarySearch:
         self.y_test = None
         self.augmentaion = augmentation_techinque
         self.folderName:str = folder if folder is not None else "NAS"
+        self.seed:Optional[int]  = seed
         self.hardwareConstrains:bool = hardwareConstrains
         self.performaceStoppage:bool = performaceStoppage
         self.early_stopping_acc:bool = early_stopping_acc
@@ -60,18 +62,56 @@ class EvolutionarySearch:
 
         return get_dataset(output_classes=num_classes, augementation_technique=augmentation_technique)
     
-    def _initialize_population(self)->None:
+    def _initialize_population(
+            self,
+            mode: str = "random",                  # "random" (default) or "load"
+            seed: int | None = None,               # used to pick the JSON file name when mode="load" or saving
+            folder: str = "init_pops",             # where we save/load params
+        )->None:
         """ Creates the initial population of models, 
             skipping untrainable ones,
             Train trainable ones!"""
+        
         print("🚀 Initializing population...")
         created = 0
         attempts = 0
         max_attempts = self.population_size * 300  # Prevent infinite loop in rare cases
 
+        # ----------------------------------------------------
+        # LOAD model_params if requested
+        # ----------------------------------------------------
+        def _initpop_params_path(seed_val: int, folder_val: str = "init_pops") -> str:
+            os.makedirs(f"{folder_val}", exist_ok=True)
+            os.makedirs(f"{folder_val}/results", exist_ok=True)
+            return f"{folder_val}/init_population_seed_{seed_val}.json"
+        
+        saved_list = None
+
+        if mode.lower() == "load":
+            if seed is None:
+                raise ValueError("When mode='load', a 'seed' must be provided.")
+            filename = _initpop_params_path(seed, folder)
+            if not os.path.exists(filename):
+                raise FileNotFoundError(
+                    f"❌ Could not find model_params file: {filename}. "
+                    f"Run once with mode='random' to create it."
+                )
+            print(f"📂 Loading model parameters from {filename}")
+            with open(filename, "r") as f:
+                saved_list = json.load(f)
+
         while created < self.population_size and attempts < max_attempts:
             attempts += 1
-            model_params = getSearchSpaceParameters.sample_from_search_space(self.config["model_search_space"])
+
+
+            if saved_list is not None and len(saved_list) > 0:
+                model_params = saved_list.pop(0)
+            else:
+                if mode.lower() == "load":
+                    break
+                model_params = getSearchSpaceParameters.sample_from_search_space(self.config["model_search_space"])
+
+            #model_params = getSearchSpaceParameters.sample_from_search_space(self.config["model_search_space"])
             train_params = getTrainingParameters.sample_from_train_and_evaluate(self.config["train_and_evaluate"])
             
             model = TakuNetModel(model_name=f"TakuNet_Init_{created}", 
@@ -89,7 +129,8 @@ class EvolutionarySearch:
                 self.population.append(model)
                 self.embeedingList.append(simple_architecture_embedding(model_params))
                 created += 1
-                print(f"✅ Added model {model.model_name} to population (total: {created})")
+                src = "file" if mode.lower() == "load" else "random"
+                print(f"✅ Added model {model.model_name} ({src}) to population (total: {created})")
             else:
                 print(f"❌ Skipping model {model.model_name} due to memory limits")
                 del model
@@ -104,6 +145,19 @@ class EvolutionarySearch:
             f"Consider relaxing resource constraints or adjusting the search space."
         )
 
+        # ----------------------------------------------------
+        # SAVE model_params (only for mode="random")
+        # ----------------------------------------------------
+        if mode.lower() == "random" and seed is not None:
+            filename = _initpop_params_path(seed, folder)
+            payload = [m.model_params for m in self.population]
+            with open(filename, "w") as f:
+                json.dump(payload, f, indent=2)
+            print(f"💾 Saved {len(payload)} model_params to {filename}")
+
+        # ----------------------------------------------------
+        # Train all models (unchanged)
+        # ----------------------------------------------------    
         self.x_train, self.y_train, self.x_test, self.y_test = get_dataset(output_classes= self.config["model_search_space"]["refiner_block"]["num_output_classes"], 
                                                                            augementation_technique=self.augmentaion)
         for model in self.population:
@@ -389,13 +443,13 @@ class EvolutionarySearch:
         else:
             return self._true_best(models)
 
-    
     def evolve(self)->Iterator[TakuNetModel]:
         """Runs the evolutionary search process."""
         start_time = time.time()
         max_duration_seconds = self.time * 3600
 
-        self._initialize_population()
+        self._initialize_population( mode="random", seed= self.seed )
+
         if self.use_ranknet: 
             self._build_ranknet()
 

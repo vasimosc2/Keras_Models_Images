@@ -1,0 +1,4 @@
+#!/bin/bash
+
+export TAKUNET_RAM_LIMIT_MB=5 # 5MB = 5 * 1024 * 1024 B
+export TAKUNET_FLASH_LIMIT_MB=30 # 5MB = 5 * 1024 * 1024 B
