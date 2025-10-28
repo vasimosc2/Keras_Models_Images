@@ -523,9 +523,17 @@ class TakuNetModel:
         print(f"Max RAM Usage: {self.results.ModelRam:.2f} KB\n")
         print(f"Parameter Memory: {self.results.estimatedFlash:.2f} KB\n")
 
-        ram_limit = self.train_params["max_ram_consumption"] - self.train_params["additional_ram_consumption"] if stopBigModels else ( os.getenv("TAKUNET_RAM_LIMIT_MB") * 1024 * 1024 )
+        ram_limit = (
+            self.train_params["max_ram_consumption"] - self.train_params["additional_ram_consumption"]
+            if stopBigModels
+            else float(os.getenv("TAKUNET_RAM_LIMIT_MB", "0")) * 1024 * 1024
+        )
 
-        flash_limit = self.train_params["max_flash_consumption"] - self.train_params["additional_flash_consumption"] if stopBigModels else  ( os.getenv("TAKUNET_FLASH_LIMIT_MB") * 1024 * 1024 )
+        flash_limit = (
+                self.train_params["max_flash_consumption"] - self.train_params["additional_flash_consumption"]
+                if stopBigModels
+                else float(os.getenv("TAKUNET_FLASH_LIMIT_MB", "0")) * 1024 * 1024
+            )
 
 
         if  self.results.estimatedFlash * 1024 > flash_limit:
