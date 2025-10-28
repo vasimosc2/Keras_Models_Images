@@ -65,7 +65,7 @@ class EvolutionarySearch:
     def _initialize_population(
             self,
             mode: str = "random",                  # "random" (default) or "load"
-            seed: int | None = None,               # used to pick the JSON file name when mode="load" or saving
+            seed: Optional[int] = None,               # used to pick the JSON file name when mode="load" or saving
             folder: str = "init_pops",             # where we save/load params
         )->None:
         """ Creates the initial population of models, 
