@@ -447,7 +447,7 @@ class EvolutionarySearch:
         start_time = time.time()
         max_duration_seconds = self.time * 3600
 
-        self._initialize_population( mode="random", seed= self.seed )
+        self._initialize_population( mode=os.getenv("INITIAL_POPULATION_MODE", "random"), seed= self.seed )
 
         if self.use_ranknet: 
             self._build_ranknet()
