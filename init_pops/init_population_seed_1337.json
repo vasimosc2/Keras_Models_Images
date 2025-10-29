@@ -1,0 +1,170 @@
+[
+  {
+    "stem_block": {
+      "filters": 32,
+      "Conv_kernel": 3,
+      "Conv_strides": 3,
+      "DWConv_kernel": 3,
+      "DWConv_strides": 1
+    },
+    "stages_block": {
+      "stages_number": 4,
+      "taku_block": {
+        "taku_block_number": 6,
+        "DWConv_kernel": 3,
+        "DWConv_strides": 1
+      },
+      "downsampler": {
+        "pool_size": 2,
+        "Conv_kernel": 1,
+        "strides": 2
+      }
+    },
+    "refiner_block": {
+      "DWConv_kernel": 5,
+      "DWConv_strides": 2,
+      "num_output_classes": 100
+    },
+    "optimizer": "adamw"
+  },
+  {
+    "stem_block": {
+      "filters": 32,
+      "Conv_kernel": 5,
+      "Conv_strides": 2,
+      "DWConv_kernel": 5,
+      "DWConv_strides": 2
+    },
+    "stages_block": {
+      "stages_number": 3,
+      "taku_block": {
+        "taku_block_number": 4,
+        "DWConv_kernel": 3,
+        "DWConv_strides": 1
+      },
+      "downsampler": {
+        "pool_size": 2,
+        "Conv_kernel": 5,
+        "strides": 2
+      }
+    },
+    "refiner_block": {
+      "DWConv_kernel": 5,
+      "DWConv_strides": 2,
+      "num_output_classes": 100
+    },
+    "optimizer": "sgd"
+  },
+  {
+    "stem_block": {
+      "filters": 128,
+      "Conv_kernel": 5,
+      "Conv_strides": 2,
+      "DWConv_kernel": 5,
+      "DWConv_strides": 1
+    },
+    "stages_block": {
+      "stages_number": 4,
+      "taku_block": {
+        "taku_block_number": 5,
+        "DWConv_kernel": 3,
+        "DWConv_strides": 1
+      },
+      "downsampler": {
+        "pool_size": 2,
+        "Conv_kernel": 3,
+        "strides": 2
+      }
+    },
+    "refiner_block": {
+      "DWConv_kernel": 5,
+      "DWConv_strides": 1,
+      "num_output_classes": 100
+    },
+    "optimizer": "sgd"
+  },
+  {
+    "stem_block": {
+      "filters": 32,
+      "Conv_kernel": 5,
+      "Conv_strides": 2,
+      "DWConv_kernel": 3,
+      "DWConv_strides": 1
+    },
+    "stages_block": {
+      "stages_number": 3,
+      "taku_block": {
+        "taku_block_number": 4,
+        "DWConv_kernel": 3,
+        "DWConv_strides": 1
+      },
+      "downsampler": {
+        "pool_size": 2,
+        "Conv_kernel": 1,
+        "strides": 2
+      }
+    },
+    "refiner_block": {
+      "DWConv_kernel": 3,
+      "DWConv_strides": 2,
+      "num_output_classes": 100
+    },
+    "optimizer": "adamw"
+  },
+  {
+    "stem_block": {
+      "filters": 128,
+      "Conv_kernel": 5,
+      "Conv_strides": 2,
+      "DWConv_kernel": 3,
+      "DWConv_strides": 1
+    },
+    "stages_block": {
+      "stages_number": 3,
+      "taku_block": {
+        "taku_block_number": 5,
+        "DWConv_kernel": 5,
+        "DWConv_strides": 1
+      },
+      "downsampler": {
+        "pool_size": 2,
+        "Conv_kernel": 1,
+        "strides": 1
+      }
+    },
+    "refiner_block": {
+      "DWConv_kernel": 5,
+      "DWConv_strides": 2,
+      "num_output_classes": 100
+    },
+    "optimizer": "sgd"
+  },
+  {
+    "stem_block": {
+      "filters": 64,
+      "Conv_kernel": 3,
+      "Conv_strides": 3,
+      "DWConv_kernel": 5,
+      "DWConv_strides": 2
+    },
+    "stages_block": {
+      "stages_number": 4,
+      "taku_block": {
+        "taku_block_number": 6,
+        "DWConv_kernel": 3,
+        "DWConv_strides": 1
+      },
+      "downsampler": {
+        "pool_size": 2,
+        "Conv_kernel": 5,
+        "strides": 1
+      }
+    },
+    "refiner_block": {
+      "DWConv_kernel": 3,
+      "DWConv_strides": 1,
+      "num_output_classes": 100
+    },
+    "optimizer": "sgd"
+  }
+]
