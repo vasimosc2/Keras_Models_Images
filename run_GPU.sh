@@ -1,5 +1,5 @@
 #!/bin/bash
-screen -S Vasilis screen # Create a screen to allow to run the script while closing the computer
+screen -S Vasilis_$(date +%B_%d)
 sxm2sh
 nvidia-smi # To see which GPUs are idle
 export CUDA_VISIBLE_DEVICES=1
