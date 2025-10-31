@@ -14,7 +14,7 @@ HeaderFiles/*
 TfLiteModels/*
 HeaderModels/*
 Samples/*
-.txt
+*.txt
 test/*
 Manual_Run/*
 NAS/*
