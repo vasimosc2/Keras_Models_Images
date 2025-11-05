@@ -388,24 +388,26 @@ class EvolutionarySearch:
             print(f"💪 All Competitors were trained. Selected {best_model.model_name} by fitness.\n")
             return best_model
 
-        # 🔁 Case 2: Use pairwise RankNet votes
+        # 🔁 Case 2: All the models are not trained
+        # Use pairwise RankNet votes
         vote_counts = [0] * len(models)
 
         for i in range(len(models) - 1):
             for j in range(i + 1, len(models)):
                 embed_i = np.expand_dims(simple_architecture_embedding(models[i].model_params), axis=0)
                 embed_j = np.expand_dims(simple_architecture_embedding(models[j].model_params), axis=0)
+                 # Use RankNet to predict winner
                 pred = self.ranknet.predict([embed_i, embed_j], verbose=0)
 
-                if pred[0][0] > 0.5:
-                    vote_counts[i] += 1
+                if pred[0][0] > 0.5: # Is embedding_i more promissing ?
+                    vote_counts[i] += 1 # Give 1 vote to embedding i
                 else:
-                    vote_counts[j] += 1
+                    vote_counts[j] += 1 # Give 1 vote to embedding j
 
         winner_index = int(np.argmax(vote_counts))
         predicted_winner = models[winner_index]
 
-        # 🛠 Train if needed
+        # 🛠 Train the expected winner if needed
         if not predicted_winner.is_trained:
             print(f"🚀 RankNet picked {predicted_winner.model_name}. Training now...\n")
             predicted_winner.train(x_train=self.x_train, y_train=self.y_train,

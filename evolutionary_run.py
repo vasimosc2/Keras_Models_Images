@@ -212,3 +212,29 @@ pareto_models = is_pareto_efficient(models_data)
 df_results = pd.DataFrame(pareto_models)
 df_results.to_csv(f'{Folder}/results/Pareto_Optimal_Models.csv', index=False)
 print(f"✅ Pareto-optimal models saved to: {Folder}/results/Pareto_Optimal_Models.csv")
+
+
+# --------------------------------------------------------------------
+# EXTRA SAVE: ThesisResults/<Constrained|UnConstrained>/<XHours>/<With|Without>/
+# --------------------------------------------------------------------
+
+# 1) constrained vs unconstrained
+constraint_folder = "Constrained" if args.hardwareConstrains else "UnConstrained"
+
+# 2) hour folder from --time (12.0 -> "12Hours")
+hours_int = int(args.time)
+hours_folder = f"{hours_int}Hours"
+
+# 3) ranknet subfolder
+ranknet_folder = "WithRankNet" if args.use_ranknet else "WithoutRankNet"
+
+# 4) build final dir
+export_root = os.path.join("ThesisResults", constraint_folder, hours_folder, ranknet_folder)
+os.makedirs(export_root, exist_ok=True)
+
+# 5) filename with date
+export_filename = f"Pareto_Optimal_Models_{today}.csv"
+export_path = os.path.join(export_root, export_filename)
+
+df_results.to_csv(export_path, index=False)
+print(f"✅ Pareto-optimal models ALSO saved to: {export_path}")

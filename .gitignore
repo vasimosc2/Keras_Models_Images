@@ -14,6 +14,7 @@ HeaderFiles/*
 TfLiteModels/*
 HeaderModels/*
 Samples/*
+ThesisResults/*
 *.txt
 test/*
 Manual_Run/*
@@ -24,3 +25,5 @@ MemorySymbols/*
 SurrogateComparisson/ranknet_model.keras
 SurrogateComparisson/ranknet_training_data.npz
 SurrogateComparisson/Old/*
+*.png
+plotting/images/*.png
