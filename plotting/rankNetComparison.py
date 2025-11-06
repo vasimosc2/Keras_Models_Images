@@ -52,12 +52,25 @@ def plot_hour_run(root_dir, title=None, marker_scale=1.0, out_path=None):
     if not with_data and not without_data:
         raise SystemExit(f"No CSVs found in {with_dir} or {without_dir}")
 
+    # ---------------------------------------------------------
+    # 🧭 Detect base folder name and constraint type
+    # ---------------------------------------------------------
+    folder_name = os.path.basename(os.path.normpath(root_dir))
+    parent_dir = os.path.basename(os.path.dirname(os.path.normpath(root_dir)))
+
+    # Determine constraint label from parent directory name
+    constraint_label = ""
+    if "constrained" in parent_dir.lower():
+        constraint_label = "Constrained"
+    elif "unconstrained" in parent_dir.lower():
+        constraint_label = "UnConstrained"
+
+    # Final title
     if title is None:
-        # use folder name as title
-        title = os.path.basename(os.path.normpath(root_dir))
+        title = f"{folder_name} {constraint_label}".strip()
 
     if out_path is None:
-        out_path = os.path.join(root_dir, f"{title}_pareto.png")
+        out_path = os.path.join(root_dir, f"{title.replace(' ', '_')}_pareto.png")
 
     # ---------------------------------------------------------
     # 1) collect ALL size values (both folders) to normalize
