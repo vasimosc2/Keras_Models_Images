@@ -176,45 +176,40 @@ class EvolutionarySearch:
         print("🛠 Building or loading RankNet surrogate model...\n")
 
         input_dim = self.embeedingList[0].shape[0]
-        model_path = "SurrogateComparisson/ranknet_model.keras"
-        data_path = "SurrogateComparisson/ranknet_training_data.npz"
+        base_dir = "SurrogateComparisson/ConstrainedVersion" if self.hardwareConstrains else "SurrogateComparisson/UnConstrainedVersion"
+        os.makedirs(base_dir, exist_ok=True)
 
-        # Load or create model
+        model_path = os.path.join(base_dir, "ranknet_model.keras")
+        data_path = os.path.join(base_dir, "ranknet_training_data.npz")
+
+        # 1) If we already have a trained/saved model, just load it and stop here.
         if os.path.exists(model_path):
-            print("📦 Loading existing RankNet model...\n")
+            print("📦 Loading existing RankNet model (no retraining)...\n")
             self.ranknet = tf.keras.models.load_model(model_path)
-        else:
-            print("✨ No saved RankNet found, building a new one...\n")
-            self.ranknet = build_ranknet(input_dim)
+            return  # ✅ don't generate more data, don't retrain
 
-        # Generate new training pairs
-        new_pairs, new_labels = self._generate_training_pairs()
+        # 2) Otherwise, we need to build a fresh model
+        print("✨ No saved RankNet found, building a new one...\n")
+        self.ranknet = build_ranknet(input_dim)
 
-        # Load old training data if exists
+        # 3) Get training data: either load fixed data or generate it once
         if os.path.exists(data_path):
-            print("📂 Loading existing RankNet training data...\n")
+            print("📂 Found existing RankNet training data. Using it...\n")
             data = np.load(data_path)
-            old_pairs = data["pairs"]
-            old_labels = data["labels"]
-
-            # Combine old and new data
-            pairs = np.concatenate([old_pairs, new_pairs], axis=0)
-            labels = np.concatenate([old_labels, new_labels], axis=0)
+            pairs = data["pairs"]
+            labels = data["labels"]
         else:
-            print("🆕 No old training data found, using only new pairs...")
-            pairs = new_pairs
-            labels = new_labels
+            print("🆕 No training data found. Generating once...\n")
+            pairs, labels = self._generate_training_pairs()
+            # save it so next runs reuse the SAME data
+            np.savez_compressed(data_path, pairs=pairs, labels=labels)
+            print(f"💾 Saved training data: {pairs.shape[0]} pairs total.\n")
 
-        # Save updated training data
-        np.savez_compressed(data_path, pairs=pairs, labels=labels)
-        print(f"💾 Saved training data: {pairs.shape[0]} pairs total.\n")
-
-        # Train model
+        print("🏋️ Training RankNet on fixed dataset...\n")
         self.ranknet.fit([pairs[:, 0], pairs[:, 1]], labels, epochs=20, batch_size=16, verbose=0)
 
-        # Save updated model
         self.ranknet.save(model_path)
-        print("💾 RankNet model saved after training.")
+        print("💾 RankNet model saved after training.\n")
     
     def _generate_training_pairs(self)->Tuple[List[Tuple[np.ndarray,np.ndarray]],List[int]]:
         pairs:List[Tuple[np.ndarray,np.ndarray]] = []
