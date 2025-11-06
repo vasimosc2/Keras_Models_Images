@@ -24,6 +24,7 @@ utils/CreateMemoryReport.sh
 MemorySymbols/*
 SurrogateComparisson/ranknet_model.keras
 SurrogateComparisson/ranknet_training_data.npz
-SurrogateComparisson/Old/*
+SurrogateComparisson/UnConstrainedVersion/*
+SurrogateComparisson/ConstrainedVersion/*
 *.png
 plotting/images/*.png
