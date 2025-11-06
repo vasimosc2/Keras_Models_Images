@@ -82,7 +82,10 @@ class EvolutionarySearch:
         # ----------------------------------------------------
         def _initpop_params_path(seed_val: int, folder_val: str = "init_pops") -> str:
             os.makedirs(f"{folder_val}", exist_ok=True)
-            return f"{folder_val}/init_population_seed_{seed_val}.json"
+            if self.hardwareConstrains:
+                return f"{folder_val}/Constrained/init_population_seed_{seed_val}.json"
+            else:
+                return f"{folder_val}/UnConstrained/init_population_seed_{seed_val}.json"
         
         saved_list = None
 

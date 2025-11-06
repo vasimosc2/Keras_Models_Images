@@ -67,3 +67,6 @@ python3 plotting/plotParetoCurve.py \
 
 python3 plotting/rankNetComparison.py \
   --hour_run_dir ThesisResults/UnConstrained/10Hours
+
+python3 plotting/rankNetComparison.py \
+  --hour_run_dir ThesisResults/UnConstrained/3Hours
