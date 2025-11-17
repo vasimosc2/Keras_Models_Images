@@ -60,10 +60,10 @@ def plot_hour_run(root_dir, title=None, marker_scale=1.0, out_path=None):
 
     # Determine constraint label from parent directory name
     constraint_label = ""
-    if "constrained" in parent_dir.lower():
-        constraint_label = "Constrained"
-    elif "unconstrained" in parent_dir.lower():
+    if "unconstrained" in parent_dir.lower():
         constraint_label = "UnConstrained"
+    elif "constrained" in parent_dir.lower():
+        constraint_label = "Constrained"
 
     # Final title
     if title is None:

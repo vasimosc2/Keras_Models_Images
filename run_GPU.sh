@@ -32,7 +32,7 @@ python3 evolutionary_run.py \
   --performaceStoppage False \
   --midway_callback False \
   --early_stopping_acc False \
-  --use_ranknet False
+  --use_ranknet True
 
 
 python3 evolutionary_run.py \
@@ -66,7 +66,7 @@ python3 plotting/plotParetoCurve.py \
   --marker_scale 0.3
 
 python3 plotting/rankNetComparison.py \
-  --hour_run_dir ThesisResults/UnConstrained/10Hours
+  --hour_run_dir ThesisResults/Constrained/10Hours
 
 python3 plotting/rankNetComparison.py \
   --hour_run_dir ThesisResults/UnConstrained/3Hours
