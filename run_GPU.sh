@@ -15,20 +15,56 @@ source env.sh
 python3 manual_run.py --num_models 2 # This manually creates TakuNetModels
 python3 evolutionary_run.py --time 2.0 --population_size 6 --lr_strategy linear # This Runs the Actual Nas with Genetic Algorythm, for lr_strategy add : cosine, linear, step
 
+
+# HarcWare Constrain & RankNet
+
+python3 evolutionary_run.py \
+  --time 3.0 \
+  --population_size 6 \
+  --hardwareConstrains True \
+  --performaceStoppage False \
+  --midway_callback False \
+  --early_stopping_acc False \
+  --use_ranknet True
+
 python3 evolutionary_run.py \
   --time 10.0 \
   --population_size 6 \
-  --hardwareConstrains False \
+  --hardwareConstrains True \
   --performaceStoppage False \
   --midway_callback False \
-  --early_stopping_acc False
+  --early_stopping_acc False \
+  --use_ranknet True
 
+
+# HardWare Constrain  & NoRankNet
+python3 evolutionary_run.py \
+  --time 3.0 \
+  --population_size 6 \
+  --hardwareConstrains True \
+  --performaceStoppage False \
+  --midway_callback False \
+  --early_stopping_acc False \
+  --use_ranknet False
+
+python3 evolutionary_run.py \
+  --time 10.0 \
+  --population_size 6 \
+  --hardwareConstrains True \
+  --performaceStoppage False \
+  --midway_callback False \
+  --early_stopping_acc False \
+  --use_ranknet False
+
+#    -------------------------------------------  #
+
+# No HardWare Constrain Options & RankNet
 
 python3 evolutionary_run.py \
   --time 3.0 \
   --population_size 6 \
   --lr_strategy cosine \
-  --hardwareConstrains True \
+  --hardwareConstrains False \
   --performaceStoppage False \
   --midway_callback False \
   --early_stopping_acc False \
@@ -39,12 +75,38 @@ python3 evolutionary_run.py \
   --time 10.0 \
   --population_size 6 \
   --lr_strategy cosine \
-  --hardwareConstrains True \
+  --hardwareConstrains False \
   --performaceStoppage False \
   --midway_callback False \
   --early_stopping_acc False \
   --use_ranknet True
 
+
+
+# No HardWare Constrain Options & NoRankNet
+
+python3 evolutionary_run.py \
+  --time 3.0 \
+  --population_size 6 \
+  --lr_strategy cosine \
+  --hardwareConstrains False \
+  --performaceStoppage False \
+  --midway_callback False \
+  --early_stopping_acc False \
+  --use_ranknet False
+
+
+python3 evolutionary_run.py \
+  --time 10.0 \
+  --population_size 6 \
+  --lr_strategy cosine \
+  --hardwareConstrains False \
+  --performaceStoppage False \
+  --midway_callback False \
+  --early_stopping_acc False \
+  --use_ranknet False
+
+  
 
 # Retrain Techniques
 
