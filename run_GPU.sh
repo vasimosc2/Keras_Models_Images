@@ -127,8 +127,21 @@ python3 plotting/plotParetoCurve.py \
   --epoch_70_month_run2 Jun --epoch_70_day_run2 24 \
   --marker_scale 0.3
 
+
+
+
+# Constrained
+python3 plotting/rankNetComparison.py \
+  --hour_run_dir ThesisResults/Constrained/3Hours
+
 python3 plotting/rankNetComparison.py \
   --hour_run_dir ThesisResults/Constrained/10Hours
 
+
+
+# UnConstrained
 python3 plotting/rankNetComparison.py \
   --hour_run_dir ThesisResults/UnConstrained/3Hours
+
+python3 plotting/rankNetComparison.py \
+  --hour_run_dir ThesisResults/UnConstrained/10Hours
