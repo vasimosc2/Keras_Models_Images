@@ -111,11 +111,13 @@ def normalize_joint(a: np.ndarray, b: np.ndarray):
     all_pts = np.vstack([a, b])
     ram_min, ram_max = all_pts[:, 0].min(), all_pts[:, 0].max()
     acc_min, acc_max = all_pts[:, 1].min(), all_pts[:, 1].max()
+    flash_min, flash_max = all_pts[:, 2].min(), all_pts[:, 2].max()
 
     def norm(p):
         ram_n = (p[:, 0] - ram_min) / (ram_max - ram_min + 1e-12)
         acc_n = (p[:, 1] - acc_min) / (acc_max - acc_min + 1e-12)
-        return np.column_stack([ram_n, acc_n])
+        flash_n = (p[:, 2] - flash_min) / (flash_max - flash_min + 1e-12)
+        return np.column_stack([ram_n, acc_n, flash_n])
 
     return norm(a), norm(b)
 
@@ -128,7 +130,8 @@ def to_minimization(points_norm: np.ndarray) -> np.ndarray:
     """
     ram_cost = points_norm[:, 0]
     predic_miss = 1.0 - points_norm[:, 1] # Convert to Norm_Miss_Predictions
-    return np.column_stack([ram_cost, predic_miss])
+    flash_cost = points_norm[:, 2]
+    return np.column_stack([ram_cost, predic_miss, flash_cost])
 
 def hypervolume_2d_min(cost_pts: np.ndarray, ref=(1.0, 1.0)) -> float:
     """
@@ -201,6 +204,73 @@ def hypervolume_2d_min(cost_pts: np.ndarray, ref=(1.0, 1.0)) -> float:
 
     return hv
 
+def format_flash_size(kb: float) -> str:
+    """
+    Format a flash size given in KB:
+      - < 1024  → 'XXX KB'
+      - >= 1024 → 'Y.Y MB' (or 'Y MB' if >= 10 MB)
+    """
+    if kb < 1024:
+        return f"{kb:.0f} KB"
+    mb = kb / 1024.0
+    if mb >= 10:
+        return f"{mb:.0f} MB"
+    else:
+        return f"{mb:.1f} MB"
+
+def hypervolume_3d_min(cost_pts: np.ndarray, ref=(1.0, 1.0, 1.0)) -> float:
+    """
+    Hypervolume for 3D minimization w.r.t. reference point.
+
+    cost_pts: shape (N, 3) with (RAM_cost, MISS_cost, FLASH_cost),
+              all in [0,1], smaller = better.
+    ref: worst point (R1, R2, R3), typically (1,1,1).
+
+    Strategy:
+      - Sweep along RAM (x) in slabs.
+      - For each x-slab, consider points whose RAM_cost <= x_left.
+      - In that slab, compute 2D HV in (MISS, FLASH) using hypervolume_2d_min.
+      - Integrate over x to get 3D HV.
+    """
+    if cost_pts.size == 0:
+        return 0.0
+
+    pts = np.asarray(cost_pts, dtype=float)
+    R1, R2, R3 = ref
+
+    # Keep only points no worse than reference
+    mask = (pts[:, 0] <= R1) & (pts[:, 1] <= R2) & (pts[:, 2] <= R3)
+    pts = pts[mask]
+    if pts.size == 0:
+        return 0.0
+
+    # All x (RAM) where the frontier can change
+    xs = np.unique(np.concatenate([pts[:, 0], [R1]]))
+    xs.sort()
+
+    hv = 0.0
+
+    for k in range(len(xs) - 1):
+        x_left, x_right = xs[k], xs[k + 1]
+        dx = x_right - x_left
+        if dx <= 0:
+            continue
+
+        # Points whose rectangle covers this x_slab: RAM_cost <= x_left
+        slab_mask = pts[:, 0] <= x_left
+        if not np.any(slab_mask):
+            continue
+
+        # Project to 2D (MISS, FLASH) for this slab
+        yz_pts = pts[slab_mask][:, 1:]  # shape (M, 2)
+
+        # 2D HV in (MISS, FLASH) with ref=(R2,R3)
+        hv_yz = hypervolume_2d_min(yz_pts, ref=(R2, R3))
+
+        hv += dx * hv_yz
+
+    return hv
+
 # -------------------------------------------------------------------
 # Plot + hypervolume
 # -------------------------------------------------------------------
@@ -234,16 +304,14 @@ def plot_hour_run(root_dir, title=None, marker_scale=1.0, out_path=None):
         pts_without_pf = pareto_front_3obj(pts_without_RankNet)
 
         # Collect all the Data and normalize them
-        pts_with_2d = pts_with_pf[:, :2]       # RAM, ACC
-        pts_without_2d = pts_without_pf[:, :2]
-        norm_with, norm_without = normalize_joint(pts_with_2d, pts_without_2d) 
+        norm_with, norm_without = normalize_joint(pts_with_pf, pts_without_pf) 
 
         # Convert the Accuracy to Miss_Prediction
         cost_with = to_minimization(norm_with)
         cost_without = to_minimization(norm_without)
 
-        hv_with = hypervolume_2d_min(cost_with)
-        hv_without = hypervolume_2d_min(cost_without)
+        hv_with = hypervolume_3d_min(cost_with)
+        hv_without =  hypervolume_3d_min(cost_without)
         improvement = (hv_with - hv_without) / (hv_without + 1e-12) * 100.0
 
         print(f"\n📁 Evaluating folder: {root_dir}")
@@ -266,6 +334,8 @@ def plot_hour_run(root_dir, title=None, marker_scale=1.0, out_path=None):
     elif "constrained" in parent_dir.lower():
         constraint_label = "Constrained"
 
+    is_constrained = constraint_label == "Constrained"
+
     if title is None:
         title = f"{folder_name} {constraint_label}".strip()
 
@@ -277,6 +347,8 @@ def plot_hour_run(root_dir, title=None, marker_scale=1.0, out_path=None):
     # ---------------------------------------------------------
     all_sizes = []
     size_info = []  # (group, fname, df, size_col)
+    
+
 
     for (group_name, data_list) in (("with", with_RankNet_data), ("without", without_RankNet_data)):
         for fname, df in data_list:
@@ -365,6 +437,10 @@ def plot_hour_run(root_dir, title=None, marker_scale=1.0, out_path=None):
     plt.gca().invert_xaxis()
 
     # legend
+    ax = plt.gca()
+
+    # ---------------- Main legend: With / Without RankNet ----------------
+    legend_x = 1.0   # tweak left/right as you like (1.15–1.25 range)
     handles = []
     for text, color, marker in legend_entries:
         handles.append(
@@ -380,15 +456,119 @@ def plot_hour_run(root_dir, title=None, marker_scale=1.0, out_path=None):
             )
         )
 
-    plt.legend(
+    main_legend = ax.legend(
         handles=handles,
         loc="center left",
-        bbox_to_anchor=(1, 0.5),
+        bbox_to_anchor=(legend_x, 0.5),
         fontsize=9,
     )
+    ax.add_artist(main_legend)  # keep this legend when we add another one
 
     # ---------------------------------------------------------
-    # 3) annotate hypervolume on the figure (if available)
+    # 3) Flash-Memory Bubble Legend (clean + outside plot)
+    # ---------------------------------------------------------
+
+    fmin = float(all_sizes.min())
+    fmax = float(all_sizes.max())
+
+    # 3 ranges: small / medium / large
+    small_range  = (fmin, fmin + (fmax - fmin) * 0.33)
+    medium_range = (fmin + (fmax - fmin) * 0.33, fmin + (fmax - fmin) * 0.66)
+    large_range  = (fmin + (fmax - fmin) * 0.66, fmax)
+
+    sample_vals = np.array([
+        (small_range[0]  + small_range[1]) / 2,
+        (medium_range[0] + medium_range[1]) / 2,
+        (large_range[0]  + large_range[1]) / 2,
+    ])
+
+    # Make legend bubbles MUCH larger + clearer
+    sample_sizes = normalize_sizes(sample_vals) * marker_scale
+
+
+    sample_labels = [
+    f"{format_flash_size(small_range[0])}–{format_flash_size(small_range[1])}",
+    f"{format_flash_size(medium_range[0])}–{format_flash_size(medium_range[1])}",
+    f"{format_flash_size(large_range[0])}–{format_flash_size(large_range[1])}",
+    ]
+
+
+    bubble_handles = []
+    for size, label in zip(sample_sizes, sample_labels):
+        bubble_handles.append(
+            ax.scatter(
+                [],
+                [],
+                s=size,
+                color="tab:blue", 
+                alpha=0.85,
+                edgecolors="black", 
+                linewidths=1.3,
+                label=label
+            )
+        )
+
+    bubble_legend = ax.legend(
+    handles=bubble_handles,
+    title="Flash Memory Range",
+    loc="upper left",
+    bbox_to_anchor=(legend_x, 1.00),   # nicely outside
+    fontsize=10,
+    title_fontsize=11,
+    frameon=True,
+    labelspacing=2.4,     # ← space between entries
+    borderpad=1.2,        # ← space inside legend box
+    handletextpad=1.4,    # ← space between bubble & text
+    )
+
+
+    ax.add_artist(bubble_legend)
+
+
+    # ---------------------------------------------------------
+    # 4) Fixed MCU / device legend (only for Constrained runs)
+    # ---------------------------------------------------------
+    if is_constrained:
+        # You can tweak this list as you like
+        mcu_devices = [
+            # name,           RAM_KB, Flash_KB
+            ("Arduino Nano 33 BLE",     256, 1024),
+            ("STM32F411 (Nucleo)",      128, 512),
+            ("Raspberry Pi Pico",       264, 2048),
+            ("ESP32-C3 DevKit",         400, 4096),
+        ]
+
+        mcu_handles = []
+        for name, ram_kb, flash_kb in mcu_devices:
+            label = f"{name}: {ram_kb} KB RAM, {format_flash_size(flash_kb)} Flash"
+            # Just use an empty marker line as a legend entry
+            mcu_handles.append(
+                Line2D(
+                    [0], [0],
+                    marker="o",
+                    linestyle="",
+                    color="gray",
+                    markerfacecolor="none",
+                    markeredgecolor="gray",
+                    label=label,
+                )
+            )
+
+        mcu_legend = ax.legend(
+            handles=mcu_handles,
+            title="Typical MCU Budgets",
+            loc="lower left",
+            bbox_to_anchor=(legend_x, 0.02),# below the Flash legend, outside the plot
+            fontsize=8,
+            title_fontsize=9,
+            frameon=True,
+            borderpad=0.8,
+            labelspacing=0.6,
+        )
+        ax.add_artist(mcu_legend)
+
+    # ---------------------------------------------------------
+    # 4) annotate hypervolume on the figure (if available)
     # ---------------------------------------------------------
     if hv_with is not None:
         text = (
@@ -407,7 +587,7 @@ def plot_hour_run(root_dir, title=None, marker_scale=1.0, out_path=None):
             verticalalignment="bottom",
         )
 
-    plt.tight_layout(rect=[0, 0, 0.82, 1])
+    plt.tight_layout(rect=[0, 0, 0.70, 1])
     plt.savefig(out_path, dpi=300)
     print(f"✅ saved to {out_path}")
     plt.close()
