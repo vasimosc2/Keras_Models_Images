@@ -4,9 +4,62 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import numpy as np
+import re
+from pathlib import Path
 
 # markers to distinguish different runs inside the same group
 MARKERS = ["o", "s", "D", "^", "v", "P", "X"]
+
+
+
+def clean_run_label(stem: str) -> str:
+    """
+    Remove noisy substrings like 'Pareto_optimal_models_dateXXX' from legend labels.
+    Works on filename *stem* (no extension).
+    """
+    s = stem
+
+    # Remove common noisy chunk (case-insensitive) and optional separators
+    s = re.sub(r"(?i)pareto[_\- ]*optimal[_\- ]*models[_\- ]*date\d+", "", s)
+
+    # Also remove a shorter variant if it exists
+    s = re.sub(r"(?i)pareto[_\- ]*optimal[_\- ]*models", "", s)
+
+    # Cleanup leftover separators/whitespace
+    s = re.sub(r"[_\-]+", " ", s).strip()
+    s = re.sub(r"\s+", " ", s).strip()
+
+    return s if s else stem
+
+
+def resolve_vector_outpath(out_path: str | None, root_dir: str, title: str) -> str:
+    """
+    Ensure output is vector (PDF by default). If user passes .png/.jpg, switch to .pdf.
+    """
+    if out_path is None:
+        return str(Path(root_dir) / f"{title.replace(' ', '_')}_pareto.pdf")
+
+    p = Path(out_path)
+    if p.suffix.lower() not in {".pdf", ".svg"}:
+        return str(p.with_suffix(".pdf"))
+    return str(p)
+
+
+def normalize_sizes_fixed(raw_kb: np.ndarray,
+                          data_min_kb: float = 0.0,
+                          data_max_kb: float = 1100.0,
+                          min_size_display: float = 80.0,
+                          max_size_display: float = 800.0) -> np.ndarray:
+    """
+    Normalize bubble areas using a FIXED flash range (0..1100 KB) so all figures match.
+    Values are clipped to the fixed range.
+    """
+    raw = np.asarray(raw_kb, dtype=float)
+    raw = np.clip(raw, data_min_kb, data_max_kb)
+
+    denom = (data_max_kb - data_min_kb) + 1e-12
+    norm = (raw - data_min_kb) / denom
+    return norm * (max_size_display - min_size_display) + min_size_display
 
 
 # -------------------------------------------------------------------
@@ -270,16 +323,55 @@ def hypervolume_3d_min(cost_pts: np.ndarray, ref=(1.0, 1.0, 1.0)) -> float:
         hv += dx * hv_yz
 
     return hv
+def plot_hour_run_new(root_dir, title=None, marker_scale=1.0, out_path=None):
+    """
+    Paper-style layout:
+      - Left: plot
+      - Right: 3 stacked legend boxes (Flash / Runs / MCU)
 
-# -------------------------------------------------------------------
-# Plot + hypervolume
-# -------------------------------------------------------------------
-def plot_hour_run(root_dir, title=None, marker_scale=1.0, out_path=None):
+    Requirements covered:
+      - Vector output (PDF/SVG)
+      - Fixed axes: Accuracy 0.3..0.7, RAM 30..150 (inverted)
+      - Bubble sizes normalized with FIXED Flash range 0..1100 KB
+      - Run legend labels are: "No RankNet - Run 1", "With RankNet - Run 1", etc.
     """
-    root_dir/
-      WithRankNet/*.csv
-      WithoutRankNet/*.csv
-    """
+    import re
+    from pathlib import Path
+
+    # ---------------- Publication-ish styling ----------------
+    plt.rcParams.update({
+        "font.size": 12,
+        "axes.titlesize": 18,
+        "axes.labelsize": 14,
+        "legend.fontsize": 11,
+        "xtick.labelsize": 12,
+        "ytick.labelsize": 12,
+        "pdf.fonttype": 42,  # embed TrueType fonts in PDF (copy-paste text)
+        "ps.fonttype": 42,
+    })
+
+    def resolve_vector_outpath(out_path_local: str | None, root: str, ttl: str) -> str:
+        if out_path_local is None:
+            return str(Path(root) / f"{ttl.replace(' ', '_')}_pareto.pdf")
+        p = Path(out_path_local)
+        if p.suffix.lower() not in {".pdf", ".svg"}:
+            return str(p.with_suffix(".pdf"))
+        return str(p)
+
+    def normalize_sizes_fixed(raw_kb: np.ndarray,
+                              data_min_kb: float = 0.0,
+                              data_max_kb: float = 1100.0,
+                              min_size_display: float = 80.0,
+                              max_size_display: float = 800.0) -> np.ndarray:
+        raw = np.asarray(raw_kb, dtype=float)
+        raw = np.clip(raw, data_min_kb, data_max_kb)
+        denom = (data_max_kb - data_min_kb) + 1e-12
+        norm = (raw - data_min_kb) / denom
+        return norm * (max_size_display - min_size_display) + min_size_display
+
+    # ---------------------------------------------------------
+    # Load CSVs
+    # ---------------------------------------------------------
     with_dir = os.path.join(root_dir, "WithRankNet")
     without_dir = os.path.join(root_dir, "WithoutRankNet")
 
@@ -293,25 +385,21 @@ def plot_hour_run(root_dir, title=None, marker_scale=1.0, out_path=None):
         raise SystemExit(f"No CSVs found in {with_dir} or {without_dir}")
 
     # ---------------------------------------------------------
-    # 🧮 Hypervolume computation
+    # Hypervolume computation
     # ---------------------------------------------------------
     if with_RankNet_data and without_RankNet_data:
         pts_with_RankNet = collect_ram_acc_flash(with_RankNet_data)
         pts_without_RankNet = collect_ram_acc_flash(without_RankNet_data)
 
-        #Collect the Global Pareto Front from all the runs
         pts_with_pf = pareto_front_3obj(pts_with_RankNet)
         pts_without_pf = pareto_front_3obj(pts_without_RankNet)
 
-        # Collect all the Data and normalize them
-        norm_with, norm_without = normalize_joint(pts_with_pf, pts_without_pf) 
-
-        # Convert the Accuracy to Miss_Prediction
+        norm_with, norm_without = normalize_joint(pts_with_pf, pts_without_pf)
         cost_with = to_minimization(norm_with)
         cost_without = to_minimization(norm_without)
 
         hv_with = hypervolume_3d_min(cost_with)
-        hv_without =  hypervolume_3d_min(cost_without)
+        hv_without = hypervolume_3d_min(cost_without)
         improvement = (hv_with - hv_without) / (hv_without + 1e-12) * 100.0
 
         print(f"\n📁 Evaluating folder: {root_dir}")
@@ -323,7 +411,7 @@ def plot_hour_run(root_dir, title=None, marker_scale=1.0, out_path=None):
         hv_with = hv_without = improvement = None
 
     # ---------------------------------------------------------
-    # 🧭 Title / paths
+    # Title / constrained label
     # ---------------------------------------------------------
     folder_name = os.path.basename(os.path.normpath(root_dir))
     parent_dir = os.path.basename(os.path.dirname(os.path.normpath(root_dir)))
@@ -334,23 +422,18 @@ def plot_hour_run(root_dir, title=None, marker_scale=1.0, out_path=None):
     elif "constrained" in parent_dir.lower():
         constraint_label = "Constrained"
 
-    is_constrained = constraint_label == "Constrained"
+    is_constrained = (constraint_label == "Constrained")
 
     if title is None:
         title = f"{folder_name} {constraint_label}".strip()
 
-    if out_path is None:
-        out_path = os.path.join(root_dir, f"{title.replace(' ', '_')}_pareto.png")
+    out_path = resolve_vector_outpath(out_path, root_dir, title)
 
     # ---------------------------------------------------------
-    # 1) collect ALL size values (both folders) to normalize
+    # Gather plot inputs
     # ---------------------------------------------------------
-    all_sizes = []
     size_info = []  # (group, fname, df, size_col)
-    
-
-
-    for (group_name, data_list) in (("with", with_RankNet_data), ("without", without_RankNet_data)):
+    for (group_name, data_list) in (("without", without_RankNet_data), ("with", with_RankNet_data)):
         for fname, df in data_list:
             for col in ["Best Test Accuracy", "Model RAM (KB)"]:
                 if col not in df.columns:
@@ -360,26 +443,23 @@ def plot_hour_run(root_dir, title=None, marker_scale=1.0, out_path=None):
             if size_col is None:
                 raise ValueError(f"{fname} has no size column (TFlite/Flash).")
 
-            sizes = df[size_col].to_numpy()
-            all_sizes.extend(list(sizes))
             size_info.append((group_name, fname, df, size_col))
 
-    all_sizes = np.array(all_sizes, dtype=float)
-    min_size_display, max_size_display = 80, 800
-
-    s_min, s_max = all_sizes.min(), all_sizes.max()
-
-    def normalize_sizes(raw):
-        if s_max == s_min:
-            return np.full_like(raw, (min_size_display + max_size_display) / 2.0)
-        norm = (raw - s_min) / (s_max - s_min)
-        return norm * (max_size_display - min_size_display) + min_size_display
-
     # ---------------------------------------------------------
-    # 2) plotting
+    # 2-column layout: plot + legend-column (robust; never cropped)
     # ---------------------------------------------------------
-    plt.figure(figsize=(12, 6))
+    fig = plt.figure(figsize=(12.5, 6))
+    gs = fig.add_gridspec(1, 2, width_ratios=[3.0, 1.9], wspace=0.06)
+
+    ax = fig.add_subplot(gs[0, 0])
+    ax_leg = fig.add_subplot(gs[0, 1])
+    ax_leg.axis("off")
+
     legend_entries = []
+
+    # ✅ run counters (separate per group)
+    run_id_without = 0
+    run_id_with = 0
 
     # WITHOUT RankNet first
     idx_without = 0
@@ -389,21 +469,23 @@ def plot_hour_run(root_dir, title=None, marker_scale=1.0, out_path=None):
         marker = MARKERS[idx_without % len(MARKERS)]
         idx_without += 1
 
-        bubble_sizes = normalize_sizes(df[size_col].to_numpy()) * marker_scale
+        bubble_sizes = normalize_sizes_fixed(df[size_col].to_numpy()) * marker_scale
 
-        plt.scatter(
+        ax.scatter(
             df["Model RAM (KB)"],
             df["Best Test Accuracy"],
             s=bubble_sizes,
-            alpha=0.7,
+            alpha=0.75,
             color=color_without,
             marker=marker,
             edgecolors="black",
+            linewidths=0.7,
             zorder=2,
         )
-        legend_entries.append(
-            (f"No RankNet - {os.path.splitext(fname)[0]}", color_without, marker)
-        )
+
+        # ✅ label as Run 1 / Run 2 ...
+        run_id_without += 1
+        legend_entries.append((f"No RankNet - Run {run_id_without}", color_without, marker))
 
     # WITH RankNet
     idx_with = 0
@@ -413,9 +495,9 @@ def plot_hour_run(root_dir, title=None, marker_scale=1.0, out_path=None):
         marker = MARKERS[idx_with % len(MARKERS)]
         idx_with += 1
 
-        bubble_sizes = normalize_sizes(df[size_col].to_numpy()) * marker_scale
+        bubble_sizes = normalize_sizes_fixed(df[size_col].to_numpy()) * marker_scale
 
-        plt.scatter(
+        ax.scatter(
             df["Model RAM (KB)"],
             df["Best Test Accuracy"],
             s=bubble_sizes,
@@ -423,115 +505,90 @@ def plot_hour_run(root_dir, title=None, marker_scale=1.0, out_path=None):
             color=color_with,
             marker=marker,
             edgecolors="black",
+            linewidths=0.7,
             zorder=3,
         )
-        legend_entries.append(
-            (f"With RankNet - {os.path.splitext(fname)[0]}", color_with, marker)
-        )
 
-    # labels, grid, invert x
-    plt.xlabel("RAM Consumption (KB)", fontsize=12)
-    plt.ylabel("Val. Accuracy", fontsize=12)
-    plt.title(title, fontsize=14)
-    plt.grid(True)
-    plt.gca().invert_xaxis()
-
-    # legend
-    ax = plt.gca()
-
-    # ---------------- Main legend: With / Without RankNet ----------------
-    legend_x = 1.0   # tweak left/right as you like (1.15–1.25 range)
-    handles = []
-    for text, color, marker in legend_entries:
-        handles.append(
-            Line2D(
-                [0],
-                [0],
-                marker=marker,
-                color="w",
-                label=text,
-                markerfacecolor=color,
-                markeredgecolor="black",
-                markersize=8,
-            )
-        )
-
-    main_legend = ax.legend(
-        handles=handles,
-        loc="center left",
-        bbox_to_anchor=(legend_x, 0.5),
-        fontsize=9,
-    )
-    ax.add_artist(main_legend)  # keep this legend when we add another one
+        # ✅ label as Run 1 / Run 2 ...
+        run_id_with += 1
+        legend_entries.append((f"With RankNet - Run {run_id_with}", color_with, marker))
 
     # ---------------------------------------------------------
-    # 3) Flash-Memory Bubble Legend (clean + outside plot)
+    # Fixed axes (reviewer requirement)
     # ---------------------------------------------------------
+    ax.set_title(title)
+    ax.set_xlabel("RAM Consumption (KB)")
+    ax.set_ylabel("Val. Accuracy")
 
-    fmin = float(all_sizes.min())
-    fmax = float(all_sizes.max())
+    ax.set_ylim(0.3, 0.75)
+    ax.set_xlim(1200, 0)
+    ax.grid(True, alpha=0.35, linewidth=1.0)
 
-    # 3 ranges: small / medium / large
-    small_range  = (fmin, fmin + (fmax - fmin) * 0.33)
-    medium_range = (fmin + (fmax - fmin) * 0.33, fmin + (fmax - fmin) * 0.66)
-    large_range  = (fmin + (fmax - fmin) * 0.66, fmax)
-
-    sample_vals = np.array([
-        (small_range[0]  + small_range[1]) / 2,
-        (medium_range[0] + medium_range[1]) / 2,
-        (large_range[0]  + large_range[1]) / 2,
-    ])
-
-    # Make legend bubbles MUCH larger + clearer
-    sample_sizes = normalize_sizes(sample_vals) * marker_scale
-
-
+    # ---------------------------------------------------------
+    # Legend box 1 (top): Flash Memory Range (fixed 0..1100 KB)
+    # ---------------------------------------------------------
+    fmin, fmax = 0.0, 1100.0
+    bands = [
+        (fmin, fmin + (fmax - fmin) / 3),
+        (fmin + (fmax - fmin) / 3, fmin + 2 * (fmax - fmin) / 3),
+        (fmin + 2 * (fmax - fmin) / 3, fmax),
+    ]
+    sample_vals = np.array([(a + b) / 2 for a, b in bands], dtype=float)
+    sample_sizes = normalize_sizes_fixed(sample_vals) * marker_scale
     sample_labels = [
-    f"{format_flash_size(small_range[0])}–{format_flash_size(small_range[1])}",
-    f"{format_flash_size(medium_range[0])}–{format_flash_size(medium_range[1])}",
-    f"{format_flash_size(large_range[0])}–{format_flash_size(large_range[1])}",
+        f"{format_flash_size(bands[0][0])}–{format_flash_size(bands[0][1])}",
+        f"{format_flash_size(bands[1][0])}–{format_flash_size(bands[1][1])}",
+        f"{format_flash_size(bands[2][0])}–{format_flash_size(bands[2][1])}",
     ]
 
+    bubble_handles = [
+        ax_leg.scatter([], [], s=s, color="tab:blue", alpha=0.85,
+                       edgecolors="black", linewidths=1.2, label=lab)
+        for s, lab in zip(sample_sizes, sample_labels)
+    ]
 
-    bubble_handles = []
-    for size, label in zip(sample_sizes, sample_labels):
-        bubble_handles.append(
-            ax.scatter(
-                [],
-                [],
-                s=size,
-                color="tab:blue", 
-                alpha=0.85,
-                edgecolors="black", 
-                linewidths=1.3,
-                label=label
-            )
-        )
-
-    bubble_legend = ax.legend(
-    handles=bubble_handles,
-    title="Flash Memory Range",
-    loc="upper left",
-    bbox_to_anchor=(legend_x, 1.00),   # nicely outside
-    fontsize=10,
-    title_fontsize=11,
-    frameon=True,
-    labelspacing=2.4,     # ← space between entries
-    borderpad=1.2,        # ← space inside legend box
-    handletextpad=1.4,    # ← space between bubble & text
+    bubble_legend = ax_leg.legend(
+        handles=bubble_handles,
+        title="Flash Memory Range",
+        loc="upper left",
+        bbox_to_anchor=(0.0, 1.0),
+        frameon=True,
+        borderpad=1.0,
+        labelspacing=1.2,
+        handletextpad=1.0,
+        title_fontsize=12,
     )
-
-
-    ax.add_artist(bubble_legend)
-
+    ax_leg.add_artist(bubble_legend)
 
     # ---------------------------------------------------------
-    # 4) Fixed MCU / device legend (only for Constrained runs)
+    # Legend box 2 (middle): Runs
+    # ---------------------------------------------------------
+    run_handles = [
+        Line2D([0], [0],
+               marker=mk, color="w",
+               label=txt,
+               markerfacecolor=col,
+               markeredgecolor="black",
+               markersize=8)
+        for (txt, col, mk) in legend_entries
+    ]
+
+    run_legend = ax_leg.legend(
+        handles=run_handles,
+        loc="upper left",
+        bbox_to_anchor=(0.0, 0.62),
+        frameon=True,
+        borderpad=1.0,
+        labelspacing=0.6,
+        handletextpad=0.8,
+    )
+    ax_leg.add_artist(run_legend)
+
+    # ---------------------------------------------------------
+    # Legend box 3 (bottom): MCU budgets (only constrained)
     # ---------------------------------------------------------
     if is_constrained:
-        # You can tweak this list as you like
         mcu_devices = [
-            # name,           RAM_KB, Flash_KB
             ("Arduino Nano 33 BLE",     256, 1024),
             ("STM32F411 (Nucleo)",      128, 512),
             ("Raspberry Pi Pico",       264, 2048),
@@ -541,34 +598,30 @@ def plot_hour_run(root_dir, title=None, marker_scale=1.0, out_path=None):
         mcu_handles = []
         for name, ram_kb, flash_kb in mcu_devices:
             label = f"{name}: {ram_kb} KB RAM, {format_flash_size(flash_kb)} Flash"
-            # Just use an empty marker line as a legend entry
             mcu_handles.append(
-                Line2D(
-                    [0], [0],
-                    marker="o",
-                    linestyle="",
-                    color="gray",
-                    markerfacecolor="none",
-                    markeredgecolor="gray",
-                    label=label,
-                )
+                Line2D([0], [0],
+                       marker="o", linestyle="",
+                       color="gray",
+                       markerfacecolor="none",
+                       markeredgecolor="gray",
+                       label=label)
             )
 
-        mcu_legend = ax.legend(
+        mcu_legend = ax_leg.legend(
             handles=mcu_handles,
             title="Typical MCU Budgets",
-            loc="lower left",
-            bbox_to_anchor=(legend_x, 0.02),# below the Flash legend, outside the plot
-            fontsize=8,
-            title_fontsize=9,
+            loc="upper left",
+            bbox_to_anchor=(-0.06, 0.20),
             frameon=True,
-            borderpad=0.8,
+            borderpad=1.0,
             labelspacing=0.6,
+            handletextpad=0.8,
+            title_fontsize=12,
         )
-        ax.add_artist(mcu_legend)
+        ax_leg.add_artist(mcu_legend)
 
     # ---------------------------------------------------------
-    # 4) annotate hypervolume on the figure (if available)
+    # Hypervolume annotation (bottom-left inside plot)
     # ---------------------------------------------------------
     if hv_with is not None:
         text = (
@@ -576,21 +629,22 @@ def plot_hour_run(root_dir, title=None, marker_scale=1.0, out_path=None):
             f"Hv RankNet : {hv_with:.3f}\n"
             f"ΔHv Improvement: {improvement:.1f}%"
         )
-        ax = plt.gca()
         ax.text(
-            0.02,
-            0.02,
-            text,
+            0.02, 0.02, text,
             transform=ax.transAxes,
-            fontsize=9,
-            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+            fontsize=11,
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.85),
             verticalalignment="bottom",
         )
 
-    plt.tight_layout(rect=[0, 0, 0.70, 1])
-    plt.savefig(out_path, dpi=300)
+    fig.savefig(out_path)
     print(f"✅ saved to {out_path}")
-    plt.close()
+    plt.close(fig)
+
+
+
+
+
 
 
 # -------------------------------------------------------------------
@@ -626,7 +680,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    plot_hour_run(
+    plot_hour_run_new(
         root_dir=args.hour_run_dir,
         title=args.title,
         marker_scale=args.marker_scale,

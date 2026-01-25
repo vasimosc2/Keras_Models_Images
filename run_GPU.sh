@@ -137,8 +137,6 @@ python3 plotting/rankNetComparison.py \
 python3 plotting/rankNetComparison.py \
   --hour_run_dir ThesisResults/Constrained/10Hours
 
-
-
 # UnConstrained
 python3 plotting/rankNetComparison.py \
   --hour_run_dir ThesisResults/UnConstrained/3Hours
