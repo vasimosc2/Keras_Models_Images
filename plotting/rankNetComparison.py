@@ -11,6 +11,41 @@ from pathlib import Path
 MARKERS = ["o", "s", "D", "^", "v", "P", "X"]
 
 
+def str_to_bool(value, default=False):
+    """
+    Convert env/CLI-like strings to bool.
+    Accepts: true/false, 1/0, yes/no, on/off
+    """
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+
+    s = str(value).strip().lower()
+    if s in {"1", "true", "yes", "y", "on"}:
+        return True
+    if s in {"0", "false", "no", "n", "off"}:
+        return False
+    return default
+
+
+def format_improvement(hv_without, hv_with, eps=1e-12):
+    """
+    Returns a printable improvement string.
+
+    Cases:
+      - hv_without == 0 and hv_with == 0  -> 0.00%
+      - hv_without == 0 and hv_with > 0   -> ∞
+      - otherwise                         -> normal percentage
+    """
+    if abs(hv_without) <= eps:
+        if abs(hv_with) <= eps:
+            return "0.00%"
+        return "∞"
+
+    improvement = (hv_with - hv_without) / hv_without * 100.0
+    return f"{improvement:.2f}%"
+
 
 def clean_run_label(stem: str) -> str:
     """
@@ -45,11 +80,13 @@ def resolve_vector_outpath(out_path: str | None, root_dir: str, title: str) -> s
     return str(p)
 
 
-def normalize_sizes_fixed(raw_kb: np.ndarray,
-                          data_min_kb: float = 0.0,
-                          data_max_kb: float = 1100.0,
-                          min_size_display: float = 80.0,
-                          max_size_display: float = 800.0) -> np.ndarray:
+def normalize_sizes_fixed(
+    raw_kb: np.ndarray,
+    data_min_kb: float = 0.0,
+    data_max_kb: float = 1100.0,
+    min_size_display: float = 80.0,
+    max_size_display: float = 800.0,
+) -> np.ndarray:
     """
     Normalize bubble areas using a FIXED flash range (0..1100 KB) so all figures match.
     Values are clipped to the fixed range.
@@ -90,7 +127,7 @@ def detect_size_column(df):
 
 
 # -------------------------------------------------------------------
-# Hypervolume helpers  (min RAM, max Accuracy)
+# Hypervolume helpers  (min RAM, max Accuracy, min Flash)
 # -------------------------------------------------------------------
 def collect_ram_acc_flash(
     data_list,
@@ -116,6 +153,7 @@ def collect_ram_acc_flash(
         return None
     return np.vstack(pts)
 
+
 def pareto_front_3obj(points: np.ndarray) -> np.ndarray:
     """
     Compute global Pareto front using 3 objectives:
@@ -134,19 +172,16 @@ def pareto_front_3obj(points: np.ndarray) -> np.ndarray:
         if not keep[i]:
             continue
 
-        # For a point j to dominate i:
-        # 1) j is no worse in all objectives
         better_eq = (
-            (pts[:, 0] <= pts[i, 0] + eps) &   # RAM <=
-            (pts[:, 1] >= pts[i, 1] - eps) &   # ACC >=
-            (pts[:, 2] <= pts[i, 2] + eps)     # FLASH <=
+            (pts[:, 0] <= pts[i, 0] + eps) &
+            (pts[:, 1] >= pts[i, 1] - eps) &
+            (pts[:, 2] <= pts[i, 2] + eps)
         )
 
-        # 2) j is strictly better in at least one objective
         strictly_better = (
-            (pts[:, 0] < pts[i, 0] - eps) |    # RAM <
-            (pts[:, 1] > pts[i, 1] + eps) |    # ACC >
-            (pts[:, 2] < pts[i, 2] - eps)      # FLASH <
+            (pts[:, 0] < pts[i, 0] - eps) |
+            (pts[:, 1] > pts[i, 1] + eps) |
+            (pts[:, 2] < pts[i, 2] - eps)
         )
 
         dominated = np.any(better_eq & strictly_better)
@@ -155,12 +190,11 @@ def pareto_front_3obj(points: np.ndarray) -> np.ndarray:
 
     return pts[keep]
 
+
 def normalize_joint(a: np.ndarray, b: np.ndarray):
     """
-    Collect all the values of Ram and Test Accuracy of the models ( Whether they come from With or Without Ranknet )
-    Normalize each model to a tuple ( Norm_RAM, Norm_Test_Accuracy ), with each  Norm_Ram,Norm_Test_Accuracy > 0 and < 1
+    Collect all values from two sets and normalize to [0,1] jointly.
     """
-    
     all_pts = np.vstack([a, b])
     ram_min, ram_max = all_pts[:, 0].min(), all_pts[:, 0].max()
     acc_min, acc_max = all_pts[:, 1].min(), all_pts[:, 1].max()
@@ -174,68 +208,55 @@ def normalize_joint(a: np.ndarray, b: np.ndarray):
 
     return norm(a), norm(b)
 
+
 def to_minimization(points_norm: np.ndarray) -> np.ndarray:
     """
-    To have a good model, we must have as high of an accuracy and as low of Ram
-    So, in order to have 2 values which we want to diminish to have a better model:
-    We convert to ( Norm_Ram, Norm_Miss_Predictions ), where the ( 0, 0 ) => Best possible model
-    
+    Convert (Norm_RAM, Norm_ACC, Norm_FLASH) to a minimization problem:
+      - RAM cost   = Norm_RAM
+      - MISS cost  = 1 - Norm_ACC
+      - FLASH cost = Norm_FLASH
     """
     ram_cost = points_norm[:, 0]
-    predic_miss = 1.0 - points_norm[:, 1] # Convert to Norm_Miss_Predictions
+    predic_miss = 1.0 - points_norm[:, 1]
     flash_cost = points_norm[:, 2]
     return np.column_stack([ram_cost, predic_miss, flash_cost])
+
 
 def hypervolume_2d_min(cost_pts: np.ndarray, ref=(1.0, 1.0)) -> float:
     """
     Hypervolume for 2D minimization w.r.t. reference point.
-
-    Sort the Models, on the first places or the array, we will have the models that are consuming the less RamMemory
-    So, tuples with the first element to be as small as possible
     """
-
     if cost_pts.size == 0:
         return 0.0
 
-    """
-    Ref = ( 1.0, 1.0 ) is the worst possible model. Talkes about a model that Consumes the most RAM memory,
-
-    Each Model is covering a Rectange with edges:   1) ( ram, miss_accuracy )
-                                                    2) ( ram, 1.0 )
-                                                    3) ( 1.0, miss_accuracy )
-                                                    4) ( 1.0, 1.0 )
-    """
-    Worst_Norm_RAM, Worst_Norm_Miss_Predictions = ref
+    worst_norm_ram, worst_norm_miss_predictions = ref
     pts = np.asarray(cost_pts, dtype=float)
 
-    # Keep only points that are not worse than the reference
-    mask = (pts[:, 0] <= Worst_Norm_RAM) & (pts[:, 1] <= Worst_Norm_Miss_Predictions)
+    mask = (pts[:, 0] <= worst_norm_ram) & (pts[:, 1] <= worst_norm_miss_predictions)
     pts = pts[mask]
     if pts.size == 0:
         return 0.0
 
-    # All x-coordinates where the shape can change: each point's RAM and the ref RAM
-    xs = np.unique(np.concatenate([pts[:, 0], [Worst_Norm_RAM]]))
+    xs = np.unique(np.concatenate([pts[:, 0], [worst_norm_ram]]))
     xs.sort()
 
     hv = 0.0
 
-    # Sweep over x-slabs [xs[k], xs[k+1]]
     for k in range(len(xs) - 1):
         x_left, x_right = xs[k], xs[k + 1]
         dx = x_right - x_left
         if dx <= 0:
             continue
 
-        # Rectangles that fully cover this slab horizontally: r_i <= x_left
         slab_mask = pts[:, 0] <= x_left
         if not np.any(slab_mask):
             continue
 
-        # The y-intervals [miss_i, R2] of those rectangles
-        intervals = np.column_stack([pts[slab_mask, 1], np.full(np.sum(slab_mask), Worst_Norm_Miss_Predictions)])
+        intervals = np.column_stack([
+            pts[slab_mask, 1],
+            np.full(np.sum(slab_mask), worst_norm_miss_predictions)
+        ])
 
-        # Sort by lower bound and merge to get union length in y
         intervals = intervals[intervals[:, 0].argsort()]
         y_union = 0.0
         cur_lo, cur_hi = None, None
@@ -243,7 +264,7 @@ def hypervolume_2d_min(cost_pts: np.ndarray, ref=(1.0, 1.0)) -> float:
         for lo, hi in intervals:
             if cur_lo is None:
                 cur_lo, cur_hi = lo, hi
-            elif lo <= cur_hi:  # overlap
+            elif lo <= cur_hi:
                 if hi > cur_hi:
                     cur_hi = hi
             else:
@@ -257,48 +278,23 @@ def hypervolume_2d_min(cost_pts: np.ndarray, ref=(1.0, 1.0)) -> float:
 
     return hv
 
-def format_flash_size(kb: float) -> str:
-    """
-    Format a flash size given in KB:
-      - < 1024  → 'XXX KB'
-      - >= 1024 → 'Y.Y MB' (or 'Y MB' if >= 10 MB)
-    """
-    if kb < 1024:
-        return f"{kb:.0f} KB"
-    mb = kb / 1024.0
-    if mb >= 10:
-        return f"{mb:.0f} MB"
-    else:
-        return f"{mb:.1f} MB"
 
 def hypervolume_3d_min(cost_pts: np.ndarray, ref=(1.0, 1.0, 1.0)) -> float:
     """
     Hypervolume for 3D minimization w.r.t. reference point.
-
-    cost_pts: shape (N, 3) with (RAM_cost, MISS_cost, FLASH_cost),
-              all in [0,1], smaller = better.
-    ref: worst point (R1, R2, R3), typically (1,1,1).
-
-    Strategy:
-      - Sweep along RAM (x) in slabs.
-      - For each x-slab, consider points whose RAM_cost <= x_left.
-      - In that slab, compute 2D HV in (MISS, FLASH) using hypervolume_2d_min.
-      - Integrate over x to get 3D HV.
     """
     if cost_pts.size == 0:
         return 0.0
 
     pts = np.asarray(cost_pts, dtype=float)
-    R1, R2, R3 = ref
+    r1, r2, r3 = ref
 
-    # Keep only points no worse than reference
-    mask = (pts[:, 0] <= R1) & (pts[:, 1] <= R2) & (pts[:, 2] <= R3)
+    mask = (pts[:, 0] <= r1) & (pts[:, 1] <= r2) & (pts[:, 2] <= r3)
     pts = pts[mask]
     if pts.size == 0:
         return 0.0
 
-    # All x (RAM) where the frontier can change
-    xs = np.unique(np.concatenate([pts[:, 0], [R1]]))
+    xs = np.unique(np.concatenate([pts[:, 0], [r1]]))
     xs.sort()
 
     hv = 0.0
@@ -309,36 +305,106 @@ def hypervolume_3d_min(cost_pts: np.ndarray, ref=(1.0, 1.0, 1.0)) -> float:
         if dx <= 0:
             continue
 
-        # Points whose rectangle covers this x_slab: RAM_cost <= x_left
         slab_mask = pts[:, 0] <= x_left
         if not np.any(slab_mask):
             continue
 
-        # Project to 2D (MISS, FLASH) for this slab
-        yz_pts = pts[slab_mask][:, 1:]  # shape (M, 2)
-
-        # 2D HV in (MISS, FLASH) with ref=(R2,R3)
-        hv_yz = hypervolume_2d_min(yz_pts, ref=(R2, R3))
-
+        yz_pts = pts[slab_mask][:, 1:]
+        hv_yz = hypervolume_2d_min(yz_pts, ref=(r2, r3))
         hv += dx * hv_yz
 
     return hv
-def plot_hour_run_new(root_dir, title=None, marker_scale=1.0, out_path=None):
+
+
+def format_flash_size(kb: float) -> str:
+    """
+    Format a flash size given in KB:
+      - < 1024  -> 'XXX KB'
+      - >= 1024 -> 'Y.Y MB' (or 'Y MB' if >= 10 MB)
+    """
+    if kb < 1024:
+        return f"{kb:.0f} KB"
+    mb = kb / 1024.0
+    if mb >= 10:
+        return f"{mb:.0f} MB"
+    else:
+        return f"{mb:.1f} MB"
+
+
+def compute_combined_hypervolume(with_data, without_data):
+    """
+    Old behavior:
+    combine all WithoutRankNet CSVs into one chunk,
+    combine all WithRankNet CSVs into one chunk,
+    then compare once.
+    """
+    pts_with = collect_ram_acc_flash(with_data)
+    pts_without = collect_ram_acc_flash(without_data)
+
+    pts_with_pf = pareto_front_3obj(pts_with)
+    pts_without_pf = pareto_front_3obj(pts_without)
+
+    norm_with, norm_without = normalize_joint(pts_with_pf, pts_without_pf)
+    cost_with = to_minimization(norm_with)
+    cost_without = to_minimization(norm_without)
+
+    hv_with = hypervolume_3d_min(cost_with)
+    hv_without = hypervolume_3d_min(cost_without)
+    improvement = format_improvement(hv_without, hv_with)
+
+    return {
+        "hv_without": hv_without,
+        "hv_with": hv_with,
+        "improvement": improvement,
+    }
+
+
+def compute_all_vs_all_hypervolume(with_data, without_data):
+    """
+    Current behavior:
+    every WithoutRankNet file against every WithRankNet file.
+    """
+    results = []
+
+    for i, (without_fname, without_df) in enumerate(without_data, start=1):
+        for j, (with_fname, with_df) in enumerate(with_data, start=1):
+            pts_without = collect_ram_acc_flash([(without_fname, without_df)])
+            pts_with = collect_ram_acc_flash([(with_fname, with_df)])
+
+            pts_without_pf = pareto_front_3obj(pts_without)
+            pts_with_pf = pareto_front_3obj(pts_with)
+
+            norm_with, norm_without = normalize_joint(pts_with_pf, pts_without_pf)
+            cost_with = to_minimization(norm_with)
+            cost_without = to_minimization(norm_without)
+
+            hv_with = hypervolume_3d_min(cost_with)
+            hv_without = hypervolume_3d_min(cost_without)
+            improvement = format_improvement(hv_without, hv_with)
+
+            results.append({
+                "without_index": i,
+                "with_index": j,
+                "without_file": without_fname,
+                "with_file": with_fname,
+                "hv_without": hv_without,
+                "hv_with": hv_with,
+                "improvement": improvement,
+            })
+
+    return results
+
+
+def plot_hour_run_new(root_dir, title=None, marker_scale=1.0, out_path=None, combine_runs=False):
     """
     Paper-style layout:
       - Left: plot
       - Right: 3 stacked legend boxes (Flash / Runs / MCU)
 
-    Requirements covered:
-      - Vector output (PDF/SVG)
-      - Fixed axes: Accuracy 0.3..0.7, RAM 30..150 (inverted)
-      - Bubble sizes normalized with FIXED Flash range 0..1100 KB
-      - Run legend labels are: "No RankNet - Run 1", "With RankNet - Run 1", etc.
+    Hypervolume mode:
+      - combine_runs=True  -> old combined mode
+      - combine_runs=False -> all-vs-all mode
     """
-    import re
-    from pathlib import Path
-
-    # ---------------- Publication-ish styling ----------------
     plt.rcParams.update({
         "font.size": 12,
         "axes.titlesize": 18,
@@ -346,28 +412,9 @@ def plot_hour_run_new(root_dir, title=None, marker_scale=1.0, out_path=None):
         "legend.fontsize": 11,
         "xtick.labelsize": 12,
         "ytick.labelsize": 12,
-        "pdf.fonttype": 42,  # embed TrueType fonts in PDF (copy-paste text)
+        "pdf.fonttype": 42,
         "ps.fonttype": 42,
     })
-
-    def resolve_vector_outpath(out_path_local: str | None, root: str, ttl: str) -> str:
-        if out_path_local is None:
-            return str(Path(root) / f"{ttl.replace(' ', '_')}_pareto.pdf")
-        p = Path(out_path_local)
-        if p.suffix.lower() not in {".pdf", ".svg"}:
-            return str(p.with_suffix(".pdf"))
-        return str(p)
-
-    def normalize_sizes_fixed(raw_kb: np.ndarray,
-                              data_min_kb: float = 0.0,
-                              data_max_kb: float = 1100.0,
-                              min_size_display: float = 80.0,
-                              max_size_display: float = 800.0) -> np.ndarray:
-        raw = np.asarray(raw_kb, dtype=float)
-        raw = np.clip(raw, data_min_kb, data_max_kb)
-        denom = (data_max_kb - data_min_kb) + 1e-12
-        norm = (raw - data_min_kb) / denom
-        return norm * (max_size_display - min_size_display) + min_size_display
 
     # ---------------------------------------------------------
     # Load CSVs
@@ -378,37 +425,45 @@ def plot_hour_run_new(root_dir, title=None, marker_scale=1.0, out_path=None):
     color_with = "tab:blue"
     color_without = "tab:orange"
 
-    with_RankNet_data = read_csvs_from_folder(with_dir)
-    without_RankNet_data = read_csvs_from_folder(without_dir)
+    with_ranknet_data = read_csvs_from_folder(with_dir)
+    without_ranknet_data = read_csvs_from_folder(without_dir)
 
-    if not with_RankNet_data and not without_RankNet_data:
+    if not with_ranknet_data and not without_ranknet_data:
         raise SystemExit(f"No CSVs found in {with_dir} or {without_dir}")
 
     # ---------------------------------------------------------
     # Hypervolume computation
     # ---------------------------------------------------------
-    if with_RankNet_data and without_RankNet_data:
-        pts_with_RankNet = collect_ram_acc_flash(with_RankNet_data)
-        pts_without_RankNet = collect_ram_acc_flash(without_RankNet_data)
+    combined_result = None
+    all_vs_all_results = []
 
-        pts_with_pf = pareto_front_3obj(pts_with_RankNet)
-        pts_without_pf = pareto_front_3obj(pts_without_RankNet)
-
-        norm_with, norm_without = normalize_joint(pts_with_pf, pts_without_pf)
-        cost_with = to_minimization(norm_with)
-        cost_without = to_minimization(norm_without)
-
-        hv_with = hypervolume_3d_min(cost_with)
-        hv_without = hypervolume_3d_min(cost_without)
-        improvement = (hv_with - hv_without) / (hv_without + 1e-12) * 100.0
-
+    if with_ranknet_data and without_ranknet_data:
         print(f"\n📁 Evaluating folder: {root_dir}")
-        print("📊 Hypervolume Comparison:")
-        print(f"   WITHOUT RankNet : {hv_without:.4f}")
-        print(f"   WITH RankNet    : {hv_with:.4f}")
-        print(f"   Improvement     : {improvement:.2f}%\n")
+        print(f"⚙️ combine_runs = {combine_runs}\n")
+
+        if combine_runs:
+            combined_result = compute_combined_hypervolume(with_ranknet_data, without_ranknet_data)
+
+            print("📊 Combined Hypervolume Comparison:")
+            print(f"   HV WITHOUT RankNet : {combined_result['hv_without']:.4f}")
+            print(f"   HV WITH RankNet    : {combined_result['hv_with']:.4f}")
+            print(f"   Improvement        : {combined_result['improvement']}\n")
+        else:
+            all_vs_all_results = compute_all_vs_all_hypervolume(with_ranknet_data, without_ranknet_data)
+
+            print("📊 All-vs-All Hypervolume Comparison:")
+            for res in all_vs_all_results:
+                print(
+                    f"   Without Run {res['without_index']} ({res['without_file']}) "
+                    f"vs With Run {res['with_index']} ({res['with_file']})"
+                )
+                print(f"      HV WITHOUT RankNet : {res['hv_without']:.4f}")
+                print(f"      HV WITH RankNet    : {res['hv_with']:.4f}")
+                print(f"      Improvement        : {res['improvement']}")
+            print()
     else:
-        hv_with = hv_without = improvement = None
+        print(f"\n📁 Evaluating folder: {root_dir}")
+        print("⚠️ Hypervolume comparison skipped because one of the folders is empty.\n")
 
     # ---------------------------------------------------------
     # Title / constrained label
@@ -432,8 +487,8 @@ def plot_hour_run_new(root_dir, title=None, marker_scale=1.0, out_path=None):
     # ---------------------------------------------------------
     # Gather plot inputs
     # ---------------------------------------------------------
-    size_info = []  # (group, fname, df, size_col)
-    for (group_name, data_list) in (("without", without_RankNet_data), ("with", with_RankNet_data)):
+    size_info = []
+    for group_name, data_list in (("without", without_ranknet_data), ("with", with_ranknet_data)):
         for fname, df in data_list:
             for col in ["Best Test Accuracy", "Model RAM (KB)"]:
                 if col not in df.columns:
@@ -446,7 +501,7 @@ def plot_hour_run_new(root_dir, title=None, marker_scale=1.0, out_path=None):
             size_info.append((group_name, fname, df, size_col))
 
     # ---------------------------------------------------------
-    # 2-column layout: plot + legend-column (robust; never cropped)
+    # 2-column layout: plot + legend-column
     # ---------------------------------------------------------
     fig = plt.figure(figsize=(12.5, 6))
     gs = fig.add_gridspec(1, 2, width_ratios=[3.0, 1.9], wspace=0.06)
@@ -457,15 +512,13 @@ def plot_hour_run_new(root_dir, title=None, marker_scale=1.0, out_path=None):
 
     legend_entries = []
 
-    # ✅ run counters (separate per group)
-    run_id_without = 0
-    run_id_with = 0
-
     # WITHOUT RankNet first
+    run_id_without = 0
     idx_without = 0
     for group_name, fname, df, size_col in size_info:
         if group_name != "without":
             continue
+
         marker = MARKERS[idx_without % len(MARKERS)]
         idx_without += 1
 
@@ -483,15 +536,16 @@ def plot_hour_run_new(root_dir, title=None, marker_scale=1.0, out_path=None):
             zorder=2,
         )
 
-        # ✅ label as Run 1 / Run 2 ...
         run_id_without += 1
         legend_entries.append((f"No RankNet - Run {run_id_without}", color_without, marker))
 
     # WITH RankNet
+    run_id_with = 0
     idx_with = 0
     for group_name, fname, df, size_col in size_info:
         if group_name != "with":
             continue
+
         marker = MARKERS[idx_with % len(MARKERS)]
         idx_with += 1
 
@@ -509,12 +563,11 @@ def plot_hour_run_new(root_dir, title=None, marker_scale=1.0, out_path=None):
             zorder=3,
         )
 
-        # ✅ label as Run 1 / Run 2 ...
         run_id_with += 1
         legend_entries.append((f"With RankNet - Run {run_id_with}", color_with, marker))
 
     # ---------------------------------------------------------
-    # Fixed axes (reviewer requirement)
+    # Fixed axes
     # ---------------------------------------------------------
     ax.set_title(title)
     ax.set_xlabel("RAM Consumption (KB)")
@@ -525,7 +578,7 @@ def plot_hour_run_new(root_dir, title=None, marker_scale=1.0, out_path=None):
     ax.grid(True, alpha=0.35, linewidth=1.0)
 
     # ---------------------------------------------------------
-    # Legend box 1 (top): Flash Memory Range (fixed 0..1100 KB)
+    # Legend box 1: Flash Memory Range
     # ---------------------------------------------------------
     fmin, fmax = 0.0, 1100.0
     bands = [
@@ -542,8 +595,10 @@ def plot_hour_run_new(root_dir, title=None, marker_scale=1.0, out_path=None):
     ]
 
     bubble_handles = [
-        ax_leg.scatter([], [], s=s, color="tab:blue", alpha=0.85,
-                       edgecolors="black", linewidths=1.2, label=lab)
+        ax_leg.scatter(
+            [], [], s=s, color="tab:blue", alpha=0.85,
+            edgecolors="black", linewidths=1.2, label=lab
+        )
         for s, lab in zip(sample_sizes, sample_labels)
     ]
 
@@ -561,16 +616,18 @@ def plot_hour_run_new(root_dir, title=None, marker_scale=1.0, out_path=None):
     ax_leg.add_artist(bubble_legend)
 
     # ---------------------------------------------------------
-    # Legend box 2 (middle): Runs
+    # Legend box 2: Runs
     # ---------------------------------------------------------
     run_handles = [
-        Line2D([0], [0],
-               marker=mk, color="w",
-               label=txt,
-               markerfacecolor=col,
-               markeredgecolor="black",
-               markersize=8)
-        for (txt, col, mk) in legend_entries
+        Line2D(
+            [0], [0],
+            marker=mk, color="w",
+            label=txt,
+            markerfacecolor=col,
+            markeredgecolor="black",
+            markersize=8
+        )
+        for txt, col, mk in legend_entries
     ]
 
     run_legend = ax_leg.legend(
@@ -585,26 +642,28 @@ def plot_hour_run_new(root_dir, title=None, marker_scale=1.0, out_path=None):
     ax_leg.add_artist(run_legend)
 
     # ---------------------------------------------------------
-    # Legend box 3 (bottom): MCU budgets (only constrained)
+    # Legend box 3: MCU budgets (only constrained)
     # ---------------------------------------------------------
     if is_constrained:
         mcu_devices = [
-            ("Arduino Nano 33 BLE",     256, 1024),
-            ("STM32F411 (Nucleo)",      128, 512),
-            ("Raspberry Pi Pico",       264, 2048),
-            ("ESP32-C3 DevKit",         400, 4096),
+            ("Arduino Nano 33 BLE", 256, 1024),
+            ("STM32F411 (Nucleo)", 128, 512),
+            ("Raspberry Pi Pico", 264, 2048),
+            ("ESP32-C3 DevKit", 400, 4096),
         ]
 
         mcu_handles = []
         for name, ram_kb, flash_kb in mcu_devices:
             label = f"{name}: {ram_kb} KB RAM, {format_flash_size(flash_kb)} Flash"
             mcu_handles.append(
-                Line2D([0], [0],
-                       marker="o", linestyle="",
-                       color="gray",
-                       markerfacecolor="none",
-                       markeredgecolor="gray",
-                       label=label)
+                Line2D(
+                    [0], [0],
+                    marker="o", linestyle="",
+                    color="gray",
+                    markerfacecolor="none",
+                    markeredgecolor="gray",
+                    label=label
+                )
             )
 
         mcu_legend = ax_leg.legend(
@@ -621,18 +680,40 @@ def plot_hour_run_new(root_dir, title=None, marker_scale=1.0, out_path=None):
         ax_leg.add_artist(mcu_legend)
 
     # ---------------------------------------------------------
-    # Hypervolume annotation (bottom-left inside plot)
+    # Hypervolume annotation
     # ---------------------------------------------------------
-    if hv_with is not None:
+    if combined_result is not None:
         text = (
-            f"Hv No RankNet: {hv_without:.3f}\n"
-            f"Hv RankNet : {hv_with:.3f}\n"
-            f"ΔHv Improvement: {improvement:.1f}%"
+            f"Combined:\n"
+            f"NoRN={combined_result['hv_without']:.3f}\n"
+            f"RN={combined_result['hv_with']:.3f}\n"
+            f"Δ={combined_result['improvement']}"
         )
+
         ax.text(
             0.02, 0.02, text,
             transform=ax.transAxes,
-            fontsize=11,
+            fontsize=10,
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.85),
+            verticalalignment="bottom",
+        )
+
+    elif all_vs_all_results:
+        lines = []
+        for res in all_vs_all_results:
+            lines.append(
+                f"Wo{res['without_index']} vs W{res['with_index']}: "
+                f"NoRN={res['hv_without']:.3f}, "
+                f"RN={res['hv_with']:.3f}, "
+                f"Δ={res['improvement']}"
+            )
+
+        text = "\n".join(lines)
+
+        ax.text(
+            0.02, 0.02, text,
+            transform=ax.transAxes,
+            fontsize=9,
             bbox=dict(boxstyle="round", facecolor="white", alpha=0.85),
             verticalalignment="bottom",
         )
@@ -640,11 +721,6 @@ def plot_hour_run_new(root_dir, title=None, marker_scale=1.0, out_path=None):
     fig.savefig(out_path)
     print(f"✅ saved to {out_path}")
     plt.close(fig)
-
-
-
-
-
 
 
 # -------------------------------------------------------------------
@@ -678,11 +754,28 @@ if __name__ == "__main__":
         default=None,
         help="Output image path. If not given, saved inside the hour-run folder.",
     )
+    parser.add_argument(
+        "--combine_runs",
+        type=str,
+        default=None,
+        help=(
+            "Whether to combine all runs before HV computation. "
+            "Accepted values: true/false. "
+            "If omitted, environment variable COMBINE_RUNS is used. "
+            "If that is also missing, default is false."
+        ),
+    )
     args = parser.parse_args()
+
+    combine_runs = str_to_bool(
+        args.combine_runs if args.combine_runs is not None else os.getenv("COMBINE_RUNS"),
+        default=False
+    )
 
     plot_hour_run_new(
         root_dir=args.hour_run_dir,
         title=args.title,
         marker_scale=args.marker_scale,
         out_path=args.out,
+        combine_runs=combine_runs,
     )
